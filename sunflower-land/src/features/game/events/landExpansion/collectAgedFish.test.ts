@@ -1,0 +1,277 @@
+import Decimal from "decimal.js-light";
+import { INITIAL_BUMPKIN } from "features/game/lib/constants";
+import { createInitialAgingShed } from "features/game/lib/agingShed";
+import { KNOWN_IDS } from "features/game/types";
+import { prngChance } from "lib/prng";
+import { getPrimeAgedChance } from "features/game/types/agingFormulas";
+import type { GameState } from "features/game/types/game";
+import { collectAgedFish } from "./collectAgedFish";
+import {
+  createFermentationTestState,
+  FERMENTATION_TEST_NOW,
+} from "./fermentationTestHelpers";
+
+const createdAt = FERMENTATION_TEST_NOW;
+
+/** Used with {@link collectAgedFish} prime-age roll: itemId = Aged fish, criticalHitName = Prime Aged name. */
+const PRIME_AGED_PRNG_FIXTURE = {
+  farmId: 1,
+  fish: "Anchovy" as const,
+  agedItemId: KNOWN_IDS["Aged Anchovy"],
+  primeName: "Prime Aged Anchovy" as const,
+};
+
+function stateWithAgingSlots(
+  slots: { fish: string; readyAt: number; agerApplied?: boolean }[],
+  extra: Record<string, unknown> = {},
+) {
+  return createFermentationTestState({
+    agingShed: {
+      ...createInitialAgingShed(),
+      level: 6,
+      racks: {
+        ...createInitialAgingShed().racks,
+        aging: slots.map((s, i) => ({
+          id: `slot-${i}`,
+          fish: s.fish as "Anchovy",
+          startedAt: createdAt - 10000,
+          readyAt: s.readyAt,
+          skills: { Ager: s.agerApplied ?? false },
+        })),
+      },
+    },
+    ...extra,
+  });
+}
+
+describe("collectAgedFish", () => {
+  it("throws when no aged slots exist", () => {
+    expect(() =>
+      collectAgedFish({
+        state: createFermentationTestState(),
+        action: { type: "agingRack.collected" },
+        farmId: 1,
+        createdAt,
+      }),
+    ).toThrow();
+  });
+
+  it("throws when all slots are still in progress", () => {
+    const future = createdAt + 999999;
+    expect(() =>
+      collectAgedFish({
+        state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: future }]),
+        action: { type: "agingRack.collected" },
+        farmId: 1,
+        createdAt,
+      }),
+    ).toThrow();
+  });
+
+  it("adds Aged Fish to inventory", () => {
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: past }]),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    const hasAged = (state.inventory["Aged Anchovy"] ?? new Decimal(0)).gte(1);
+    const hasPrime = (
+      state.inventory["Prime Aged Anchovy"] ?? new Decimal(0)
+    ).gte(1);
+
+    expect(hasAged || hasPrime).toBe(true);
+  });
+
+  it("removes ready slots and keeps in-progress ones", () => {
+    const past = createdAt - 1;
+    const future = createdAt + 999999;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots([
+        { fish: "Anchovy", readyAt: past },
+        { fish: "Sea Bass", readyAt: future },
+      ]),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    expect(state.agingShed.racks.aging).toHaveLength(1);
+    expect(state.agingShed.racks.aging[0].fish).toBe("Sea Bass");
+  });
+
+  it("collects multiple ready slots at once", () => {
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots([
+        { fish: "Anchovy", readyAt: past },
+        { fish: "Sea Bass", readyAt: past },
+      ]),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    expect(state.agingShed.racks.aging).toHaveLength(0);
+  });
+
+  it("tracks farm activity", () => {
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: past }]),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    const agedActivity = state.farmActivity["Aged Anchovy Collected"] ?? 0;
+    const primeActivity =
+      state.farmActivity["Prime Aged Anchovy Collected"] ?? 0;
+
+    expect(agedActivity + primeActivity).toBeGreaterThanOrEqual(1);
+  });
+
+  it("applies Ager skill to grant 2 items per slot", () => {
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots(
+        [{ fish: "Anchovy", readyAt: past, agerApplied: true }],
+        {
+          bumpkin: { ...INITIAL_BUMPKIN, skills: { Ager: 1 } },
+        },
+      ),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    const aged = state.inventory["Aged Anchovy"]?.toNumber() ?? 0;
+    const prime = state.inventory["Prime Aged Anchovy"]?.toNumber() ?? 0;
+
+    expect(aged + prime).toBe(2);
+  });
+
+  it("ignores Ager skill activated after starting (exploit guard)", () => {
+    // Slot was queued without the Ager stamp; player then activated the skill.
+    // Output must still be 1x because the input was paid at 1x.
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots(
+        [{ fish: "Anchovy", readyAt: past, agerApplied: false }],
+        {
+          bumpkin: { ...INITIAL_BUMPKIN, skills: { Ager: 1 } },
+        },
+      ),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    const aged = state.inventory["Aged Anchovy"]?.toNumber() ?? 0;
+    const prime = state.inventory["Prime Aged Anchovy"]?.toNumber() ?? 0;
+
+    expect(aged + prime).toBe(1);
+  });
+
+  it("honours Ager stamp even when skill is deactivated after starting", () => {
+    // Slot was queued with Ager active (2x input paid); skill then removed.
+    // Output must still be 2x because the slot was paid at 2x.
+    const past = createdAt - 1;
+    const state = collectAgedFish({
+      state: stateWithAgingSlots(
+        [{ fish: "Anchovy", readyAt: past, agerApplied: true }],
+        {
+          bumpkin: { ...INITIAL_BUMPKIN, skills: {} },
+        },
+      ),
+      action: { type: "agingRack.collected" },
+      farmId: 1,
+      createdAt,
+    });
+
+    const aged = state.inventory["Aged Anchovy"]?.toNumber() ?? 0;
+    const prime = state.inventory["Prime Aged Anchovy"]?.toNumber() ?? 0;
+
+    expect(aged + prime).toBe(2);
+  });
+
+  describe("prime aged PRNG", () => {
+    const { farmId, agedItemId, primeName } = PRIME_AGED_PRNG_FIXTURE;
+
+    it("documents baseline 10% miss at counter 0 for farmId 1 (Anchovy)", () => {
+      expect(
+        prngChance({
+          farmId,
+          itemId: agedItemId,
+          counter: 0,
+          chance: getPrimeAgedChance({ bumpkin: { skills: {} } } as GameState),
+          criticalHitName: primeName,
+        }),
+      ).toBe(false);
+    });
+
+    it("documents baseline 10% hit at counter 9 for farmId 1 (Anchovy)", () => {
+      expect(
+        prngChance({
+          farmId,
+          itemId: agedItemId,
+          counter: 9,
+          chance: getPrimeAgedChance({ bumpkin: { skills: {} } } as GameState),
+          criticalHitName: primeName,
+        }),
+      ).toBe(true);
+    });
+
+    it("yields Prime Aged fish when prior collection count primes the roll (counter 9)", () => {
+      const past = createdAt - 1;
+      const state = collectAgedFish({
+        state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: past }], {
+          farmActivity: { "Aged Anchovy Collected": 9 },
+        }),
+        action: { type: "agingRack.collected" },
+        farmId,
+        createdAt,
+      });
+
+      expect(state.inventory["Prime Aged Anchovy"]?.toNumber()).toBe(1);
+      expect(state.inventory["Aged Anchovy"]?.toNumber() ?? 0).toBe(0);
+      expect(state.agingShed.lastAgingCollect).toEqual([
+        { item: "Prime Aged Anchovy", primeAged: true },
+      ]);
+    });
+
+    it("yields Aged (not Prime) at counter 10 with 10% chance, Prime with Fish Smoking (20%)", () => {
+      const past = createdAt - 1;
+      const baseActivity = { "Aged Anchovy Collected": 10 };
+
+      const withoutSmoking = collectAgedFish({
+        state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: past }], {
+          farmActivity: baseActivity,
+        }),
+        action: { type: "agingRack.collected" },
+        farmId,
+        createdAt,
+      });
+      expect(withoutSmoking.inventory["Aged Anchovy"]?.toNumber()).toBe(1);
+      expect(
+        withoutSmoking.inventory["Prime Aged Anchovy"] ?? new Decimal(0),
+      ).toEqual(new Decimal(0));
+
+      const withSmoking = collectAgedFish({
+        state: stateWithAgingSlots([{ fish: "Anchovy", readyAt: past }], {
+          bumpkin: { ...INITIAL_BUMPKIN, skills: { "Fish Smoking": 1 } },
+          farmActivity: baseActivity,
+        }),
+        action: { type: "agingRack.collected" },
+        farmId,
+        createdAt,
+      });
+      expect(withSmoking.inventory["Prime Aged Anchovy"]?.toNumber()).toBe(1);
+      expect(withSmoking.inventory["Aged Anchovy"] ?? new Decimal(0)).toEqual(
+        new Decimal(0),
+      );
+    });
+  });
+});
