@@ -138,7 +138,7 @@ export const predictGreenhouse = (
 export const predictTree = (
   game: Game,
   treeId: string,
-  readyAt: number,
+  _readyAt: number,
   farmId: number,
   counter: number,
 ): number | null =>
@@ -154,7 +154,6 @@ export const predictTree = (
     const r = getWoodDropAmount({
       game,
       tree,
-      createdAt: at(readyAt),
       farmId,
       counter,
       itemId: itemIdOf(treeName),
@@ -315,10 +314,8 @@ export const predictAnimalProduce = (
 
 export const predictSaltPerRake = (game: Game): number | null =>
   SAFE(() => {
-    const r = getSaltYieldPerRake({ game });
-    if (typeof r === "number") return r;
-    if (r && typeof r === "object" && "amount" in r) return toNumber(r.amount);
-    return null;
+    const r = getSaltYieldPerRake(game, Date.now());
+    return r ? toNumber(r.saltYield) : null;
   });
 
 /**
