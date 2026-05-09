@@ -15,7 +15,6 @@ export type TimerCategory =
   | "Composters"
   | "Animals"
   | "Beehives"
-  | "Deliveries"
   | "Bounties";
 
 export type Timer = {
@@ -162,29 +161,6 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       readyAt: updatedAt + remainingSeconds * 1000,
       key: `hive-${id}`,
     });
-  }
-
-  // Deliveries with explicit readyAt
-  for (const order of state.delivery?.orders ?? []) {
-    if (order.readyAt) {
-      timers.push({
-        category: "Deliveries",
-        label: `${order.from ?? "Delivery"}`,
-        sublabel: `Unlocks at`,
-        readyAt: order.readyAt,
-        key: `delivery-ready-${order.id}`,
-      });
-    }
-    if (order.expiresAt) {
-      timers.push({
-        category: "Deliveries",
-        label: `${order.from ?? "Delivery"} expires`,
-        sublabel: `Complete before`,
-        readyAt: order.expiresAt,
-        isDeadline: true,
-        key: `delivery-exp-${order.id}`,
-      });
-    }
   }
 
   // Bounties — board requests with expiresAt
