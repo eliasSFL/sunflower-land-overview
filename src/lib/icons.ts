@@ -208,6 +208,22 @@ const FLOWER_FILES: Record<string, string> = {
   "Blue Clover": "blue_clover.webp",
 };
 
+// Composter outputs — fertilisers (Compost Bin / Turbo / Premium produce
+// these as their primary product) and bait drops (rolled on collect under
+// the Composting Overhaul skill). Bundled from sunflower-land/src/assets/
+// composters/.
+const COMPOSTER_PRODUCE_FILES: Record<string, string> = {
+  // Fertilisers
+  "Sprout Mix": "sprout_mix.png",
+  "Fruitful Blend": "fruitful_blend.png",
+  "Rapid Root": "rapid_root.png",
+  // Baits
+  Earthworm: "earthworm.png",
+  Grub: "grub.png",
+  "Red Wiggler": "red_wiggler.png",
+  "Fishing Lure": "fishing_lure.png",
+};
+
 // Crustaceans (Crab Trap outputs) — all on the SFL CDN at
 // /crustaceans/{snake_case}.webp.
 const CRUSTACEAN_URLS: Record<string, string> = {
@@ -417,7 +433,20 @@ function lookup(category: TimerCategory, label: string): string | null {
       const file = FLOWER_FILES[label];
       return file ? `/icons/flowers/${file}` : null;
     }
-    // Composters, Crafting, Lava Pits, Bounties — no icon for now.
+    case "Composters": {
+      const file = COMPOSTER_PRODUCE_FILES[label];
+      return file ? `/icons/composters/${file}` : "/icons/composters/compost.png";
+    }
+    case "Crop Machine": {
+      // Each pack grows a single crop — reuse the crops slug map.
+      const slug = CROP_SLUGS[label];
+      return slug ? `${CDN}/crops/${slug}/crop.png` : null;
+    }
+    case "Lava Pits":
+      return "/icons/buildings/lava_pit.webp";
+    case "Crafting":
+      return "/icons/buildings/crafting_box.webp";
+    // Bounties — no icon for now.
     default:
       return null;
   }
