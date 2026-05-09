@@ -62,10 +62,24 @@ export function TimerCard({ timer, now }: Props) {
               <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
             )}
             <span className="truncate font-medium">
-              {timer.count > 1 && (
-                <span className="mr-1.5 font-mono text-[--color-muted]">
-                  {timer.count}×
+              {timer.totalYieldEstimate != null ? (
+                // Predicted yield from farmActivity ratios — surfaces the
+                // *items* the player will collect, not the # of plots/patches.
+                // The "≈" prefix and a tooltip flag this as an estimate.
+                <span
+                  className="mr-1.5 font-mono text-[--color-muted]"
+                  title={`Estimated from farm history · ${timer.count} ${
+                    timer.count === 1 ? "node" : "nodes"
+                  }`}
+                >
+                  ≈{Math.max(1, Math.round(timer.totalYieldEstimate))}
                 </span>
+              ) : (
+                timer.count > 1 && (
+                  <span className="mr-1.5 font-mono text-[--color-muted]">
+                    {timer.count}×
+                  </span>
+                )
               )}
               {timer.label}
             </span>

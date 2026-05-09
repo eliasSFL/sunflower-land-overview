@@ -48,15 +48,58 @@ export type Timer = {
   /** When set, the UI replaces the formatted countdown with this string —
    * used for static states like a salt node that's already at max charges. */
   displayOverride?: string;
+  /** Estimated yield (units of the labelled item) this single node will give
+   * when collected. Predicted from the player's lifetime farmActivity
+   * ratios; absent when we can't compute it (no history, or the category
+   * has no per-event amount counter). The dashboard sums these across the
+   * group to show "≈70 Soybean" instead of "66× Soybean". */
+  yieldEstimate?: number;
   /** Source object id when available — useful for stable keys. */
   key: string;
 };
+
+/**
+ * Derive average yield-per-event from lifetime farmActivity counters.
+ *
+ *   yield ≈ (units harvested) / (events × divisor)
+ *
+ * For crops/greenhouse, each plant event = one harvest event, so divisor=1.
+ * For fruit, one plant event yields ~3–6 harvests over its lifetime
+ * (default range 3–5, +1/+2 with Immortal Pear), so we divide by ~4 to
+ * approximate the per-collect yield.
+ *
+ * Returns undefined when there's no usable data — callers fall back to
+ * just showing the node count.
+ */
+function avgYieldPerEvent(
+  state: GameState,
+  harvestKey: string,
+  plantKey: string,
+  divisor = 1,
+): number | undefined {
+  const harvested = state.farmActivity?.[harvestKey];
+  const planted = state.farmActivity?.[plantKey];
+  if (!harvested || !planted || planted <= 0) return undefined;
+  const ratio = harvested / (planted * divisor);
+  // Cap absurd ratios — if harvested >> planted (e.g. legacy data, decimal
+  // counters, or pre-tracking history), the ratio loses meaning. 100× per
+  // event is already wildly past any real boost stack.
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 100) return undefined;
+  return ratio;
+}
+
+/** Avg harvests per fruit-patch lifetime — base random range is 3–5, so 4
+ * is the unboosted mean. Immortal Pear bumps this by +1 (+2 with Pear
+ * Turbocharge); we don't try to detect those, the estimate stays a useful
+ * floor either way. */
+const FRUIT_HARVESTS_PER_LIFETIME = 4;
 
 export function extractTimers(state: GameState | undefined): Timer[] {
   if (!state) return [];
   const timers: Timer[] = [];
 
-  // Crops
+  // Crops — one harvest event per plot, so the per-event yield ratio is
+  // straight Harvested/Planted.
   for (const [id, plot] of Object.entries(state.crops ?? {})) {
     const crop = plot.crop;
     if (!crop) continue;
@@ -67,11 +110,16 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: crop.name,
       sublabel: `Plot ${id}`,
       readyAt: crop.plantedAt + seconds * 1000,
+      yieldEstimate:
+        crop.amount ??
+        avgYieldPerEvent(state, `${crop.name} Harvested`, `${crop.name} Planted`),
       key: `crop-${id}`,
     });
   }
 
-  // Fruit patches
+  // Fruit patches — each plant event spawns ~4 harvest events over its
+  // lifetime, so divide the lifetime ratio by FRUIT_HARVESTS_PER_LIFETIME
+  // to approximate one ready harvest's yield.
   for (const [id, patch] of Object.entries(state.fruitPatches ?? {})) {
     const fruit = patch.fruit;
     if (!fruit) continue;
@@ -85,11 +133,19 @@ export function extractTimers(state: GameState | undefined): Timer[] {
           ? `Patch ${id} · ${fruit.harvestsLeft} left`
           : `Patch ${id}`,
       readyAt: fruit.plantedAt + seconds * 1000,
+      yieldEstimate:
+        fruit.amount ??
+        avgYieldPerEvent(
+          state,
+          `${fruit.name} Harvested`,
+          `${fruit.name} Planted`,
+          FRUIT_HARVESTS_PER_LIFETIME,
+        ),
       key: `fruit-${id}`,
     });
   }
 
-  // Greenhouse pots
+  // Greenhouse pots — one harvest per plant, same shape as crops.
   for (const [id, pot] of Object.entries(state.greenhouse?.pots ?? {})) {
     const plant = pot.plant;
     if (!plant) continue;
@@ -102,6 +158,13 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: plant.name,
       sublabel: `Pot ${id}`,
       readyAt: plant.plantedAt + seconds * 1000,
+      yieldEstimate:
+        plant.amount ??
+        avgYieldPerEvent(
+          state,
+          `${plant.name} Harvested`,
+          `${plant.name} Planted`,
+        ),
       key: `greenhouse-${id}`,
     });
   }
@@ -473,6 +536,10 @@ export type AggregatedTimer = {
   /** Static text that overrides the countdown display (e.g. "Charges Full"). */
   displayOverride?: string;
   isDeadline?: boolean;
+  /** Sum of per-node yieldEstimate values across the group. Undefined when
+   * none of the underlying timers had an estimate (no farmActivity history,
+   * or category we can't predict for) — UI then falls back to count. */
+  totalYieldEstimate?: number;
   key: string;
 };
 
@@ -507,6 +574,7 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         sublabels: sublabel ? [sublabel] : [],
         displayOverride: t.displayOverride,
         isDeadline: t.isDeadline,
+        totalYieldEstimate: t.yieldEstimate,
         key,
       });
     } else {
@@ -515,6 +583,10 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
       existing.latestReadyAt = Math.max(existing.latestReadyAt, t.readyAt);
       if (sublabel && !existing.sublabels.includes(sublabel)) {
         existing.sublabels.push(sublabel);
+      }
+      if (t.yieldEstimate != null) {
+        existing.totalYieldEstimate =
+          (existing.totalYieldEstimate ?? 0) + t.yieldEstimate;
       }
     }
   }

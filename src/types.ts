@@ -209,4 +209,8 @@ export type GameState = {
   crabTraps?: CrabTrap;
   saltFarm?: SaltFarm;
   sculptures?: Partial<Record<string, Sculpture>>;
+  /** Lifetime activity counters keyed by FarmActivityName (e.g.
+   * "Sunflower Harvested", "Orange Planted"). We use these to derive
+   * historical yield-per-event ratios as a predictive estimate. */
+  farmActivity?: Record<string, number>;
 };
