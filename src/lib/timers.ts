@@ -404,16 +404,26 @@ export type AggregatedTimer = {
 export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
   const groups = new Map<string, AggregatedTimer>();
   for (const t of timers) {
-    const key = `${t.category}|${t.label}`;
+    // "Output: Input" labels aggregate by their output — e.g. every
+    // "Greenhouse Goodie: Pickled X" variant merges into a single row,
+    // the same way 12 sunflowers collapse into one. The input slides
+    // into the sublabel slot for any UI that wants to surface it.
+    const colonIdx = t.label.indexOf(": ");
+    const label = colonIdx > 0 ? t.label.slice(0, colonIdx) : t.label;
+    const inputSublabel =
+      colonIdx > 0 ? t.label.slice(colonIdx + 2) : undefined;
+    const sublabel = t.sublabel ?? inputSublabel;
+
+    const key = `${t.category}|${label}`;
     const existing = groups.get(key);
     if (!existing) {
       groups.set(key, {
         category: t.category,
-        label: t.label,
+        label,
         count: 1,
         earliestReadyAt: t.readyAt,
         latestReadyAt: t.readyAt,
-        sublabels: t.sublabel ? [t.sublabel] : [],
+        sublabels: sublabel ? [sublabel] : [],
         isDeadline: t.isDeadline,
         key,
       });
@@ -421,8 +431,8 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
       existing.count++;
       existing.earliestReadyAt = Math.min(existing.earliestReadyAt, t.readyAt);
       existing.latestReadyAt = Math.max(existing.latestReadyAt, t.readyAt);
-      if (t.sublabel && !existing.sublabels.includes(t.sublabel)) {
-        existing.sublabels.push(t.sublabel);
+      if (sublabel && !existing.sublabels.includes(sublabel)) {
+        existing.sublabels.push(sublabel);
       }
     }
   }
