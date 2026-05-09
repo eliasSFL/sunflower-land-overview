@@ -219,11 +219,7 @@ const AGING_FILES: Record<string, string> = {
   Sauerkraut: "/icons/food/sauerkraut.png",
 };
 
-/** Resolve an icon URL for a timer's (category, label). null = no icon. */
-export function getIconUrl(
-  category: TimerCategory,
-  label: string,
-): string | null {
+function lookup(category: TimerCategory, label: string): string | null {
   switch (category) {
     case "Crops": {
       const slug = CROP_SLUGS[label];
@@ -252,16 +248,32 @@ export function getIconUrl(
       return file ? `/icons/food/${file}` : null;
     }
     case "Aging Shed":
-      // "Greenhouse Goodie: Pickled X" variants all share one umbrella icon
-      // in-game — match the prefix so we don't have to enumerate every
-      // pickled crop variant.
-      if (label.startsWith("Greenhouse Goodie")) {
-        return "/icons/aging/greenhouse_goodie.webp";
-      }
       return AGING_FILES[label] ?? null;
     // Composters, Crafting, Lava Pits, Crab Traps, Bounties —
     // no icon for now.
     default:
       return null;
   }
+}
+
+/**
+ * Resolve an icon URL for a timer's (category, label). null = no icon.
+ *
+ * Labels of the form `"Output: Input"` (e.g. `"Greenhouse Goodie: Pickled
+ * Radish"`) fall back to the output's icon when the full label isn't
+ * directly mapped — the in-game icon for these compound recipes is the
+ * umbrella product (`Greenhouse Goodie`), not the variant.
+ */
+export function getIconUrl(
+  category: TimerCategory,
+  label: string,
+): string | null {
+  const direct = lookup(category, label);
+  if (direct) return direct;
+
+  const colonIdx = label.indexOf(": ");
+  if (colonIdx > 0) {
+    return lookup(category, label.slice(0, colonIdx));
+  }
+  return null;
 }
