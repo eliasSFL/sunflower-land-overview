@@ -15,7 +15,6 @@ import {
   saveFarmId,
 } from "./lib/storage";
 
-const REFRESH_INTERVAL_MS = 60_000;
 // Server throttle is 5s normal / 10s after rapid attempts; we stay above the
 // upper bound so client-initiated reloads can never trigger a 429.
 const CLIENT_COOLDOWN_MS = 11_000;
@@ -73,14 +72,6 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!data || !farmId || !apiKey) return;
-    const id = setInterval(() => {
-      void load(farmId, apiKey);
-    }, REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [data, farmId, apiKey]);
 
   // Lock body scroll while the mobile drawer is open so the page underneath
   // doesn't scroll behind it.
