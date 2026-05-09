@@ -1,0 +1,34 @@
+name: Bump sunflower-land submodule to main
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Fast-forward submodule to upstream main
+        run: git submodule update --remote --depth 1 -- sunflower-land
+
+      - name: Commit and push if pointer changed
+        run: |
+          if git diff --quiet -- sunflower-land; then
+            echo "Submodule already at main HEAD; nothing to commit."
+            exit 0
+          fi
+          NEW_SHA=$(git -C sunflower-land rev-parse --short HEAD)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sunflower-land
+          git commit -m "Bump sunflower-land submodule to ${NEW_SHA}"
+          git push origin HEAD:master
