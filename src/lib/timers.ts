@@ -441,12 +441,47 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
   );
 }
 
+/**
+ * Display order for timer sections. Returned object iteration follows
+ * insertion order (ES2015+), so listing categories here is what controls
+ * the order they appear in the dashboard and sidebar. Any category that
+ * shows up at runtime but isn't in this list falls to the end.
+ */
+const CATEGORY_ORDER: TimerCategory[] = [
+  "Daily Rewards",
+  "Crops",
+  "Fruit Patches",
+  "Resources",
+  "Cooking",
+  "Animals",
+  "Beehives",
+  "Greenhouse",
+  "Mushrooms",
+  "Crab Traps",
+  "Aging Shed",
+  "Composters",
+  "Bounties",
+];
+
 export function groupByCategory(
   timers: AggregatedTimer[],
 ): Record<string, AggregatedTimer[]> {
-  const out: Record<string, AggregatedTimer[]> = {};
+  const buckets = new Map<TimerCategory, AggregatedTimer[]>();
   for (const t of timers) {
-    (out[t.category] ??= []).push(t);
+    const list = buckets.get(t.category);
+    if (list) list.push(t);
+    else buckets.set(t.category, [t]);
+  }
+
+  const out: Record<string, AggregatedTimer[]> = {};
+  for (const cat of CATEGORY_ORDER) {
+    const list = buckets.get(cat);
+    if (list) out[cat] = list;
+  }
+  // Anything not in CATEGORY_ORDER (e.g. a new category added before this
+  // list is updated) falls through to the end so it still renders.
+  for (const [cat, list] of buckets) {
+    if (!(cat in out)) out[cat] = list;
   }
   return out;
 }
