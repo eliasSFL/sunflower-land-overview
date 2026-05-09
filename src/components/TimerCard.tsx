@@ -36,7 +36,10 @@ export function TimerCard({ timer, now }: Props) {
           <img
             src={iconUrl}
             alt=""
-            className="h-7 w-7 shrink-0"
+            // object-contain keeps the source aspect ratio inside a square
+            // 28×28 box — non-square pixel art (oil barrel, ores) stays
+            // un-stretched while every row still allocates the same width.
+            className="h-7 w-7 shrink-0 object-contain"
             style={{ imageRendering: "pixelated" }}
             onError={() => setIconBroken(true)}
             loading="lazy"
