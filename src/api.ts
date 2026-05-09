@@ -1,4 +1,8 @@
-const API_BASE = "https://api.sunflower-land.com";
+// Relative path — handled by the Vite dev proxy locally, and by the
+// Cloudflare Pages Function (functions/api/farms/[id].ts) in production.
+// This avoids cross-origin requests to api.sunflower-land.com from the
+// browser, so we don't need to be on its CORS allowlist.
+const API_BASE = "/api";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -25,7 +29,7 @@ export async function fetchFarm({
   farmId: string;
   apiKey: string;
 }): Promise<FarmResponse> {
-  const res = await fetch(`${API_BASE}/community/farms/${farmId}`, {
+  const res = await fetch(`${API_BASE}/farms/${encodeURIComponent(farmId)}`, {
     headers: { "x-api-key": apiKey },
   });
 

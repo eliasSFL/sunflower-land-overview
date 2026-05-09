@@ -30,6 +30,26 @@ npm run preview
 
 - Vite + React + TypeScript
 - Tailwind CSS v4
+- Cloudflare Pages Function for the API proxy
+
+## How the API call works
+
+`api.sunflower-land.com` only allows browser requests from a small set of `sunflower-land.com` origins. To avoid the CORS restriction without changing the API, the frontend calls a same-origin path (`/api/farms/{id}`) which is proxied to the real API:
+
+- **Locally** — handled by the Vite dev proxy in [`vite.config.ts`](vite.config.ts).
+- **In production** — handled by [`functions/api/farms/[id].ts`](functions/api/farms/%5Bid%5D.ts), a Cloudflare Pages Function. The user's API key flows through the function as a header but is never logged or stored.
+
+## Deploy (Cloudflare Pages)
+
+1. Push to GitHub (already done).
+2. In Cloudflare dashboard → Pages → "Create a project" → connect to `eliasSFL/sunflower-land-overview`.
+3. Build settings:
+   - Framework preset: **Vite**
+   - Build command: `npm run build`
+   - Build output: `dist`
+4. Deploy. The `functions/` directory is automatically picked up — no extra config needed.
+
+Any other host that supports static + serverless functions (Vercel, Netlify) works too; you'd just need to port the function file to that platform's convention.
 
 ## Adding new timers
 
