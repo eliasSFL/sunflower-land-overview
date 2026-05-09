@@ -31,6 +31,21 @@ export type BuildingProduce = {
   readyAt?: number;
 };
 
+export type CropMachineQueueItem = {
+  crop: string;
+  seeds?: number;
+  /** Ms when the pack will finish growing. Only set once oil has been
+   * allocated to cover the remaining grow time. */
+  readyAt?: number;
+  /** Ms at which growth pauses because oil runs out. Useful as a fallback
+   * ETA when readyAt isn't set yet. */
+  growsUntil?: number;
+  growTimeRemaining?: number;
+  totalGrowTime?: number;
+  startTime?: number;
+  amount?: number;
+};
+
 export type PlacedBuilding = {
   id?: string;
   readyAt?: number;
@@ -39,6 +54,9 @@ export type PlacedBuilding = {
   producing?: BuildingProduce;
   oil?: number;
   oilTimeRemaining?: number;
+  /** Crop Machine only — pending growth packs. */
+  queue?: CropMachineQueueItem[];
+  unallocatedOilTime?: number;
 };
 
 export type Animal = {

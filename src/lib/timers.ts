@@ -30,6 +30,7 @@ export type TimerCategory =
   | "Mushrooms"
   | "Aging Shed"
   | "Crafting"
+  | "Crop Machine"
   | "Lava Pits"
   | "Crab Traps"
   | "Salt Nodes"
@@ -365,6 +366,35 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     });
   }
 
+  // Crop Machine — each placed machine has a queue of growth packs. A pack
+  // only has a firm ETA once oil has been allocated to cover the remaining
+  // grow time (readyAt). When the machine runs out of oil mid-pack, the
+  // pack pauses at growsUntil; we surface that as a deadline (the moment
+  // growth stops) so the player knows when to top up oil.
+  for (const machine of state.buildings?.["Crop Machine"] ?? []) {
+    (machine.queue ?? []).forEach((pack, qIdx) => {
+      const machineId = machine.id ?? "0";
+      if (pack.readyAt) {
+        timers.push({
+          category: "Crop Machine",
+          label: pack.crop,
+          sublabel: pack.seeds ? `${pack.seeds} seeds` : undefined,
+          readyAt: pack.readyAt,
+          key: `cropmachine-${machineId}-${qIdx}`,
+        });
+      } else if (pack.growsUntil) {
+        timers.push({
+          category: "Crop Machine",
+          label: pack.crop,
+          sublabel: pack.seeds ? `${pack.seeds} seeds · oil out` : "oil out",
+          readyAt: pack.growsUntil,
+          isDeadline: true,
+          key: `cropmachine-${machineId}-${qIdx}`,
+        });
+      }
+    });
+  }
+
   // Lava pits — only show when actively running (startedAt set, not yet
   // collected). Idle/uninitialised pits don't have a meaningful timer.
   for (const [id, pit] of Object.entries(state.lavaPits ?? {})) {
@@ -505,15 +535,18 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Fruit Patches",
   "Resources",
   "Salt Nodes",
+  "Lava Pits",
   "Cooking",
   "Animals",
   "Flowers",
   "Beehives",
   "Greenhouse",
+  "Crop Machine",
   "Mushrooms",
   "Crab Traps",
   "Aging Shed",
   "Composters",
+  "Crafting",
   "Bounties",
 ];
 
@@ -555,6 +588,9 @@ export function extractActiveCategories(
   const COMPOSTERS = ["Compost Bin", "Turbo Composter", "Premium Composter"];
   if (COMPOSTERS.some((n) => (state.buildings?.[n]?.length ?? 0) > 0))
     active.add("Composters");
+
+  if ((state.buildings?.["Crop Machine"]?.length ?? 0) > 0)
+    active.add("Crop Machine");
 
   if (
     Object.keys(state.henHouse?.animals ?? {}).length > 0 ||
