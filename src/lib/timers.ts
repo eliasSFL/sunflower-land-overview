@@ -371,9 +371,9 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   // grow time (readyAt). When the machine runs out of oil mid-pack, the
   // pack pauses at growsUntil; we surface that as a deadline (the moment
   // growth stops) so the player knows when to top up oil.
-  for (const machine of state.buildings?.["Crop Machine"] ?? []) {
+  (state.buildings?.["Crop Machine"] ?? []).forEach((machine, mIdx) => {
+    const machineId = machine.id ?? `idx${mIdx}`;
     (machine.queue ?? []).forEach((pack, qIdx) => {
-      const machineId = machine.id ?? "0";
       if (pack.readyAt) {
         timers.push({
           category: "Crop Machine",
@@ -393,7 +393,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
         });
       }
     });
-  }
+  });
 
   // Lava pits — only show when actively running (startedAt set, not yet
   // collected). Idle/uninitialised pits don't have a meaningful timer.
