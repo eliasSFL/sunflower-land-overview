@@ -14,8 +14,29 @@ import {
   STONE_RECOVERY_SECONDS,
   SUNSTONE_RECOVERY_SECONDS,
   TREE_RECOVERY_SECONDS,
-  getMaxSaltCharges,
 } from "./durations";
+import {
+  predictAgingShed,
+  predictAnimalProduce,
+  predictBeehive,
+  predictCrabTrap,
+  predictCrimstone,
+  predictCrop,
+  predictCropMachinePack,
+  predictFlower,
+  predictFruit,
+  predictGold,
+  predictGreenhouse,
+  predictIron,
+  predictLavaPit,
+  predictMushroom,
+  predictOil,
+  predictSaltNode,
+  predictSaltPerRake,
+  predictStone,
+  predictSunstone,
+  predictTree,
+} from "./yields";
 
 export type TimerCategory =
   | "Crops"
@@ -50,11 +71,41 @@ export type Timer = {
   displayOverride?: string;
   /** Source object id when available — useful for stable keys. */
   key: string;
+  /** Predicted yield for this single item. Omitted when prediction is N/A
+   * (e.g. cooking, bounties) or the predictor failed defensively. Aggregation
+   * sums these into AggregatedTimer.totalPredictedYield. */
+  predictedYield?: number;
+  /** Override the default `${category}|${label}` aggregation grouping. Set
+   * to a unique value to opt OUT of merging — used by Crop Machine so each
+   * pack stays on its own card even when multiple packs grow the same crop. */
+  aggregationKey?: string;
 };
 
-export function extractTimers(state: GameState | undefined): Timer[] {
+export function extractTimers(
+  state: GameState | undefined,
+  farmId = 0,
+): Timer[] {
   if (!state) return [];
   const timers: Timer[] = [];
+
+  // ── Predictive farmActivity counter ────────────────────────────────────
+  // Game `farmActivity[`${name} Verb`]` increments by 1 per harvest. When
+  // we predict N items of the same activity in one extraction pass we have
+  // to *advance* the counter for each subsequent item, otherwise every
+  // identical chance roll resolves the same way (all hit or all miss) and
+  // the summed prediction is biased.
+  //
+  // `nextCounter("Soybean Harvested", farmActivity)` returns the right
+  // counter for the i-th Soybean we emit and bumps the local sequence.
+  const farmActivity = (state as { farmActivity?: Record<string, number> })
+    .farmActivity ?? {};
+  const sequenceCounters = new Map<string, number>();
+  const nextCounter = (activityName: string): number => {
+    const base = farmActivity[activityName] ?? 0;
+    const seq = sequenceCounters.get(activityName) ?? 0;
+    sequenceCounters.set(activityName, seq + 1);
+    return base + seq;
+  };
 
   // Crops
   for (const [id, plot] of Object.entries(state.crops ?? {})) {
@@ -62,12 +113,21 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     if (!crop) continue;
     const seconds = CROP_SECONDS[crop.name];
     if (!seconds) continue;
+    const readyAt = crop.plantedAt + seconds * 1000;
     timers.push({
       category: "Crops",
       label: crop.name,
       sublabel: `Plot ${id}`,
-      readyAt: crop.plantedAt + seconds * 1000,
+      readyAt,
       key: `crop-${id}`,
+      predictedYield:
+        predictCrop(
+          state,
+          id,
+          readyAt,
+          farmId,
+          nextCounter(`${crop.name} Harvested`),
+        ) ?? undefined,
     });
   }
 
@@ -77,6 +137,14 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     if (!fruit) continue;
     const seconds = PATCH_FRUIT_SECONDS[fruit.name];
     if (!seconds) continue;
+    // Patch fruit yields multiple harvests. After each harvest the game
+    // sets `harvestedAt` to mark when replenishment started; that becomes
+    // the binding constraint for the next ready time. `plantedAt` only
+    // governs the very first cycle. (See fruitHarvested.ts ~line 330 in
+    // the merged subtree.)
+    const harvestedAt = (fruit as { harvestedAt?: number }).harvestedAt ?? 0;
+    const baseTime = Math.max(fruit.plantedAt, harvestedAt);
+    const readyAt = baseTime + seconds * 1000;
     timers.push({
       category: "Fruit Patches",
       label: fruit.name,
@@ -84,8 +152,16 @@ export function extractTimers(state: GameState | undefined): Timer[] {
         fruit.harvestsLeft != null
           ? `Patch ${id} · ${fruit.harvestsLeft} left`
           : `Patch ${id}`,
-      readyAt: fruit.plantedAt + seconds * 1000,
+      readyAt,
       key: `fruit-${id}`,
+      predictedYield:
+        predictFruit(
+          state,
+          id,
+          readyAt,
+          farmId,
+          nextCounter(`${fruit.name} Harvested`),
+        ) ?? undefined,
     });
   }
 
@@ -97,12 +173,21 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       GREENHOUSE_CROP_SECONDS[plant.name] ??
       GREENHOUSE_FRUIT_SECONDS[plant.name];
     if (!seconds) continue;
+    const readyAt = plant.plantedAt + seconds * 1000;
     timers.push({
       category: "Greenhouse",
       label: plant.name,
       sublabel: `Pot ${id}`,
-      readyAt: plant.plantedAt + seconds * 1000,
+      readyAt,
       key: `greenhouse-${id}`,
+      predictedYield:
+        predictGreenhouse(
+          state,
+          id,
+          readyAt,
+          farmId,
+          nextCounter(`${plant.name} Harvested`),
+        ) ?? undefined,
     });
   }
 
@@ -164,12 +249,14 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   for (const [building, b] of animalBuildings) {
     for (const [id, animal] of Object.entries(b?.animals ?? {})) {
       if (!animal.awakeAt) continue;
+      const produce = predictAnimalProduce(state, building, id);
       timers.push({
         category: "Animals",
         label: animal.type,
         sublabel: `${building === "henHouse" ? "Hen House" : "Barn"} · ${animal.state}`,
         readyAt: animal.awakeAt,
         key: `animal-${id}`,
+        predictedYield: produce?.amount,
       });
     }
   }
@@ -186,6 +273,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: flower.name,
       readyAt: flower.plantedAt + seconds * 1000,
       key: `flower-${id}`,
+      predictedYield: predictFlower(state, id) ?? undefined,
     });
   }
 
@@ -201,6 +289,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       sublabel: `Hive ${id} · ${(produced * 100).toFixed(0)}% full`,
       readyAt: updatedAt + remainingSeconds * 1000,
       key: `hive-${id}`,
+      predictedYield: predictBeehive(state, id) ?? undefined,
     });
   }
 
@@ -210,11 +299,27 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   for (const [id, tree] of Object.entries(state.trees ?? {})) {
     const choppedAt = tree.wood?.choppedAt;
     if (!choppedAt) continue;
+    const readyAt = choppedAt + TREE_RECOVERY_SECONDS * 1000;
+    // Variants (Tree / Ancient Tree / Sacred Tree) all collapse into a
+    // single "Tree" card. Per-tree yield differs (tier 2 +0.5, tier 3 +2.5)
+    // because predictTree passes the underlying `tree` to the game function;
+    // aggregation sums those individual amounts.
+    //
+    // The game keeps a separate counter per tree variant, with the basic
+    // tree's counter living under "Basic Tree Chopped" rather than "Tree
+    // Chopped". Mirror that exactly so the prng rolls match what each plot
+    // will get on actual harvest.
+    const treeName = (tree as { name?: string }).name ?? "Tree";
+    const activity =
+      treeName === "Tree" ? "Basic Tree Chopped" : `${treeName} Chopped`;
     timers.push({
       category: "Resources",
       label: "Tree",
-      readyAt: choppedAt + TREE_RECOVERY_SECONDS * 1000,
+      readyAt,
       key: `tree-${id}`,
+      predictedYield:
+        predictTree(state, id, readyAt, farmId, nextCounter(activity)) ??
+        undefined,
     });
   }
 
@@ -223,33 +328,108 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       GameState,
       "stones" | "iron" | "gold" | "crimstones" | "sunstones"
     >;
+    /** Single base label for the resource — upgraded variants (Fused /
+     * Reinforced / Refined / Tempered / Pure / Prime) all roll up here so
+     * the user sees one card per resource type. The yield calculation
+     * still uses each rock's individual `tier` and `multiplier`. */
     label: string;
+    /** Default `rock.name` when the rock object hasn't set one — matches
+     * the `rock.name ?? "<X> Rock"` fallback inside each game handler. */
+    fallbackRockName: string;
+    /**
+     * Builds the farmActivity counter key for a single rock. Stones, iron,
+     * and gold use a per-variant key (`${rock.name} Mined`) — see e.g.
+     * stoneMine.ts line 396. Crimstone uses a single literal `"Crimstone
+     * Mined"` regardless of `rock.name`. We mirror those conventions
+     * exactly so the predictive sequence advances on the same key the
+     * game will tick after each harvest.
+     */
+    activityFor: (rockName: string) => string;
     seconds: number;
   }> = [
-    { field: "stones", label: "Stone", seconds: STONE_RECOVERY_SECONDS },
-    { field: "iron", label: "Iron", seconds: IRON_RECOVERY_SECONDS },
-    { field: "gold", label: "Gold", seconds: GOLD_RECOVERY_SECONDS },
+    {
+      field: "stones",
+      label: "Stone",
+      fallbackRockName: "Stone Rock",
+      activityFor: (n) => `${n} Mined`,
+      seconds: STONE_RECOVERY_SECONDS,
+    },
+    {
+      field: "iron",
+      label: "Iron",
+      fallbackRockName: "Iron Rock",
+      activityFor: (n) => `${n} Mined`,
+      seconds: IRON_RECOVERY_SECONDS,
+    },
+    {
+      field: "gold",
+      label: "Gold",
+      fallbackRockName: "Gold Rock",
+      activityFor: (n) => `${n} Mined`,
+      seconds: GOLD_RECOVERY_SECONDS,
+    },
     {
       field: "crimstones",
       label: "Crimstone",
+      fallbackRockName: "Crimstone Rock",
+      // Crimstone is the odd one out — game stores under a single literal
+      // key, not per-variant.
+      activityFor: () => "Crimstone Mined",
       seconds: CRIMSTONE_RECOVERY_SECONDS,
     },
     {
       field: "sunstones",
       label: "Sunstone",
+      fallbackRockName: "Sunstone Rock",
+      // Sunstone has no chance bonuses; activity name is unused but we
+      // provide one for symmetry / future-proofing.
+      activityFor: () => "Sunstone Mined",
       seconds: SUNSTONE_RECOVERY_SECONDS,
     },
   ];
-  for (const { field, label, seconds } of ROCK_RESOURCES) {
+  const ROCK_PREDICTORS: Record<
+    (typeof ROCK_RESOURCES)[number]["field"],
+    (
+      g: GameState,
+      id: string,
+      readyAt: number,
+      farmId: number,
+      counter: number,
+    ) => number | null
+  > = {
+    stones: predictStone,
+    iron: predictIron,
+    gold: predictGold,
+    crimstones: predictCrimstone,
+    // Sunstone has no chance bonuses; takes the same signature for symmetry.
+    sunstones: (g) => predictSunstone(g),
+  };
+  for (const {
+    field,
+    label,
+    fallbackRockName,
+    activityFor,
+    seconds,
+  } of ROCK_RESOURCES) {
     const rocks = (state[field] ?? {}) as Record<string, Rock>;
     for (const [id, rock] of Object.entries(rocks)) {
       const minedAt = rock.stone?.minedAt;
       if (!minedAt) continue;
+      const readyAt = minedAt + seconds * 1000;
+      const rockName = (rock as { name?: string }).name ?? fallbackRockName;
       timers.push({
         category: "Resources",
         label,
-        readyAt: minedAt + seconds * 1000,
+        readyAt,
         key: `${field}-${id}`,
+        predictedYield:
+          ROCK_PREDICTORS[field](
+            state,
+            id,
+            readyAt,
+            farmId,
+            nextCounter(activityFor(rockName)),
+          ) ?? undefined,
       });
     }
   }
@@ -262,33 +442,45 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Oil Reserve",
       readyAt: drilledAt + OIL_RESERVE_RECOVERY_SECONDS * 1000,
       key: `oil-${id}`,
+      predictedYield: predictOil(state, id) ?? undefined,
     });
   }
 
-  // Salt nodes accrue charges over time. Each node gets its own row with
-  // current/max charge count; the right-side timer shows time-to-next-
-  // charge for partial nodes and "Charges Full" for saturated ones.
-  const sculptureLevel = state.sculptures?.["Salt Sculpture"]?.level ?? 0;
-  const maxSaltCharges = getMaxSaltCharges(sculptureLevel);
+  // Salt nodes accrue charges continuously on the server. The persisted
+  // `salt.storedCharges` / `salt.nextChargeAt` fields go stale between
+  // game-state mutations, so we let `predictSaltNode` re-run the game's
+  // own `syncSaltNode` against `Date.now()`. Result: charge counts and
+  // next-charge timers track real time, not the last server flush.
   const saltNodeIds = Object.keys(state.saltFarm?.nodes ?? {}).sort(
     // Numeric sort so "10" doesn't come before "2".
     (a, b) => Number(a) - Number(b),
   );
+  // Per-rake salt yield is the same regardless of node — compute once.
+  const saltPerRake = predictSaltPerRake(state);
   saltNodeIds.forEach((id, idx) => {
-    const node = state.saltFarm?.nodes?.[id];
-    if (!node) return;
-    const stored = node.salt?.storedCharges ?? 0;
-    const nextChargeAt = node.salt?.nextChargeAt;
-    const isFull = stored >= maxSaltCharges;
+    const info = predictSaltNode(state, id);
+    if (!info) return;
+    const isFull = info.stored >= info.max;
     timers.push({
       category: "Salt Nodes",
       label: `Salt Node ${idx + 1}`,
-      sublabel: `${stored}/${maxSaltCharges} charges`,
-      // When full, anchor readyAt at "now" so the status dot computes as
-      // "ready" (green) and these rows sort before partial nodes.
-      readyAt: isFull ? Date.now() : (nextChargeAt ?? Date.now()),
-      displayOverride: isFull ? "Charges Full" : undefined,
+      sublabel: `${info.stored}/${info.max} charges`,
+      // For partial nodes the timer counts down to the next charge tick.
+      // For full nodes we anchor at "now" so status renders as ready and
+      // displayOverride pins the right-side text to "Ready".
+      readyAt: isFull ? Date.now() : info.nextChargeAt,
+      displayOverride: isFull ? "Ready" : undefined,
+      // Treat the next-charge moment as a deadline so TimerCard prefixes
+      // the countdown with "in" — matches the user's expected "next charge
+      // in 5m 30s" framing.
+      isDeadline: !isFull,
       key: `salt-${id}`,
+      // Per-rake yield × stored charges = expected salt the player will
+      // collect when they next rake this node.
+      predictedYield:
+        saltPerRake != null && info.stored > 0
+          ? saltPerRake * info.stored
+          : undefined,
     });
   });
 
@@ -299,6 +491,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Wild Mushroom",
       readyAt: state.mushrooms.spawnedAt + MUSHROOM_SPAWN_SECONDS * 1000,
       key: "mushroom-wild",
+      predictedYield: predictMushroom(),
     });
   }
   if (state.mushrooms?.magicSpawnedAt) {
@@ -307,12 +500,15 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Magic Mushroom",
       readyAt: state.mushrooms.magicSpawnedAt + MUSHROOM_SPAWN_SECONDS * 1000,
       key: "mushroom-magic",
+      predictedYield: predictMushroom(),
     });
   }
 
   // Aging Shed — fermentation, aging rack (cheese / fish), spice rack.
   // Each rack entry already carries its own readyAt.
   const racks = state.agingShed?.racks;
+  // All aging-shed jobs share the same Ager-doubled base yield.
+  const agingYield = predictAgingShed(state) ?? undefined;
   for (const job of racks?.fermentation ?? []) {
     if (!job.readyAt) continue;
     timers.push({
@@ -320,6 +516,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: job.recipe ?? "Fermentation",
       readyAt: job.readyAt,
       key: `ferment-${job.id}`,
+      predictedYield: agingYield,
     });
   }
   for (const job of racks?.aging ?? []) {
@@ -329,6 +526,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: job.recipe ?? job.fish ?? "Aging",
       readyAt: job.readyAt,
       key: `aging-${job.id}`,
+      predictedYield: agingYield,
     });
   }
   for (const job of racks?.spice ?? []) {
@@ -338,23 +536,42 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: job.recipe ?? "Spice",
       readyAt: job.readyAt,
       key: `spice-${job.id}`,
+      predictedYield: agingYield,
     });
   }
 
-  // Crafting Box — read queue[0] when present, fall back to deprecated
-  // top-level readyAt for older save shapes.
+  // Crafting Box — every queued slot gets its own card with the output
+  // and ETA. Slots that share an output (e.g. crafting two of the same
+  // collectible) stay on separate cards via aggregationKey, same approach
+  // as Crop Machine. Falls back to the legacy top-level readyAt only when
+  // the queue is empty.
   const cbQueue = state.craftingBox?.queue ?? [];
   cbQueue.forEach((item, idx) => {
     if (!item?.readyAt) return;
-    const collectibleName =
-      typeof item.collectible === "object"
-        ? (item.collectible?.collectible ?? item.collectible?.wearable)
-        : item.collectible;
+    // Each queue entry is `{ id, readyAt, startedAt, type, name }` per the
+    // game's CraftingQueueItem type; `name` is the collectible/wearable
+    // being crafted in that slot. (See features/game/types/game.ts in the
+    // merged subtree.) Older save shapes used `collectible`/`wearable`
+    // fields, which we still tolerate as a fallback.
+    const it = item as {
+      type?: string;
+      name?: string;
+      collectible?: string | { collectible?: string; wearable?: string };
+      wearable?: string;
+    };
+    const legacyCollectible =
+      typeof it.collectible === "object"
+        ? (it.collectible?.collectible ?? it.collectible?.wearable)
+        : it.collectible;
+    const outputName =
+      it.name ?? legacyCollectible ?? it.wearable ?? "Crafting";
     timers.push({
       category: "Crafting",
-      label: collectibleName ?? item.wearable ?? "Crafting",
+      label: outputName,
+      sublabel: `Slot ${idx + 1}`,
       readyAt: item.readyAt,
       key: `craft-${idx}`,
+      aggregationKey: `crafting|${idx}`,
     });
   });
   if (cbQueue.length === 0 && state.craftingBox?.readyAt) {
@@ -374,6 +591,27 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   (state.buildings?.["Crop Machine"] ?? []).forEach((machine, mIdx) => {
     const machineId = machine.id ?? `idx${mIdx}`;
     (machine.queue ?? []).forEach((pack, qIdx) => {
+      const readyAt = pack.readyAt ?? pack.growsUntil ?? Date.now();
+      // The pack consumes `pack.seeds` slots of the activity counter — pull
+      // a single starting counter and let the predictor advance it per seed.
+      const seeds = (pack as { seeds?: number }).seeds ?? 1;
+      let startCounter = farmActivity[`${pack.crop} Harvested`] ?? 0;
+      const seq = sequenceCounters.get(`${pack.crop} Harvested`) ?? 0;
+      startCounter += seq;
+      sequenceCounters.set(`${pack.crop} Harvested`, seq + seeds);
+      const packYield =
+        predictCropMachinePack(
+          state,
+          machineId,
+          qIdx,
+          readyAt,
+          farmId,
+          startCounter,
+        ) ?? undefined;
+      // Each pack gets its own aggregation bucket via aggregationKey, so
+      // multiple packs growing the same crop stay on separate cards with
+      // their individual ready times instead of collapsing into "N× Soybean".
+      const aggregationKey = `cropmachine|${machineId}|${qIdx}`;
       if (pack.readyAt) {
         timers.push({
           category: "Crop Machine",
@@ -381,6 +619,8 @@ export function extractTimers(state: GameState | undefined): Timer[] {
           sublabel: pack.seeds ? `${pack.seeds} seeds` : undefined,
           readyAt: pack.readyAt,
           key: `cropmachine-${machineId}-${qIdx}`,
+          predictedYield: packYield,
+          aggregationKey,
         });
       } else if (pack.growsUntil) {
         timers.push({
@@ -390,6 +630,8 @@ export function extractTimers(state: GameState | undefined): Timer[] {
           readyAt: pack.growsUntil,
           isDeadline: true,
           key: `cropmachine-${machineId}-${qIdx}`,
+          predictedYield: packYield,
+          aggregationKey,
         });
       }
     });
@@ -397,6 +639,8 @@ export function extractTimers(state: GameState | undefined): Timer[] {
 
   // Lava pits — only show when actively running (startedAt set, not yet
   // collected). Idle/uninitialised pits don't have a meaningful timer.
+  // Lava pit yield (Obsidian) is farm-wide — same for every active pit.
+  const obsidianYield = predictLavaPit(state) ?? undefined;
   for (const [id, pit] of Object.entries(state.lavaPits ?? {})) {
     if (!pit.startedAt || !pit.readyAt) continue;
     if (pit.collectedAt && pit.collectedAt >= pit.startedAt) continue;
@@ -405,6 +649,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Lava Pit",
       readyAt: pit.readyAt,
       key: `lava-${id}`,
+      predictedYield: obsidianYield,
     });
   }
 
@@ -420,6 +665,7 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: caughtName ?? trap.type,
       readyAt: trap.readyAt,
       key: `trap-${id}`,
+      predictedYield: predictCrabTrap(state, id) ?? undefined,
     });
   }
 
@@ -474,6 +720,9 @@ export type AggregatedTimer = {
   displayOverride?: string;
   isDeadline?: boolean;
   key: string;
+  /** Sum of predictedYield across the underlying timers. Undefined when no
+   * underlying timer carried a prediction (e.g. cooking, bounties). */
+  totalPredictedYield?: number;
 };
 
 /**
@@ -495,7 +744,7 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
       colonIdx > 0 ? t.label.slice(colonIdx + 2) : undefined;
     const sublabel = t.sublabel ?? inputSublabel;
 
-    const key = `${t.category}|${label}`;
+    const key = t.aggregationKey ?? `${t.category}|${label}`;
     const existing = groups.get(key);
     if (!existing) {
       groups.set(key, {
@@ -508,6 +757,7 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         displayOverride: t.displayOverride,
         isDeadline: t.isDeadline,
         key,
+        totalPredictedYield: t.predictedYield,
       });
     } else {
       existing.count++;
@@ -515,6 +765,10 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
       existing.latestReadyAt = Math.max(existing.latestReadyAt, t.readyAt);
       if (sublabel && !existing.sublabels.includes(sublabel)) {
         existing.sublabels.push(sublabel);
+      }
+      if (t.predictedYield != null) {
+        existing.totalPredictedYield =
+          (existing.totalPredictedYield ?? 0) + t.predictedYield;
       }
     }
   }
@@ -633,6 +887,20 @@ export function groupByCategory(
     const list = buckets.get(t.category);
     if (list) list.push(t);
     else buckets.set(t.category, [t]);
+  }
+
+  // Salt nodes are individually keyed ("Salt Node 1" … "Salt Node 6") so
+  // each lands in its own aggregation bucket. The default earliest-ready
+  // ordering interleaves them by milliseconds-of-next-charge, which makes
+  // the list look randomly shuffled. Re-sort numerically by the label's
+  // trailing digit so they read 1, 2, 3, …
+  const saltNodes = buckets.get("Salt Nodes");
+  if (saltNodes) {
+    saltNodes.sort((a, b) => {
+      const ai = parseInt(a.label.match(/(\d+)$/)?.[1] ?? "0", 10);
+      const bi = parseInt(b.label.match(/(\d+)$/)?.[1] ?? "0", 10);
+      return ai - bi;
+    });
   }
 
   const out: Record<string, AggregatedTimer[]> = {};

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import type { AggregatedTimer } from "../lib/timers";
-import { formatAbsolute, formatRemaining, statusFor } from "../lib/format";
+import {
+  formatAbsolute,
+  formatRemaining,
+  formatYield,
+  statusFor,
+} from "../lib/format";
 import { getIconUrl } from "../lib/icons";
 
 type Props = { timer: AggregatedTimer; now: number };
@@ -33,7 +38,10 @@ export function TimerCard({ timer, now }: Props) {
   // when there's more than one — currently only Cooking can have multiple
   // (e.g. same recipe queued in Bakery + Kitchen).
   const showSublabel =
-    (timer.category === "Cooking" || timer.category === "Salt Nodes") &&
+    (timer.category === "Cooking" ||
+      timer.category === "Salt Nodes" ||
+      timer.category === "Crop Machine" ||
+      timer.category === "Crafting") &&
     timer.sublabels.length > 0;
   const sublabelText = showSublabel ? timer.sublabels.join(" · ") : null;
 
@@ -62,10 +70,21 @@ export function TimerCard({ timer, now }: Props) {
               <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
             )}
             <span className="truncate font-medium">
-              {timer.count > 1 && (
-                <span className="mr-1.5 font-mono text-[--color-muted]">
-                  {timer.count}×
+              {timer.totalPredictedYield != null ? (
+                // When a yield prediction is available, surface it as the
+                // count prefix directly (e.g. "204.6× Soybean") instead of
+                // splitting it into "66× Soybean → est. 204.6". The raw
+                // plot/node count is still implicit in the section header
+                // (e.g. "CROPS · 66 total").
+                <span className="mr-1.5 text-[--color-muted]">
+                  {formatYield(timer.totalPredictedYield)}×
                 </span>
+              ) : (
+                timer.count > 1 && (
+                  <span className="mr-1.5 text-[--color-muted]">
+                    {timer.count}×
+                  </span>
+                )
               )}
               {timer.label}
             </span>
@@ -83,7 +102,7 @@ export function TimerCard({ timer, now }: Props) {
         </div>
       </div>
       <div className="shrink-0 text-right">
-        <div className={`font-mono text-sm ${style.text}`}>
+        <div className={`text-sm ${style.text}`}>
           {timer.displayOverride
             ? timer.displayOverride
             : timer.isDeadline && earliestRemaining > 0
