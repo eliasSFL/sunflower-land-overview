@@ -109,27 +109,15 @@ export default function App() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Sunflower Land Overview</h1>
-          <p className="text-sm text-[--color-muted]">
-            Live timers for your farm. Get your API key in-game from{" "}
-            <span className="font-medium">
-              Settings → Developer Options → API Key
-            </span>
-            .
-          </p>
-        </div>
-        {sidebarEntries.length > 0 && (
-          <button
-            type="button"
-            className="shrink-0 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm hover:bg-black/5 lg:hidden"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open sections menu"
-          >
-            ☰ Sections
-          </button>
-        )}
+      <header className="mb-6 space-y-1">
+        <h1 className="text-2xl font-bold">Sunflower Land Overview</h1>
+        <p className="text-sm text-[--color-muted]">
+          Live timers for your farm. Get your API key in-game from{" "}
+          <span className="font-medium">
+            Settings → Developer Options → API Key
+          </span>
+          .
+        </p>
       </header>
 
       <div className="flex gap-6">
@@ -230,6 +218,20 @@ export default function App() {
           </footer>
         </main>
       </div>
+
+      {/* Floating mobile-only button — fixed-position so it stays reachable
+          as the user scrolls through the timer sections. Bottom-right keeps
+          it within easy thumb reach. */}
+      {sidebarEntries.length > 0 && !drawerOpen && (
+        <button
+          type="button"
+          className="fixed bottom-4 right-4 z-40 rounded-full border border-black/10 bg-white px-4 py-3 text-sm font-medium shadow-lg hover:bg-black/5 lg:hidden"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open sections menu"
+        >
+          ☰ Sections
+        </button>
+      )}
 
       {/* Mobile drawer — only mounted when open so the dimmed backdrop and
           slide-in panel don't capture taps when closed. */}
