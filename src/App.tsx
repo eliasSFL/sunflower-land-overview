@@ -62,6 +62,10 @@ export default function App() {
 
   useEffect(() => {
     if (farmId && apiKey && !data && !loading && !error) {
+      // The cascading-renders concern of set-state-in-effect is mitigated by
+      // inFlightRef / lastFetchAtRef inside load(); this is a deliberate
+      // mount-time fetch that should run exactly once.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void load(farmId, apiKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
