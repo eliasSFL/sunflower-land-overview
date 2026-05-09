@@ -389,10 +389,20 @@ const AGING_FILES: Record<string, string> = {
 };
 
 // Crafting Box outputs — the timer label is the collectible name being
-// crafted in that slot ("Doll", "Lunar Doll", ...). A few of these don't
-// follow the obvious snake-case ("Cluck Doll" ships as cluky_doll.webp,
-// "Sizzle Doll" as sizzler_doll.webp), so we map them explicitly rather
-// than slugifying.
+// crafted in that slot. The full set of recipes is RecipeCollectibleName
+// (sunflower-land features/game/lib/crafting.ts):
+//   - Dolls (DOLLS) — bundled from sfts/dolls
+//   - Bears (CRAFTABLE_BEARS) — bundled from sfts/bears
+//   - Beds (BedName excluding Double/Messy/Pearl) — Basic Bed uses the
+//     SUNNYSIDE.decorations.bed CDN sprite; the rest are bundled from
+//     bumpkins/<name>_bed.webp
+//   - RecipeCraftables (Cushion, Timber, Bee Box, ...) — all live on the
+//     CDN under /crafting/
+//
+// A few names don't follow the obvious snake-case ("Cluck Doll" ships as
+// cluky_doll.webp, "Sizzle Doll" as sizzler_doll.webp, "Floral Bed" as
+// flower_bed.webp, "Jacuzzi Bear" as spa_bear.webp), so we map them
+// explicitly rather than slugifying.
 const DOLL_FILES: Record<string, string> = {
   Doll: "doll.webp",
   "Buzz Doll": "buzz_doll.webp",
@@ -419,6 +429,36 @@ const DOLL_FILES: Record<string, string> = {
   "Bigfin Doll": "bigfin_doll.webp",
   "Solar Doll": "solar_doll.webp",
   "Salt Doll": "salt_doll.webp",
+};
+
+const BEAR_FILES: Record<string, string> = {
+  "Basic Bear": "basic_bear.png",
+  "Jacuzzi Bear": "spa_bear.webp",
+};
+
+const BED_URLS: Record<string, string> = {
+  "Basic Bed": `${CDN}/decorations/bed.png`,
+  "Fisher Bed": "/icons/beds/fisher_bed.webp",
+  "Floral Bed": "/icons/beds/flower_bed.webp",
+  "Sturdy Bed": "/icons/beds/sturdy_bed.webp",
+  "Desert Bed": "/icons/beds/desert_bed.webp",
+  "Cow Bed": "/icons/beds/cow_bed.webp",
+  "Pirate Bed": "/icons/beds/pirate_bed.webp",
+  "Royal Bed": "/icons/beds/royal_bed.webp",
+};
+
+const RECIPE_CRAFTABLE_URLS: Record<string, string> = {
+  Cushion: `${CDN}/crafting/cushion.webp`,
+  Timber: `${CDN}/crafting/timber.webp`,
+  "Bee Box": `${CDN}/crafting/bee_box.webp`,
+  Crimsteel: `${CDN}/crafting/crimsteel.webp`,
+  "Merino Cushion": `${CDN}/crafting/merino_cushion.webp`,
+  "Kelp Fibre": `${CDN}/crafting/kelp_fibre.webp`,
+  "Hardened Leather": `${CDN}/crafting/hardened_leather.webp`,
+  "Synthetic Fabric": `${CDN}/crafting/synthetic_fabric.webp`,
+  "Ocean's Treasure": `${CDN}/crafting/oceans_treasure_2.webp`,
+  "Royal Bedding": `${CDN}/crafting/royal_bedding.webp`,
+  "Royal Ornament": `${CDN}/crafting/royal_ornament.webp`,
 };
 
 function lookup(category: TimerCategory, label: string): string | null {
@@ -482,8 +522,14 @@ function lookup(category: TimerCategory, label: string): string | null {
       // the output's icon. Fall back to the building icon for the synthetic
       // "Crafting" label (legacy single-slot readyAt with no item) or for
       // craftables we haven't mapped yet — better than rendering nothing.
-      const file = DOLL_FILES[label];
-      if (file) return `/icons/dolls/${file}`;
+      const dollFile = DOLL_FILES[label];
+      if (dollFile) return `/icons/dolls/${dollFile}`;
+      const bearFile = BEAR_FILES[label];
+      if (bearFile) return `/icons/bears/${bearFile}`;
+      const bedUrl = BED_URLS[label];
+      if (bedUrl) return bedUrl;
+      const craftableUrl = RECIPE_CRAFTABLE_URLS[label];
+      if (craftableUrl) return craftableUrl;
       return "/icons/buildings/crafting_box.webp";
     }
     // Bounties — no icon for now.
