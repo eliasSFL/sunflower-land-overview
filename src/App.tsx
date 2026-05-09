@@ -4,21 +4,20 @@ import { extractTimers, groupByCategory } from "./lib/timers";
 import { useNow } from "./hooks/useNow";
 import { FarmIdForm } from "./components/FarmIdForm";
 import { TimerSection } from "./components/TimerSection";
-
-const STORAGE_KEYS = {
-  farmId: "sl-overview:farmId",
-  apiKey: "sl-overview:apiKey",
-} as const;
+import {
+  clearApiKey,
+  clearFarmId,
+  loadApiKey,
+  loadFarmId,
+  saveApiKey,
+  saveFarmId,
+} from "./lib/storage";
 
 const REFRESH_INTERVAL_MS = 60_000;
 
 export default function App() {
-  const [farmId, setFarmId] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.farmId) ?? "",
-  );
-  const [apiKey, setApiKey] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.apiKey) ?? "",
-  );
+  const [farmId, setFarmId] = useState(loadFarmId);
+  const [apiKey, setApiKey] = useState(loadApiKey);
   const [data, setData] = useState<FarmResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +32,8 @@ export default function App() {
       const res = await fetchFarm({ farmId: id, apiKey: key });
       setData(res);
       setLastLoaded(Date.now());
-      localStorage.setItem(STORAGE_KEYS.farmId, id);
-      localStorage.setItem(STORAGE_KEYS.apiKey, key);
+      saveFarmId(id);
+      saveApiKey(key);
     } catch (e) {
       setData(null);
       if (e instanceof ApiError) setError(e.message);
@@ -92,8 +91,8 @@ export default function App() {
             setApiKey("");
             setData(null);
             setError(null);
-            localStorage.removeItem(STORAGE_KEYS.farmId);
-            localStorage.removeItem(STORAGE_KEYS.apiKey);
+            clearFarmId();
+            clearApiKey();
           }}
         />
       </div>
