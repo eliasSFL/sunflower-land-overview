@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, fetchFarm, type FarmResponse } from "./api";
-import { aggregateTimers, extractTimers, groupByCategory } from "./lib/timers";
+import {
+  aggregateTimers,
+  extractActiveCategories,
+  extractTimers,
+  groupByCategory,
+} from "./lib/timers";
 import { slugify } from "./lib/slug";
 import { useNow } from "./hooks/useNow";
 import { FarmIdForm } from "./components/FarmIdForm";
@@ -86,7 +91,14 @@ export default function App() {
 
   const rawTimers = useMemo(() => extractTimers(data?.farm), [data]);
   const aggregated = useMemo(() => aggregateTimers(rawTimers), [rawTimers]);
-  const grouped = useMemo(() => groupByCategory(aggregated), [aggregated]);
+  const activeCategories = useMemo(
+    () => extractActiveCategories(data?.farm),
+    [data],
+  );
+  const grouped = useMemo(
+    () => groupByCategory(aggregated, activeCategories),
+    [aggregated, activeCategories],
+  );
   const totalReady = rawTimers.filter((t) => t.readyAt - now <= 0).length;
 
   const sidebarEntries = Object.entries(grouped).map(([category, list]) => ({
@@ -177,7 +189,7 @@ export default function App() {
                 </span>
               </div>
 
-              {rawTimers.length === 0 ? (
+              {Object.keys(grouped).length === 0 ? (
                 <div className="rounded-lg border border-dashed border-black/10 bg-white p-8 text-center text-sm text-[--color-muted]">
                   No active timers — you're all caught up. 🌻
                 </div>

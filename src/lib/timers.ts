@@ -517,8 +517,80 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Bounties",
 ];
 
+/**
+ * Categories the player has infrastructure for, even if no timers are running
+ * right now. Used so that e.g. an empty Crops section still renders ("No
+ * crops planted") instead of disappearing entirely when every plot is bare.
+ *
+ * The rule throughout: a category is "active" when the corresponding subtree
+ * of state exists with at least one entry. Categories tied to game-wide
+ * features (Daily Rewards, Bounties, Mushrooms, Aging Shed, Crafting) are
+ * keyed off the presence of their root object instead.
+ */
+export function extractActiveCategories(
+  state: GameState | undefined,
+): Set<TimerCategory> {
+  const active = new Set<TimerCategory>();
+  if (!state) return active;
+
+  if (Object.keys(state.crops ?? {}).length > 0) active.add("Crops");
+  if (Object.keys(state.fruitPatches ?? {}).length > 0)
+    active.add("Fruit Patches");
+  if (Object.keys(state.greenhouse?.pots ?? {}).length > 0)
+    active.add("Greenhouse");
+  if (Object.keys(state.flowers?.flowerBeds ?? {}).length > 0)
+    active.add("Flowers");
+  if (Object.keys(state.beehives ?? {}).length > 0) active.add("Beehives");
+
+  const COOKING_BUILDINGS = [
+    "Fire Pit",
+    "Kitchen",
+    "Bakery",
+    "Deli",
+    "Smoothie Shack",
+  ];
+  if (COOKING_BUILDINGS.some((n) => (state.buildings?.[n]?.length ?? 0) > 0))
+    active.add("Cooking");
+
+  const COMPOSTERS = ["Compost Bin", "Turbo Composter", "Premium Composter"];
+  if (COMPOSTERS.some((n) => (state.buildings?.[n]?.length ?? 0) > 0))
+    active.add("Composters");
+
+  if (
+    Object.keys(state.henHouse?.animals ?? {}).length > 0 ||
+    Object.keys(state.barn?.animals ?? {}).length > 0
+  )
+    active.add("Animals");
+
+  if (
+    Object.keys(state.trees ?? {}).length > 0 ||
+    Object.keys(state.stones ?? {}).length > 0 ||
+    Object.keys(state.iron ?? {}).length > 0 ||
+    Object.keys(state.gold ?? {}).length > 0 ||
+    Object.keys(state.crimstones ?? {}).length > 0 ||
+    Object.keys(state.sunstones ?? {}).length > 0 ||
+    Object.keys(state.oilReserves ?? {}).length > 0
+  )
+    active.add("Resources");
+
+  if (Object.keys(state.saltFarm?.nodes ?? {}).length > 0)
+    active.add("Salt Nodes");
+  if (Object.keys(state.crabTraps?.trapSpots ?? {}).length > 0)
+    active.add("Crab Traps");
+  if (Object.keys(state.lavaPits ?? {}).length > 0) active.add("Lava Pits");
+
+  if (state.mushrooms) active.add("Mushrooms");
+  if (state.agingShed) active.add("Aging Shed");
+  if (state.craftingBox) active.add("Crafting");
+  if (state.dailyRewards) active.add("Daily Rewards");
+  if (state.bounties) active.add("Bounties");
+
+  return active;
+}
+
 export function groupByCategory(
   timers: AggregatedTimer[],
+  activeCategories: ReadonlySet<TimerCategory> = new Set(),
 ): Record<string, AggregatedTimer[]> {
   const buckets = new Map<TimerCategory, AggregatedTimer[]>();
   for (const t of timers) {
@@ -531,6 +603,7 @@ export function groupByCategory(
   for (const cat of CATEGORY_ORDER) {
     const list = buckets.get(cat);
     if (list) out[cat] = list;
+    else if (activeCategories.has(cat)) out[cat] = [];
   }
   // Anything not in CATEGORY_ORDER (e.g. a new category added before this
   // list is updated) falls through to the end so it still renders.
