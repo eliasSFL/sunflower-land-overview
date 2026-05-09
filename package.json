@@ -13,6 +13,10 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "decimal.js-light": "^2.5.1",
+    "immer": "^11.1.8",
+    "lodash.clonedeep": "^4.5.0",
+    "lodash.isequal": "^4.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

@@ -89,7 +89,13 @@ export default function App() {
     };
   }, [drawerOpen]);
 
-  const rawTimers = useMemo(() => extractTimers(data?.farm), [data]);
+  // Pass the farm id so chance-based yield boosts use the same prng seed
+  // the game would at harvest time (see "predictive farmActivity" in
+  // src/lib/timers.ts).
+  const rawTimers = useMemo(
+    () => extractTimers(data?.farm, data?.id ?? 0),
+    [data],
+  );
   const aggregated = useMemo(() => aggregateTimers(rawTimers), [rawTimers]);
   const activeCategories = useMemo(
     () => extractActiveCategories(data?.farm),
