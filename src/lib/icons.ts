@@ -196,14 +196,6 @@ const AGING_FILES: Record<string, string> = {
   "Sproutroot Surprise": "/icons/aging/sproutroot_surprise.webp",
   "Turbofruit Mix": "/icons/aging/turbofruit_mix.webp",
   "Greenhouse Goodie": "/icons/aging/greenhouse_goodie.webp",
-  // Fermentation — pickled crops via "Greenhouse Goodie: Pickled X" label
-  "Greenhouse Goodie: Pickled Pepper": "/icons/pickled/pickled_pepper.webp",
-  "Greenhouse Goodie: Pickled Radish": "/icons/pickled/pickled_radish.webp",
-  "Greenhouse Goodie: Pickled Onion": "/icons/pickled/pickled_onion.webp",
-  "Greenhouse Goodie: Pickled Cabbage": "/icons/pickled/pickled_cabbage.webp",
-  "Greenhouse Goodie: Pickled Tomato": "/icons/pickled/pickled_tomato.webp",
-  "Greenhouse Goodie: Pickled Zucchini": "/icons/pickled/pickled_zucchini.webp",
-  "Greenhouse Goodie: Pickled Broccoli": "/icons/pickled/pickled_broccoli.webp",
   // Direct pickled labels (just in case the API returns them un-prefixed)
   "Pickled Pepper": "/icons/pickled/pickled_pepper.webp",
   "Pickled Radish": "/icons/pickled/pickled_radish.webp",
@@ -260,6 +252,12 @@ export function getIconUrl(
       return file ? `/icons/food/${file}` : null;
     }
     case "Aging Shed":
+      // "Greenhouse Goodie: Pickled X" variants all share one umbrella icon
+      // in-game — match the prefix so we don't have to enumerate every
+      // pickled crop variant.
+      if (label.startsWith("Greenhouse Goodie")) {
+        return "/icons/aging/greenhouse_goodie.webp";
+      }
       return AGING_FILES[label] ?? null;
     // Composters, Crafting, Lava Pits, Crab Traps, Bounties —
     // no icon for now.
