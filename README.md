@@ -14,10 +14,30 @@ Your farm ID and API key are stored in `localStorage` on your device only — th
 
 ## Develop
 
+This repo references the [sunflower-land](https://github.com/sunflower-land/sunflower-land) game source as a git submodule at `./sunflower-land/`. The yield-prediction service in [`src/lib/yields.ts`](src/lib/yields.ts) imports the game's harvest functions directly so estimates always match what the game would compute on harvest.
+
 ```sh
+git clone --recurse-submodules https://github.com/eliasSFL/sunflower-land-overview.git
+cd sunflower-land-overview
 npm install
 npm run dev
 ```
+
+If you cloned without `--recurse-submodules`:
+
+```sh
+git submodule update --init --depth 1
+```
+
+To pull a newer commit of the upstream game:
+
+```sh
+git submodule update --remote -- sunflower-land
+git add sunflower-land
+git commit -m "Bump sunflower-land submodule"
+```
+
+`tsc` will surface any drift on the next build, since the predictor calls the game's exported functions directly.
 
 ## Build
 
@@ -45,9 +65,11 @@ npm run preview
 2. In Cloudflare dashboard → Pages → "Create a project" → connect to `eliasSFL/sunflower-land-overview`.
 3. Build settings:
    - Framework preset: **Vite**
-   - Build command: `npm run build`
+   - Build command: `git submodule update --init --depth 1 && npm run build`
    - Build output: `dist`
 4. Deploy. The `functions/` directory is automatically picked up — no extra config needed.
+
+> The submodule init must happen before `npm run build` so Vite can resolve `features/*` / `lib/*` imports against `./sunflower-land/`. Cloudflare clones submodules automatically when "Include submodules" is enabled in the build config; the explicit `git submodule update` above is a safe fallback.
 
 Any other host that supports static + serverless functions (Vercel, Netlify) works too; you'd just need to port the function file to that platform's convention.
 
