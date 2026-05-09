@@ -76,6 +76,27 @@ const MUSHROOM_URLS: Record<string, string> = {
   "Magic Mushroom": `${CDN}/resources/magic_mushroom.png`,
 };
 
+// Crustaceans (Crab Trap outputs) — all on the SFL CDN at
+// /crustaceans/{snake_case}.webp.
+const CRUSTACEAN_URLS: Record<string, string> = {
+  Anemone: `${CDN}/crustaceans/anemone.webp`,
+  Barnacle: `${CDN}/crustaceans/barnacle.webp`,
+  "Blue Crab": `${CDN}/crustaceans/blue_crab.webp`,
+  "Garden Eel": `${CDN}/crustaceans/garden_eel.webp`,
+  "Hermit Crab": `${CDN}/crustaceans/hermit_crab.webp`,
+  "Horseshoe Crab": `${CDN}/crustaceans/horseshoe_crab.webp`,
+  Isopod: `${CDN}/crustaceans/isopod.webp`,
+  Lobster: `${CDN}/crustaceans/lobster.webp`,
+  Mussel: `${CDN}/crustaceans/mussel.webp`,
+  Octopus: `${CDN}/crustaceans/octopus.webp`,
+  Oyster: `${CDN}/crustaceans/oyster.webp`,
+  "Sea Grapes": `${CDN}/crustaceans/sea_grapes.webp`,
+  "Sea Slug": `${CDN}/crustaceans/sea_slug.webp`,
+  "Sea Snail": `${CDN}/crustaceans/sea_snail.webp`,
+  "Sea Urchin": `${CDN}/crustaceans/sea_urchin.webp`,
+  Shrimp: `${CDN}/crustaceans/shrimp.webp`,
+};
+
 // Cooking foods produced by Fire Pit / Kitchen / Bakery / Deli /
 // Smoothie Shack — bundled from sunflower-land/src/assets/food/.
 const COOKING_FILES: Record<string, string> = {
@@ -249,8 +270,9 @@ function lookup(category: TimerCategory, label: string): string | null {
     }
     case "Aging Shed":
       return AGING_FILES[label] ?? null;
-    // Composters, Crafting, Lava Pits, Crab Traps, Bounties —
-    // no icon for now.
+    case "Crab Traps":
+      return CRUSTACEAN_URLS[label] ?? null;
+    // Composters, Crafting, Lava Pits, Bounties — no icon for now.
     default:
       return null;
   }

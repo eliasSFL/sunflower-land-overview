@@ -329,13 +329,16 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     });
   }
 
-  // Crab traps (water traps placed on beach plots).
+  // Crab traps (water traps placed on beach plots). The crustacean a trap
+  // will yield is locked in at placement, stored on `waterTrap.caught` —
+  // surface that as the label so the player sees the output, not the pot.
   for (const [id, spot] of Object.entries(state.crabTraps?.trapSpots ?? {})) {
     const trap = spot.waterTrap;
     if (!trap?.readyAt) continue;
+    const caughtName = Object.keys(trap.caught ?? {})[0];
     timers.push({
       category: "Crab Traps",
-      label: trap.type,
+      label: caughtName ?? trap.type,
       readyAt: trap.readyAt,
       key: `trap-${id}`,
     });

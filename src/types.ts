@@ -112,7 +112,14 @@ export type ExpansionConstruction = {
 };
 
 export type WaterTrapSpot = {
-  waterTrap?: { type: string; placedAt: number; readyAt: number };
+  waterTrap?: {
+    type: string;
+    placedAt: number;
+    readyAt: number;
+    /** Crustaceans the trap will yield when collected. Determined at place
+     * time, so it's safe to read for the timer label. */
+    caught?: Record<string, number>;
+  };
 };
 
 export type CrabTrap = {
