@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, fetchFarm, type FarmResponse } from "./api";
 import { aggregateTimers, extractTimers, groupByCategory } from "./lib/timers";
 import { useNow } from "./hooks/useNow";
@@ -14,6 +14,9 @@ import {
 } from "./lib/storage";
 
 const REFRESH_INTERVAL_MS = 60_000;
+// Server throttle is 5s normal / 10s after rapid attempts; we stay above the
+// upper bound so client-initiated reloads can never trigger a 429.
+const CLIENT_COOLDOWN_MS = 11_000;
 
 export default function App() {
   const [farmId, setFarmId] = useState(loadFarmId);
@@ -25,7 +28,19 @@ export default function App() {
 
   const now = useNow(1000);
 
+  // Refs (not state) so we can guard synchronously inside `load` — React state
+  // is stale in the closures of the auto-load effect and any rapid-fire calls.
+  const inFlightRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+
   async function load(id: string, key: string) {
+    // Drop overlapping calls (StrictMode double-mount, fast button mashing,
+    // background interval racing a manual submit, etc.).
+    if (inFlightRef.current) return;
+    if (Date.now() - lastFetchAtRef.current < CLIENT_COOLDOWN_MS) return;
+
+    inFlightRef.current = true;
+    lastFetchAtRef.current = Date.now();
     setLoading(true);
     setError(null);
     try {
@@ -41,6 +56,7 @@ export default function App() {
       else setError("Unknown error");
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
   }
 
