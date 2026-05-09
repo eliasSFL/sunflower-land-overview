@@ -4,6 +4,7 @@ type Props = {
   initialFarmId: string;
   initialApiKey: string;
   loading: boolean;
+  cooldownRemainingMs: number;
   onSubmit: (farmId: string, apiKey: string) => void;
   onClear: () => void;
 };
@@ -12,12 +13,16 @@ export function FarmIdForm({
   initialFarmId,
   initialApiKey,
   loading,
+  cooldownRemainingMs,
   onSubmit,
   onClear,
 }: Props) {
   const [farmId, setFarmId] = useState(initialFarmId);
   const [apiKey, setApiKey] = useState(initialApiKey);
   const [revealKey, setRevealKey] = useState(false);
+
+  const cooldownSeconds = Math.ceil(cooldownRemainingMs / 1000);
+  const onCooldown = cooldownSeconds > 0;
 
   return (
     <form
@@ -68,9 +73,18 @@ export function FarmIdForm({
         <button
           type="submit"
           className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 disabled:opacity-50"
-          disabled={loading || !farmId || !apiKey}
+          disabled={loading || onCooldown || !farmId || !apiKey}
+          title={
+            onCooldown
+              ? `Wait ${cooldownSeconds}s before refreshing again`
+              : undefined
+          }
         >
-          {loading ? "Loading…" : "Load farm"}
+          {loading
+            ? "Loading…"
+            : onCooldown
+              ? `Wait ${cooldownSeconds}s`
+              : "Load farm"}
         </button>
         {(initialFarmId || initialApiKey) && (
           <button

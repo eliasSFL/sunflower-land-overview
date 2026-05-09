@@ -20,9 +20,11 @@ import {
   saveFarmId,
 } from "./lib/storage";
 
-// Server throttle is 5s normal / 10s after rapid attempts; we stay above the
-// upper bound so client-initiated reloads can never trigger a 429.
-const CLIENT_COOLDOWN_MS = 11_000;
+// Players see a fresh load on first open; after that we make them wait a
+// minute before refetching. Server throttle is 5s normal / 10s after rapid
+// attempts, so 60s is well clear of any 429 risk and discourages mashing
+// the button when the data hasn't meaningfully changed.
+const CLIENT_COOLDOWN_MS = 60_000;
 
 export default function App() {
   const [farmId, setFarmId] = useState(loadFarmId);
@@ -107,6 +109,15 @@ export default function App() {
   );
   const totalReady = rawTimers.filter((t) => t.readyAt - now <= 0).length;
 
+  // `now` ticks every 1s (useNow), so the countdown re-renders without a
+  // dedicated interval. lastLoaded falls back to lastFetchAtRef so an
+  // in-flight failure still locks the button (otherwise users could keep
+  // hammering on a 401/network error).
+  const cooldownReferenceMs = lastLoaded ?? lastFetchAtRef.current;
+  const cooldownRemainingMs = cooldownReferenceMs
+    ? Math.max(0, CLIENT_COOLDOWN_MS - (now - cooldownReferenceMs))
+    : 0;
+
   const sidebarEntries = Object.entries(grouped).map(([category, list]) => ({
     category,
     total: list.reduce((sum, t) => sum + t.count, 0),
@@ -143,6 +154,7 @@ export default function App() {
               initialFarmId={farmId}
               initialApiKey={apiKey}
               loading={loading}
+              cooldownRemainingMs={cooldownRemainingMs}
               onSubmit={(id, key) => {
                 setFarmId(id);
                 setApiKey(key);
