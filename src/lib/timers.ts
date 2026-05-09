@@ -1,10 +1,19 @@
-import type { GameState } from "../types";
+import type { GameState, Rock } from "../types";
 import {
+  CRIMSTONE_RECOVERY_SECONDS,
   CROP_SECONDS,
+  DAILY_CHEST_SECONDS,
+  GOLD_RECOVERY_SECONDS,
   GREENHOUSE_CROP_SECONDS,
   GREENHOUSE_FRUIT_SECONDS,
   HONEY_FULL_SECONDS,
+  IRON_RECOVERY_SECONDS,
+  MUSHROOM_SPAWN_SECONDS,
+  OIL_RESERVE_RECOVERY_SECONDS,
   PATCH_FRUIT_SECONDS,
+  STONE_RECOVERY_SECONDS,
+  SUNSTONE_RECOVERY_SECONDS,
+  TREE_RECOVERY_SECONDS,
 } from "./durations";
 
 export type TimerCategory =
@@ -15,6 +24,14 @@ export type TimerCategory =
   | "Composters"
   | "Animals"
   | "Beehives"
+  | "Resources"
+  | "Mushrooms"
+  | "Aging Shed"
+  | "Crafting"
+  | "Lava Pits"
+  | "Crab Traps"
+  | "Daily Rewards"
+  | "Construction"
   | "Bounties";
 
 export type Timer = {
@@ -160,6 +177,202 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       sublabel: `Hive ${id} · ${(produced * 100).toFixed(0)}% full`,
       readyAt: updatedAt + remainingSeconds * 1000,
       key: `hive-${id}`,
+    });
+  }
+
+  // Resources (trees + rock-shaped resources). We skip entries where the
+  // resource has never been touched (minedAt/choppedAt === 0) — they're
+  // always available, so showing them as "Ready" is just noise.
+  for (const [id, tree] of Object.entries(state.trees ?? {})) {
+    const choppedAt = tree.wood?.choppedAt;
+    if (!choppedAt) continue;
+    timers.push({
+      category: "Resources",
+      label: "Tree",
+      readyAt: choppedAt + TREE_RECOVERY_SECONDS * 1000,
+      key: `tree-${id}`,
+    });
+  }
+
+  const ROCK_RESOURCES: Array<{
+    field: keyof Pick<
+      GameState,
+      "stones" | "iron" | "gold" | "crimstones" | "sunstones"
+    >;
+    label: string;
+    seconds: number;
+  }> = [
+    { field: "stones", label: "Stone", seconds: STONE_RECOVERY_SECONDS },
+    { field: "iron", label: "Iron", seconds: IRON_RECOVERY_SECONDS },
+    { field: "gold", label: "Gold", seconds: GOLD_RECOVERY_SECONDS },
+    {
+      field: "crimstones",
+      label: "Crimstone",
+      seconds: CRIMSTONE_RECOVERY_SECONDS,
+    },
+    {
+      field: "sunstones",
+      label: "Sunstone",
+      seconds: SUNSTONE_RECOVERY_SECONDS,
+    },
+  ];
+  for (const { field, label, seconds } of ROCK_RESOURCES) {
+    const rocks = (state[field] ?? {}) as Record<string, Rock>;
+    for (const [id, rock] of Object.entries(rocks)) {
+      const minedAt = rock.stone?.minedAt;
+      if (!minedAt) continue;
+      timers.push({
+        category: "Resources",
+        label,
+        readyAt: minedAt + seconds * 1000,
+        key: `${field}-${id}`,
+      });
+    }
+  }
+
+  for (const [id, reserve] of Object.entries(state.oilReserves ?? {})) {
+    const drilledAt = reserve.oil?.drilledAt;
+    if (!drilledAt) continue;
+    timers.push({
+      category: "Resources",
+      label: "Oil Reserve",
+      readyAt: drilledAt + OIL_RESERVE_RECOVERY_SECONDS * 1000,
+      key: `oil-${id}`,
+    });
+  }
+
+  // Mushrooms — both kinds spawn on a 16h cycle.
+  if (state.mushrooms?.spawnedAt) {
+    timers.push({
+      category: "Mushrooms",
+      label: "Wild Mushroom",
+      readyAt: state.mushrooms.spawnedAt + MUSHROOM_SPAWN_SECONDS * 1000,
+      key: "mushroom-wild",
+    });
+  }
+  if (state.mushrooms?.magicSpawnedAt) {
+    timers.push({
+      category: "Mushrooms",
+      label: "Magic Mushroom",
+      readyAt: state.mushrooms.magicSpawnedAt + MUSHROOM_SPAWN_SECONDS * 1000,
+      key: "mushroom-magic",
+    });
+  }
+
+  // Aging Shed — fermentation, aging rack (cheese / fish), spice rack.
+  // Each rack entry already carries its own readyAt.
+  const racks = state.agingShed?.racks;
+  for (const job of racks?.fermentation ?? []) {
+    if (!job.readyAt) continue;
+    timers.push({
+      category: "Aging Shed",
+      label: job.recipe ?? "Fermentation",
+      readyAt: job.readyAt,
+      key: `ferment-${job.id}`,
+    });
+  }
+  for (const job of racks?.aging ?? []) {
+    if (!job.readyAt) continue;
+    timers.push({
+      category: "Aging Shed",
+      label: job.recipe ?? job.fish ?? "Aging",
+      readyAt: job.readyAt,
+      key: `aging-${job.id}`,
+    });
+  }
+  for (const job of racks?.spice ?? []) {
+    if (!job.readyAt) continue;
+    timers.push({
+      category: "Aging Shed",
+      label: job.recipe ?? "Spice",
+      readyAt: job.readyAt,
+      key: `spice-${job.id}`,
+    });
+  }
+
+  // Crafting Box — read queue[0] when present, fall back to deprecated
+  // top-level readyAt for older save shapes.
+  const cbQueue = state.craftingBox?.queue ?? [];
+  cbQueue.forEach((item, idx) => {
+    if (!item?.readyAt) return;
+    const collectibleName =
+      typeof item.collectible === "object"
+        ? (item.collectible?.collectible ?? item.collectible?.wearable)
+        : item.collectible;
+    timers.push({
+      category: "Crafting",
+      label: collectibleName ?? item.wearable ?? "Crafting",
+      readyAt: item.readyAt,
+      key: `craft-${idx}`,
+    });
+  });
+  if (cbQueue.length === 0 && state.craftingBox?.readyAt) {
+    timers.push({
+      category: "Crafting",
+      label: "Crafting",
+      readyAt: state.craftingBox.readyAt,
+      key: "craft-legacy",
+    });
+  }
+
+  // Lava pits — only show when actively running (startedAt set, not yet
+  // collected). Idle/uninitialised pits don't have a meaningful timer.
+  for (const [id, pit] of Object.entries(state.lavaPits ?? {})) {
+    if (!pit.startedAt || !pit.readyAt) continue;
+    if (pit.collectedAt && pit.collectedAt >= pit.startedAt) continue;
+    timers.push({
+      category: "Lava Pits",
+      label: "Lava Pit",
+      readyAt: pit.readyAt,
+      key: `lava-${id}`,
+    });
+  }
+
+  // Crab traps (water traps placed on beach plots).
+  for (const [id, spot] of Object.entries(state.crabTraps?.trapSpots ?? {})) {
+    const trap = spot.waterTrap;
+    if (!trap?.readyAt) continue;
+    timers.push({
+      category: "Crab Traps",
+      label: trap.type,
+      readyAt: trap.readyAt,
+      key: `trap-${id}`,
+    });
+  }
+
+  // Daily rewards chest — 24h cooldown from the last collection.
+  const collectedAt = state.dailyRewards?.chest?.collectedAt;
+  if (collectedAt) {
+    timers.push({
+      category: "Daily Rewards",
+      label: "Daily Chest",
+      readyAt: collectedAt + DAILY_CHEST_SECONDS * 1000,
+      key: "daily-chest",
+    });
+  }
+
+  // Construction — land expansion + any building still under construction.
+  if (state.expansionConstruction?.readyAt) {
+    timers.push({
+      category: "Construction",
+      label: "Land Expansion",
+      readyAt: state.expansionConstruction.readyAt,
+      key: "construction-expansion",
+    });
+  }
+  for (const [name, list] of Object.entries(state.buildings ?? {})) {
+    list.forEach((b, idx) => {
+      // Buildings under construction have a future readyAt and no active
+      // crafting/producing job. Once built, readyAt sits in the past — we
+      // skip those since the building itself doesn't need a timer.
+      if (!b.readyAt) return;
+      if (b.crafting?.length || b.producing?.readyAt) return;
+      timers.push({
+        category: "Construction",
+        label: name,
+        readyAt: b.readyAt,
+        key: `construction-${name}-${idx}`,
+      });
     });
   }
 

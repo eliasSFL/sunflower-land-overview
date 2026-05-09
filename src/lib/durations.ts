@@ -55,3 +55,21 @@ export const GREENHOUSE_FRUIT_SECONDS: Record<string, number> = {
 // We approximate full-from-zero as 24h — used only when we cannot infer
 // attached-flower rate.
 export const HONEY_FULL_SECONDS = 24 * 60 * 60;
+
+// Resource recovery times (seconds) — sourced from
+// sunflower-land/src/features/game/lib/constants.ts. Boosts (e.g. axes, faction
+// buffs) can shorten these in-game; values shown are the unboosted base.
+export const TREE_RECOVERY_SECONDS = 2 * 60 * 60;
+export const STONE_RECOVERY_SECONDS = 4 * 60 * 60;
+export const IRON_RECOVERY_SECONDS = 8 * 60 * 60;
+export const GOLD_RECOVERY_SECONDS = 24 * 60 * 60;
+export const CRIMSTONE_RECOVERY_SECONDS = 24 * 60 * 60;
+export const SUNSTONE_RECOVERY_SECONDS = 3 * 24 * 60 * 60;
+export const OIL_RESERVE_RECOVERY_SECONDS = 20 * 60 * 60;
+
+// Mushroom spawn cycle — both regular and magic mushrooms use the same
+// 16-hour interval (sunflower-land-api populateFarm.ts MUSHROOM_SPAWN_MS).
+export const MUSHROOM_SPAWN_SECONDS = 16 * 60 * 60;
+
+// Daily rewards chest can be collected once per 24 hours.
+export const DAILY_CHEST_SECONDS = 24 * 60 * 60;
