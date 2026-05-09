@@ -204,8 +204,54 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   return timers;
 }
 
-export function groupByCategory(timers: Timer[]): Record<string, Timer[]> {
-  const out: Record<string, Timer[]> = {};
+export type AggregatedTimer = {
+  category: TimerCategory;
+  label: string;
+  count: number;
+  /** When the next item in the group is ready. */
+  earliestReadyAt: number;
+  /** When the last item in the group is ready (== earliest when count == 1). */
+  latestReadyAt: number;
+  isDeadline?: boolean;
+  key: string;
+};
+
+/**
+ * Roll up timers that share the same (category, label) — e.g. all Sunflowers,
+ * or all Chickens — into a single entry with count + min/max ready times.
+ * Different labels stay separate, so a board of mixed bounties or a kitchen
+ * cooking three different recipes still shows one row per recipe.
+ */
+export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
+  const groups = new Map<string, AggregatedTimer>();
+  for (const t of timers) {
+    const key = `${t.category}|${t.label}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        category: t.category,
+        label: t.label,
+        count: 1,
+        earliestReadyAt: t.readyAt,
+        latestReadyAt: t.readyAt,
+        isDeadline: t.isDeadline,
+        key,
+      });
+    } else {
+      existing.count++;
+      existing.earliestReadyAt = Math.min(existing.earliestReadyAt, t.readyAt);
+      existing.latestReadyAt = Math.max(existing.latestReadyAt, t.readyAt);
+    }
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.earliestReadyAt - b.earliestReadyAt,
+  );
+}
+
+export function groupByCategory(
+  timers: AggregatedTimer[],
+): Record<string, AggregatedTimer[]> {
+  const out: Record<string, AggregatedTimer[]> = {};
   for (const t of timers) {
     (out[t.category] ??= []).push(t);
   }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiError, fetchFarm, type FarmResponse } from "./api";
-import { extractTimers, groupByCategory } from "./lib/timers";
+import { aggregateTimers, extractTimers, groupByCategory } from "./lib/timers";
 import { useNow } from "./hooks/useNow";
 import { FarmIdForm } from "./components/FarmIdForm";
 import { TimerSection } from "./components/TimerSection";
@@ -59,9 +59,10 @@ export default function App() {
     return () => clearInterval(id);
   }, [data, farmId, apiKey]);
 
-  const timers = useMemo(() => extractTimers(data?.farm), [data]);
-  const grouped = useMemo(() => groupByCategory(timers), [timers]);
-  const totalReady = timers.filter((t) => t.readyAt - now <= 0).length;
+  const rawTimers = useMemo(() => extractTimers(data?.farm), [data]);
+  const aggregated = useMemo(() => aggregateTimers(rawTimers), [rawTimers]);
+  const grouped = useMemo(() => groupByCategory(aggregated), [aggregated]);
+  const totalReady = rawTimers.filter((t) => t.readyAt - now <= 0).length;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
@@ -121,8 +122,8 @@ export default function App() {
               )}
             </span>
             <span>
-              {totalReady} ready · {timers.length} timer
-              {timers.length === 1 ? "" : "s"}
+              {totalReady} ready · {rawTimers.length} item
+              {rawTimers.length === 1 ? "" : "s"}
               {lastLoaded && (
                 <>
                   {" · "}
@@ -133,7 +134,7 @@ export default function App() {
             </span>
           </div>
 
-          {timers.length === 0 ? (
+          {rawTimers.length === 0 ? (
             <div className="rounded-lg border border-dashed border-black/10 bg-white p-8 text-center text-sm text-[--color-muted]">
               No active timers — you're all caught up. 🌻
             </div>

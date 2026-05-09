@@ -1,7 +1,7 @@
-import type { Timer } from "../lib/timers";
+import type { AggregatedTimer } from "../lib/timers";
 import { formatAbsolute, formatRemaining, statusFor } from "../lib/format";
 
-type Props = { timer: Timer; now: number };
+type Props = { timer: AggregatedTimer; now: number };
 
 const STATUS_STYLES: Record<
   ReturnType<typeof statusFor>,
@@ -13,31 +13,44 @@ const STATUS_STYLES: Record<
 };
 
 export function TimerCard({ timer, now }: Props) {
-  const remaining = timer.readyAt - now;
-  const status = statusFor(remaining);
+  const earliestRemaining = timer.earliestReadyAt - now;
+  const status = statusFor(earliestRemaining);
   const style = STATUS_STYLES[status];
+
+  // Only show the "all ready" line when items in the group finish at
+  // different times — usually they're planted/queued together and share one
+  // ready time, so the extra line would just be noise.
+  const hasRange =
+    timer.count > 1 && timer.latestReadyAt > timer.earliestReadyAt;
 
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-white p-3 shadow-sm">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-          <span className="truncate font-medium">{timer.label}</span>
+          <span className="truncate font-medium">
+            {timer.count > 1 && (
+              <span className="text-[--color-muted] font-mono mr-1.5">
+                {timer.count}×
+              </span>
+            )}
+            {timer.label}
+          </span>
         </div>
-        {timer.sublabel && (
+        {hasRange && (
           <div className="ml-4 text-xs text-[--color-muted] truncate">
-            {timer.sublabel}
+            all ready in {formatRemaining(timer.latestReadyAt - now)}
           </div>
         )}
       </div>
       <div className="text-right shrink-0">
         <div className={`font-mono text-sm ${style.text}`}>
-          {timer.isDeadline && remaining > 0
-            ? `in ${formatRemaining(remaining)}`
-            : formatRemaining(remaining)}
+          {timer.isDeadline && earliestRemaining > 0
+            ? `in ${formatRemaining(earliestRemaining)}`
+            : formatRemaining(earliestRemaining)}
         </div>
         <div className="text-[11px] text-[--color-muted]">
-          {formatAbsolute(timer.readyAt)}
+          {formatAbsolute(timer.earliestReadyAt)}
         </div>
       </div>
     </li>
