@@ -610,5 +610,11 @@ export function groupByCategory(
   for (const [cat, list] of buckets) {
     if (!(cat in out)) out[cat] = list;
   }
+  // Mirror that fall-through for active-but-idle categories not in the order
+  // list — without this, a category that exists in the type but isn't ordered
+  // (e.g. Crafting, Lava Pits) would be dropped when its timers are empty.
+  for (const cat of activeCategories) {
+    if (!(cat in out)) out[cat] = [];
+  }
   return out;
 }
