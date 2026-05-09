@@ -70,6 +70,3 @@ export const OIL_RESERVE_RECOVERY_SECONDS = 20 * 60 * 60;
 // Mushroom spawn cycle — both regular and magic mushrooms use the same
 // 16-hour interval (sunflower-land-api populateFarm.ts MUSHROOM_SPAWN_MS).
 export const MUSHROOM_SPAWN_SECONDS = 16 * 60 * 60;
-
-// Daily rewards chest can be collected once per 24 hours.
-export const DAILY_CHEST_SECONDS = 24 * 60 * 60;

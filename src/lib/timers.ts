@@ -2,7 +2,6 @@ import type { GameState, Rock } from "../types";
 import {
   CRIMSTONE_RECOVERY_SECONDS,
   CROP_SECONDS,
-  DAILY_CHEST_SECONDS,
   GOLD_RECOVERY_SECONDS,
   GREENHOUSE_CROP_SECONDS,
   GREENHOUSE_FRUIT_SECONDS,
@@ -342,13 +341,21 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     });
   }
 
-  // Daily rewards chest — 24h cooldown from the last collection.
+  // Daily rewards chest — resets at 00:00 UTC each day, not 24h after the
+  // last collection. We compute the start of the UTC day *after* the one
+  // the chest was last collected on.
   const collectedAt = state.dailyRewards?.chest?.collectedAt;
   if (collectedAt) {
+    const collected = new Date(collectedAt);
+    const nextResetAt = Date.UTC(
+      collected.getUTCFullYear(),
+      collected.getUTCMonth(),
+      collected.getUTCDate() + 1,
+    );
     timers.push({
       category: "Daily Rewards",
       label: "Daily Chest",
-      readyAt: collectedAt + DAILY_CHEST_SECONDS * 1000,
+      readyAt: nextResetAt,
       key: "daily-chest",
     });
   }
