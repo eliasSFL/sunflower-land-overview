@@ -3,11 +3,12 @@ import { TimerCard } from "./TimerCard";
 
 type Props = {
   category: string;
+  id: string;
   timers: AggregatedTimer[];
   now: number;
 };
 
-export function TimerSection({ category, timers, now }: Props) {
+export function TimerSection({ category, id, timers, now }: Props) {
   const readyItems = timers.reduce(
     (sum, t) => (t.earliestReadyAt - now <= 0 ? sum + t.count : sum),
     0,
@@ -15,7 +16,9 @@ export function TimerSection({ category, timers, now }: Props) {
   const totalItems = timers.reduce((sum, t) => sum + t.count, 0);
 
   return (
-    <section className="space-y-2">
+    // scroll-mt accounts for the sticky header on small screens so the
+    // section title isn't tucked under the bar after a jump.
+    <section id={id} className="scroll-mt-20 space-y-2">
       <header className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[--color-muted]">
           {category}
