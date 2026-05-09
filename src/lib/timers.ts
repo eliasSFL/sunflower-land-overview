@@ -787,6 +787,8 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Daily Rewards",
   "Crops",
   "Fruit Patches",
+  "Greenhouse",
+  "Crop Machine",
   "Resources",
   "Salt Nodes",
   "Lava Pits",
@@ -794,15 +796,13 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Animals",
   "Flowers",
   "Beehives",
-  "Greenhouse",
-  "Crop Machine",
   "Mushrooms",
   "Crab Traps",
   "Aging Shed",
   "Composters",
   "Crafting",
-  "Bounties",
 ];
+
 
 /**
  * Categories the player has infrastructure for, even if no timers are running
