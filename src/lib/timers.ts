@@ -14,6 +14,7 @@ import {
   STONE_RECOVERY_SECONDS,
   SUNSTONE_RECOVERY_SECONDS,
   TREE_RECOVERY_SECONDS,
+  getMaxSaltCharges,
 } from "./durations";
 
 export type TimerCategory =
@@ -256,6 +257,24 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Oil Reserve",
       readyAt: drilledAt + OIL_RESERVE_RECOVERY_SECONDS * 1000,
       key: `oil-${id}`,
+    });
+  }
+
+  // Salt nodes accrue charges over time rather than being a one-shot
+  // recovery, so the timer here is "next charge in X". Once a node hits
+  // max charges, the stored nextChargeAt keeps drifting in the gameState
+  // but the wait is meaningless — we skip those.
+  const sculptureLevel = state.sculptures?.["Salt Sculpture"]?.level ?? 0;
+  const maxSaltCharges = getMaxSaltCharges(sculptureLevel);
+  for (const [id, node] of Object.entries(state.saltFarm?.nodes ?? {})) {
+    const stored = node.salt?.storedCharges ?? 0;
+    const nextChargeAt = node.salt?.nextChargeAt;
+    if (!nextChargeAt || stored >= maxSaltCharges) continue;
+    timers.push({
+      category: "Resources",
+      label: "Salt",
+      readyAt: nextChargeAt,
+      key: `salt-${id}`,
     });
   }
 

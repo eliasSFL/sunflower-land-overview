@@ -63,6 +63,7 @@ const RESOURCE_URLS: Record<string, string> = {
   Crimstone: "/icons/crimstone.png",
   Sunstone: "/icons/sunstone.png",
   "Oil Reserve": "/icons/oil.webp",
+  Salt: "/icons/salt.webp",
 };
 
 const ANIMAL_URLS: Record<string, string> = {

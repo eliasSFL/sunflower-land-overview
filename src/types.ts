@@ -130,6 +130,24 @@ export type DailyRewards = {
   chest?: { collectedAt?: number };
 };
 
+export type SaltNode = {
+  salt?: {
+    /** Charges currently accrued on this node (0..max). */
+    storedCharges?: number;
+    /** Wall-clock ms when the next charge will be added. Stops being
+     * meaningful once the node is at max charges. */
+    nextChargeAt?: number;
+  };
+};
+
+export type SaltFarm = {
+  nodes?: Record<string, SaltNode>;
+};
+
+export type Sculpture = {
+  level?: number;
+};
+
 export type GameState = {
   crops?: Record<string, CropPlot>;
   fruitPatches?: Record<string, FruitPatch>;
@@ -171,4 +189,6 @@ export type GameState = {
   craftingBox?: CraftingBox;
   expansionConstruction?: ExpansionConstruction;
   crabTraps?: CrabTrap;
+  saltFarm?: SaltFarm;
+  sculptures?: Partial<Record<string, Sculpture>>;
 };

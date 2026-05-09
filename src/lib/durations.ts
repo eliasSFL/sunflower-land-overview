@@ -71,6 +71,25 @@ export const OIL_RESERVE_RECOVERY_SECONDS = 20 * 60 * 60;
 // 16-hour interval (sunflower-land-api populateFarm.ts MUSHROOM_SPAWN_MS).
 export const MUSHROOM_SPAWN_SECONDS = 16 * 60 * 60;
 
+// Salt nodes accumulate charges over time. Source:
+// sunflower-land-api/src/domain/game/types/salt.ts
+//   SALT_CHARGE_GENERATION_TIME = 7 hours per charge (base, no boosts)
+//   MAX_STORED_SALT_CHARGES_PER_NODE = 3 base, +1 at Salt Sculpture lvl 3,
+//   +1 again at level 6.
+export const SALT_CHARGE_GENERATION_SECONDS = 7 * 60 * 60;
+export const SALT_BASE_MAX_CHARGES = 3;
+
+/**
+ * Mirror of getMaxStoredSaltCharges in salt.ts. Pure data here so we don't
+ * need to import the SFL game lib.
+ */
+export function getMaxSaltCharges(sculptureLevel: number): number {
+  let max = SALT_BASE_MAX_CHARGES;
+  if (sculptureLevel >= 3) max += 1;
+  if (sculptureLevel >= 6) max += 1;
+  return max;
+}
+
 // Flower seed plant times (seconds). The flower bed stores the produced
 // flower name, which we map back to its seed family below to derive the
 // duration. Source: FLOWER_SEEDS in sunflower-land's flowers.ts.
