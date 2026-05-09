@@ -29,6 +29,13 @@ export function TimerCard({ timer, now }: Props) {
   const [iconBroken, setIconBroken] = useState(false);
   const showIcon = iconUrl && !iconBroken;
 
+  // Sublabels (e.g. cooking buildings) — currently only Cooking populates
+  // these. Joined with " · " when a recipe is queued in multiple buildings.
+  const sublabelText =
+    timer.category === "Cooking" && timer.sublabels.length > 0
+      ? timer.sublabels.join(" · ")
+      : null;
+
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-white p-3 shadow-sm">
       <div className="flex min-w-0 items-center gap-3">
@@ -62,6 +69,11 @@ export function TimerCard({ timer, now }: Props) {
               {timer.label}
             </span>
           </div>
+          {sublabelText && (
+            <div className="truncate text-xs text-[--color-muted]">
+              {sublabelText}
+            </div>
+          )}
           {hasRange && (
             <div className="truncate text-xs text-[--color-muted]">
               all ready in {formatRemaining(timer.latestReadyAt - now)}

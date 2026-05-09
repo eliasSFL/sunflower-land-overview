@@ -110,14 +110,17 @@ export function extractTimers(state: GameState | undefined): Timer[] {
   for (const [name, list] of Object.entries(state.buildings ?? {})) {
     if (!COOKING_BUILDINGS.has(name)) continue;
     list.forEach((b, idx) => {
+      // Sublabel is just the building name (with #N when there's more than
+      // one of that type). The queue index used to be here but it gets
+      // collapsed by aggregation anyway — what the player wants to know is
+      // *which building* is cooking the recipe, not which queue slot.
+      const buildingLabel = list.length > 1 ? `${name} #${idx + 1}` : name;
       (b.crafting ?? []).forEach((recipe, qIdx) => {
         if (!recipe?.readyAt) return;
         timers.push({
           category: "Cooking",
           label: recipe.name,
-          sublabel: `${name}${list.length > 1 ? ` #${idx + 1}` : ""}${
-            (b.crafting?.length ?? 0) > 1 ? ` · queue ${qIdx + 1}` : ""
-          }`,
+          sublabel: buildingLabel,
           readyAt: recipe.readyAt,
           key: `cook-${name}-${idx}-${qIdx}`,
         });
@@ -375,6 +378,9 @@ export type AggregatedTimer = {
   earliestReadyAt: number;
   /** When the last item in the group is ready (== earliest when count == 1). */
   latestReadyAt: number;
+  /** Unique non-empty sublabels from the underlying timers — used by Cooking
+   * to surface which building(s) the recipe is queued in. */
+  sublabels: string[];
   isDeadline?: boolean;
   key: string;
 };
@@ -397,6 +403,7 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         count: 1,
         earliestReadyAt: t.readyAt,
         latestReadyAt: t.readyAt,
+        sublabels: t.sublabel ? [t.sublabel] : [],
         isDeadline: t.isDeadline,
         key,
       });
@@ -404,6 +411,9 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
       existing.count++;
       existing.earliestReadyAt = Math.min(existing.earliestReadyAt, t.readyAt);
       existing.latestReadyAt = Math.max(existing.latestReadyAt, t.readyAt);
+      if (t.sublabel && !existing.sublabels.includes(t.sublabel)) {
+        existing.sublabels.push(t.sublabel);
+      }
     }
   }
   return [...groups.values()].sort(
