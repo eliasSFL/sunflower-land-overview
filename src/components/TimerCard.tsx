@@ -29,12 +29,13 @@ export function TimerCard({ timer, now }: Props) {
   const [iconBroken, setIconBroken] = useState(false);
   const showIcon = iconUrl && !iconBroken;
 
-  // Sublabels (e.g. cooking buildings) — currently only Cooking populates
-  // these. Joined with " · " when a recipe is queued in multiple buildings.
-  const sublabelText =
-    timer.category === "Cooking" && timer.sublabels.length > 0
-      ? timer.sublabels.join(" · ")
-      : null;
+  // Sublabels (e.g. cooking buildings, salt charge counts). Joined with " · "
+  // when there's more than one — currently only Cooking can have multiple
+  // (e.g. same recipe queued in Bakery + Kitchen).
+  const showSublabel =
+    (timer.category === "Cooking" || timer.category === "Salt Nodes") &&
+    timer.sublabels.length > 0;
+  const sublabelText = showSublabel ? timer.sublabels.join(" · ") : null;
 
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-white p-3 shadow-sm">
@@ -83,13 +84,17 @@ export function TimerCard({ timer, now }: Props) {
       </div>
       <div className="shrink-0 text-right">
         <div className={`font-mono text-sm ${style.text}`}>
-          {timer.isDeadline && earliestRemaining > 0
-            ? `in ${formatRemaining(earliestRemaining)}`
-            : formatRemaining(earliestRemaining)}
+          {timer.displayOverride
+            ? timer.displayOverride
+            : timer.isDeadline && earliestRemaining > 0
+              ? `in ${formatRemaining(earliestRemaining)}`
+              : formatRemaining(earliestRemaining)}
         </div>
-        <div className="text-[11px] text-[--color-muted]">
-          {formatAbsolute(timer.earliestReadyAt)}
-        </div>
+        {!timer.displayOverride && (
+          <div className="text-[11px] text-[--color-muted]">
+            {formatAbsolute(timer.earliestReadyAt)}
+          </div>
+        )}
       </div>
     </li>
   );

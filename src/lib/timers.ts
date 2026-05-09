@@ -32,6 +32,7 @@ export type TimerCategory =
   | "Crafting"
   | "Lava Pits"
   | "Crab Traps"
+  | "Salt Nodes"
   | "Daily Rewards"
   | "Bounties";
 
@@ -43,6 +44,9 @@ export type Timer = {
   readyAt: number;
   /** True if the timer is "expires at" rather than "ready at". */
   isDeadline?: boolean;
+  /** When set, the UI replaces the formatted countdown with this string —
+   * used for static states like a salt node that's already at max charges. */
+  displayOverride?: string;
   /** Source object id when available — useful for stable keys. */
   key: string;
 };
@@ -260,23 +264,32 @@ export function extractTimers(state: GameState | undefined): Timer[] {
     });
   }
 
-  // Salt nodes accrue charges over time rather than being a one-shot
-  // recovery, so the timer here is "next charge in X". Once a node hits
-  // max charges, the stored nextChargeAt keeps drifting in the gameState
-  // but the wait is meaningless — we skip those.
+  // Salt nodes accrue charges over time. Each node gets its own row with
+  // current/max charge count; the right-side timer shows time-to-next-
+  // charge for partial nodes and "Charges Full" for saturated ones.
   const sculptureLevel = state.sculptures?.["Salt Sculpture"]?.level ?? 0;
   const maxSaltCharges = getMaxSaltCharges(sculptureLevel);
-  for (const [id, node] of Object.entries(state.saltFarm?.nodes ?? {})) {
+  const saltNodeIds = Object.keys(state.saltFarm?.nodes ?? {}).sort(
+    // Numeric sort so "10" doesn't come before "2".
+    (a, b) => Number(a) - Number(b),
+  );
+  saltNodeIds.forEach((id, idx) => {
+    const node = state.saltFarm?.nodes?.[id];
+    if (!node) return;
     const stored = node.salt?.storedCharges ?? 0;
     const nextChargeAt = node.salt?.nextChargeAt;
-    if (!nextChargeAt || stored >= maxSaltCharges) continue;
+    const isFull = stored >= maxSaltCharges;
     timers.push({
-      category: "Resources",
-      label: "Salt",
-      readyAt: nextChargeAt,
+      category: "Salt Nodes",
+      label: `Salt Node ${idx + 1}`,
+      sublabel: `${stored}/${maxSaltCharges} charges`,
+      // When full, anchor readyAt at "now" so the status dot computes as
+      // "ready" (green) and these rows sort before partial nodes.
+      readyAt: isFull ? Date.now() : (nextChargeAt ?? Date.now()),
+      displayOverride: isFull ? "Charges Full" : undefined,
       key: `salt-${id}`,
     });
-  }
+  });
 
   // Mushrooms — both kinds spawn on a 16h cycle.
   if (state.mushrooms?.spawnedAt) {
@@ -427,6 +440,8 @@ export type AggregatedTimer = {
   /** Unique non-empty sublabels from the underlying timers — used by Cooking
    * to surface which building(s) the recipe is queued in. */
   sublabels: string[];
+  /** Static text that overrides the countdown display (e.g. "Charges Full"). */
+  displayOverride?: string;
   isDeadline?: boolean;
   key: string;
 };
@@ -460,6 +475,7 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         earliestReadyAt: t.readyAt,
         latestReadyAt: t.readyAt,
         sublabels: sublabel ? [sublabel] : [],
+        displayOverride: t.displayOverride,
         isDeadline: t.isDeadline,
         key,
       });
@@ -488,6 +504,7 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Crops",
   "Fruit Patches",
   "Resources",
+  "Salt Nodes",
   "Cooking",
   "Animals",
   "Flowers",

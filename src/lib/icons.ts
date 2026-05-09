@@ -63,7 +63,6 @@ const RESOURCE_URLS: Record<string, string> = {
   Crimstone: "/icons/crimstone.png",
   Sunstone: "/icons/sunstone.png",
   "Oil Reserve": "/icons/oil.webp",
-  Salt: "/icons/salt.webp",
 };
 
 const ANIMAL_URLS: Record<string, string> = {
@@ -410,6 +409,10 @@ function lookup(category: TimerCategory, label: string): string | null {
     }
     case "Crab Traps":
       return CRUSTACEAN_URLS[label] ?? null;
+    case "Salt Nodes":
+      // Every node shares the same salt drop icon — labels differ ("Salt
+      // Node 1", "Salt Node 2", ...) but the icon is uniform.
+      return "/icons/salt.webp";
     case "Flowers": {
       const file = FLOWER_FILES[label];
       return file ? `/icons/flowers/${file}` : null;
