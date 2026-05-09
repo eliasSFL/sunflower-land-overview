@@ -29,11 +29,17 @@ export function TimerSection({ category, id, timers, now }: Props) {
             : `${totalItems} total`}
         </span>
       </header>
-      <ul className="space-y-2">
-        {timers.map((t) => (
-          <TimerCard key={t.key} timer={t} now={now} />
-        ))}
-      </ul>
+      {timers.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-black/10 bg-white p-4 text-center text-xs text-[--color-muted]">
+          Nothing active
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {timers.map((t) => (
+            <TimerCard key={t.key} timer={t} now={now} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
