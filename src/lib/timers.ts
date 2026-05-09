@@ -31,7 +31,6 @@ export type TimerCategory =
   | "Lava Pits"
   | "Crab Traps"
   | "Daily Rewards"
-  | "Construction"
   | "Bounties";
 
 export type Timer = {
@@ -348,31 +347,6 @@ export function extractTimers(state: GameState | undefined): Timer[] {
       label: "Daily Chest",
       readyAt: collectedAt + DAILY_CHEST_SECONDS * 1000,
       key: "daily-chest",
-    });
-  }
-
-  // Construction — land expansion + any building still under construction.
-  if (state.expansionConstruction?.readyAt) {
-    timers.push({
-      category: "Construction",
-      label: "Land Expansion",
-      readyAt: state.expansionConstruction.readyAt,
-      key: "construction-expansion",
-    });
-  }
-  for (const [name, list] of Object.entries(state.buildings ?? {})) {
-    list.forEach((b, idx) => {
-      // Buildings under construction have a future readyAt and no active
-      // crafting/producing job. Once built, readyAt sits in the past — we
-      // skip those since the building itself doesn't need a timer.
-      if (!b.readyAt) return;
-      if (b.crafting?.length || b.producing?.readyAt) return;
-      timers.push({
-        category: "Construction",
-        label: name,
-        readyAt: b.readyAt,
-        key: `construction-${name}-${idx}`,
-      });
     });
   }
 
