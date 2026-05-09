@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client", "jest"],
+    "paths": {
+      "features/*": ["./src/features/*"],
+      "assets/*": ["./src/assets/*"],
+      "lib/*": ["./src/lib/*"],
+      "components/*": ["./src/components/*"],
+      "metadata/*": ["./metadata/*"],
+      "public/*": ["./public/*"],
+      "src/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "./src",
+    "./metadata",
+    "./test",
+    "./node_modules/vite-plugin-pwa/react.d.ts",
+    "./node_modules/@khmyznikov/pwa-install/index.d.ts",
+    "./src/types/page-lifecycle.d.ts"
+  ]
+}

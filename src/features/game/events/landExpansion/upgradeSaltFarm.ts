@@ -1,0 +1,86 @@
+import { produce } from "immer";
+import Decimal from "decimal.js-light";
+import { trackFarmActivity } from "features/game/types/farmActivity";
+import { GameState } from "features/game/types/game";
+import { getObjectEntries } from "lib/object";
+import {
+  getSaltChargeGenerationTime,
+  MAX_STORED_SALT_CHARGES_PER_NODE,
+  SALT_FARM_UPGRADES,
+} from "features/game/types/salt";
+import { updateBoostUsed } from "features/game/types/updateBoostUsed";
+
+export type UpgradeSaltFarmAction = {
+  type: "saltFarm.upgraded";
+};
+
+type Options = {
+  state: Readonly<GameState>;
+  action: UpgradeSaltFarmAction;
+  createdAt: number;
+};
+
+export function upgradeSaltFarm({
+  state,
+  action: _action,
+  createdAt,
+}: Options): GameState {
+  return produce(state, (copy) => {
+    const { saltFarm } = copy;
+    const nextLevel = saltFarm.level + 1;
+
+    if (nextLevel > 4) {
+      throw new Error("Salt farm is at max level");
+    }
+
+    const upgrade = SALT_FARM_UPGRADES[nextLevel];
+    const { nodes: totalExpectedNodes, upgradeCost } = upgrade;
+
+    if (state.coins < upgradeCost.coins) {
+      throw new Error("Insufficient coins for upgrade");
+    }
+    const items = getObjectEntries(upgradeCost.items);
+
+    items.forEach(([item, amount]) => {
+      const requiredAmount = amount ?? new Decimal(0);
+      const playerAmount = copy.inventory[item] ?? new Decimal(0);
+      if (playerAmount.lt(requiredAmount)) {
+        throw new Error(`Insufficient ${item} for upgrade`);
+      }
+      copy.inventory[item] = playerAmount.minus(requiredAmount);
+    });
+
+    copy.coins -= upgradeCost.coins;
+    copy.farmActivity = trackFarmActivity(
+      "Coins Spent",
+      copy.farmActivity,
+      new Decimal(upgradeCost.coins),
+    );
+
+    const currentNodes = Object.keys(saltFarm.nodes).length;
+    const nodesToAdd: number = totalExpectedNodes - currentNodes;
+    const { chargeGenerationTimeMs: interval, boostsUsed } =
+      getSaltChargeGenerationTime({
+        gameState: copy,
+      });
+
+    for (let i = 0; i < nodesToAdd; i++) {
+      copy.saltFarm.nodes[`${currentNodes + i}`] = {
+        createdAt,
+        salt: {
+          storedCharges: MAX_STORED_SALT_CHARGES_PER_NODE,
+          nextChargeAt: createdAt + interval,
+        },
+      };
+    }
+    copy.saltFarm.level = nextLevel;
+
+    copy.boostsUsedAt = updateBoostUsed({
+      game: copy,
+      boostNames: boostsUsed,
+      createdAt,
+    });
+
+    return copy;
+  });
+}

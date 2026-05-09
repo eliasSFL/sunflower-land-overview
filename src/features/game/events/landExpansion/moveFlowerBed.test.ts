@@ -1,0 +1,39 @@
+import { TEST_FARM } from "features/game/lib/constants";
+import { moveFlowerBed } from "./moveFlowerBed";
+
+describe("moveFlowerBed", () => {
+  it("throws if moving a patch that doesn't exist", () => {
+    expect(() =>
+      moveFlowerBed({
+        state: TEST_FARM,
+        action: {
+          type: "flowerBed.moved",
+          coordinates: { x: 0, y: 0 },
+          id: "not a real id",
+        },
+      }),
+    ).toThrow("Flower bed does not exist");
+  });
+
+  it("moves a patch", () => {
+    const result = moveFlowerBed({
+      state: {
+        ...TEST_FARM,
+        crops: {},
+        flowers: {
+          discovered: {},
+          flowerBeds: {
+            "1": { x: 1, y: 1, createdAt: 0 },
+          },
+        },
+      },
+      action: {
+        type: "flowerBed.moved",
+        coordinates: { x: 0, y: 0 },
+        id: "1",
+      },
+    });
+
+    expect(result.flowers.flowerBeds["1"]).toMatchObject({ x: 0, y: 0 });
+  });
+});
