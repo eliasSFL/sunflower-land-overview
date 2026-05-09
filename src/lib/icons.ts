@@ -388,6 +388,39 @@ const AGING_FILES: Record<string, string> = {
   Sauerkraut: "/icons/food/sauerkraut.png",
 };
 
+// Crafting Box outputs — the timer label is the collectible name being
+// crafted in that slot ("Doll", "Lunar Doll", ...). A few of these don't
+// follow the obvious snake-case ("Cluck Doll" ships as cluky_doll.webp,
+// "Sizzle Doll" as sizzler_doll.webp), so we map them explicitly rather
+// than slugifying.
+const DOLL_FILES: Record<string, string> = {
+  Doll: "doll.webp",
+  "Buzz Doll": "buzz_doll.webp",
+  "Lunar Doll": "lunar_doll.webp",
+  "Juicy Doll": "juicy_doll.webp",
+  "Crude Doll": "crude_doll.webp",
+  "Cluck Doll": "cluky_doll.webp",
+  "Wooly Doll": "wooly_doll.webp",
+  "Moo Doll": "moo_doll.webp",
+  "Bloom Doll": "bloom_doll.webp",
+  "Shadow Doll": "shadow_doll.webp",
+  "Ember Doll": "ember_doll.webp",
+  "Gilded Doll": "gilded_doll.webp",
+  "Lumber Doll": "lumber_doll.webp",
+  "Harvest Doll": "harvest_doll.webp",
+  "Sizzle Doll": "sizzler_doll.webp",
+  "Angler Doll": "angler_doll.webp",
+  "Dune Doll": "dune_doll.webp",
+  "Mouse Doll": "mouse_doll.webp",
+  "Grubby Doll": "grubby_doll.webp",
+  "Nefari Doll": "nefari_doll.webp",
+  "Frosty Doll": "frosty_doll.webp",
+  "Cosmo Doll": "cosmo_doll.webp",
+  "Bigfin Doll": "bigfin_doll.webp",
+  "Solar Doll": "solar_doll.webp",
+  "Salt Doll": "salt_doll.webp",
+};
+
 function lookup(category: TimerCategory, label: string): string | null {
   switch (category) {
     case "Crops": {
@@ -444,8 +477,15 @@ function lookup(category: TimerCategory, label: string): string | null {
     }
     case "Lava Pits":
       return "/icons/buildings/lava_pit.webp";
-    case "Crafting":
+    case "Crafting": {
+      // Active queue slots label by the collectible being crafted, so prefer
+      // the output's icon. Fall back to the building icon for the synthetic
+      // "Crafting" label (legacy single-slot readyAt with no item) or for
+      // craftables we haven't mapped yet — better than rendering nothing.
+      const file = DOLL_FILES[label];
+      if (file) return `/icons/dolls/${file}`;
       return "/icons/buildings/crafting_box.webp";
+    }
     // Bounties — no icon for now.
     default:
       return null;
