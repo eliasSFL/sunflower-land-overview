@@ -51,11 +51,15 @@ const GREENHOUSE_FILES: Record<string, string> = {
   Grape: "grape.webp",
 };
 
+// Iron and Gold are bundled locally because the in-game inventory icon is
+// the locally-imported `iron_ore.png` / `gold_ore.png` — the CDN's
+// `iron_rock.png` / `gold_rock.png` are the big mineable rock sprites, not
+// the drop icons.
 const RESOURCE_URLS: Record<string, string> = {
   Tree: `${CDN}/resources/tree.png`,
   Stone: `${CDN}/resources/stone.png`,
-  Iron: `${CDN}/resources/iron_rock.png`,
-  Gold: `${CDN}/resources/gold_rock.png`,
+  Iron: "/icons/iron.png",
+  Gold: "/icons/gold.png",
   Crimstone: "/icons/crimstone.png",
   Sunstone: "/icons/sunstone.png",
   "Oil Reserve": "/icons/oil.webp",
