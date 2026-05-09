@@ -66,9 +66,21 @@ export type GameState = {
   barn?: { animals?: Record<string, Animal> };
   beehives?: Record<string, Beehive>;
   greenhouse?: { pots?: Record<string, GreenhouseSlot> };
-  bounties?: { requests?: Array<{ id: string; name?: string; expiresAt?: number }> };
-  delivery?: { orders?: Array<{ id: string; from?: string; readyAt?: number; completedAt?: number; expiresAt?: number }> };
-  dailyRewards?: { chest?: { collectedAt?: number; available?: { openedAt?: number } } };
+  bounties?: {
+    requests?: Array<{ id: string; name?: string; expiresAt?: number }>;
+  };
+  delivery?: {
+    orders?: Array<{
+      id: string;
+      from?: string;
+      readyAt?: number;
+      completedAt?: number;
+      expiresAt?: number;
+    }>;
+  };
+  dailyRewards?: {
+    chest?: { collectedAt?: number; available?: { openedAt?: number } };
+  };
   desert?: {
     digging?: {
       grid?: unknown;

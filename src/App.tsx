@@ -147,8 +147,8 @@ export default function App() {
               {lastLoaded && (
                 <>
                   {" · "}
-                  refreshed{" "}
-                  {Math.max(0, Math.floor((now - lastLoaded) / 1000))}s ago
+                  refreshed {Math.max(0, Math.floor((now - lastLoaded) / 1000))}
+                  s ago
                 </>
               )}
             </span>
