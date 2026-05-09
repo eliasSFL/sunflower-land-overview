@@ -142,6 +142,72 @@ const FISH_FILES: Record<string, string> = {
   "Crystal Shrimp": "crystal_shrimp.webp",
 };
 
+// Flowers — bundled in public/icons/flowers/. File extensions vary by
+// flower family (carnation/edelweiss/gladiolus are PNG, the rest are WebP),
+// so we list each entry explicitly rather than auto-deriving the path.
+const FLOWER_FILES: Record<string, string> = {
+  // Sunpetal
+  "Red Pansy": "red_pansy.webp",
+  "Yellow Pansy": "yellow_pansy.webp",
+  "Purple Pansy": "purple_pansy.webp",
+  "White Pansy": "white_pansy.webp",
+  "Blue Pansy": "blue_pansy.webp",
+  "Red Cosmos": "red_cosmos.webp",
+  "Yellow Cosmos": "yellow_cosmos.webp",
+  "Purple Cosmos": "purple_cosmos.webp",
+  "White Cosmos": "white_cosmos.webp",
+  "Blue Cosmos": "blue_cosmos.webp",
+  "Prism Petal": "prism_petal.webp",
+  // Bloom
+  "Red Balloon Flower": "red_balloon_flower.webp",
+  "Yellow Balloon Flower": "yellow_balloon_flower.webp",
+  "Purple Balloon Flower": "purple_balloon_flower.webp",
+  "White Balloon Flower": "white_balloon_flower.webp",
+  "Blue Balloon Flower": "blue_balloon_flower.webp",
+  "Red Daffodil": "red_daffodil.webp",
+  "Yellow Daffodil": "yellow_daffodil.webp",
+  "Purple Daffodil": "purple_daffodil.webp",
+  "White Daffodil": "white_daffodil.webp",
+  "Blue Daffodil": "blue_daffodil.webp",
+  "Celestial Frostbloom": "celestial_frostbloom.webp",
+  // Lily
+  "Red Carnation": "red_carnation.png",
+  "Yellow Carnation": "yellow_carnation.png",
+  "Purple Carnation": "purple_carnation.png",
+  "White Carnation": "white_carnation.png",
+  "Blue Carnation": "blue_carnation.png",
+  "Red Lotus": "red_lotus.webp",
+  "Yellow Lotus": "yellow_lotus.webp",
+  "Purple Lotus": "purple_lotus.webp",
+  "White Lotus": "white_lotus.webp",
+  "Blue Lotus": "blue_lotus.webp",
+  "Primula Enigma": "primula_enigma.webp",
+  // Edelweiss
+  "Red Edelweiss": "red_edelweiss.png",
+  "Yellow Edelweiss": "yellow_edelweiss.png",
+  "Purple Edelweiss": "purple_edelweiss.png",
+  "White Edelweiss": "white_edelweiss.png",
+  "Blue Edelweiss": "blue_edelweiss.png",
+  // Gladiolus
+  "Red Gladiolus": "red_gladiolus.png",
+  "Yellow Gladiolus": "yellow_gladiolus.png",
+  "Purple Gladiolus": "purple_gladiolus.png",
+  "White Gladiolus": "white_gladiolus.png",
+  "Blue Gladiolus": "blue_gladiolus.png",
+  // Lavender
+  "Red Lavender": "red_lavender.webp",
+  "Yellow Lavender": "yellow_lavender.webp",
+  "Purple Lavender": "purple_lavender.webp",
+  "White Lavender": "white_lavender.webp",
+  "Blue Lavender": "blue_lavender.webp",
+  // Clover
+  "Red Clover": "red_clover.webp",
+  "Yellow Clover": "yellow_clover.webp",
+  "Purple Clover": "purple_clover.webp",
+  "White Clover": "white_clover.webp",
+  "Blue Clover": "blue_clover.webp",
+};
+
 // Crustaceans (Crab Trap outputs) — all on the SFL CDN at
 // /crustaceans/{snake_case}.webp.
 const CRUSTACEAN_URLS: Record<string, string> = {
@@ -343,6 +409,10 @@ function lookup(category: TimerCategory, label: string): string | null {
     }
     case "Crab Traps":
       return CRUSTACEAN_URLS[label] ?? null;
+    case "Flowers": {
+      const file = FLOWER_FILES[label];
+      return file ? `/icons/flowers/${file}` : null;
+    }
     // Composters, Crafting, Lava Pits, Bounties — no icon for now.
     default:
       return null;

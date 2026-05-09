@@ -70,3 +70,78 @@ export const OIL_RESERVE_RECOVERY_SECONDS = 20 * 60 * 60;
 // Mushroom spawn cycle — both regular and magic mushrooms use the same
 // 16-hour interval (sunflower-land-api populateFarm.ts MUSHROOM_SPAWN_MS).
 export const MUSHROOM_SPAWN_SECONDS = 16 * 60 * 60;
+
+// Flower seed plant times (seconds). The flower bed stores the produced
+// flower name, which we map back to its seed family below to derive the
+// duration. Source: FLOWER_SEEDS in sunflower-land's flowers.ts.
+const ONE_DAY_SECONDS = 24 * 60 * 60;
+const SUNPETAL_SECONDS = 1 * ONE_DAY_SECONDS;
+const BLOOM_SECONDS = 2 * ONE_DAY_SECONDS;
+const LILY_SECONDS = 5 * ONE_DAY_SECONDS;
+const EDELWEISS_SECONDS = 3 * ONE_DAY_SECONDS;
+const GLADIOLUS_SECONDS = 3 * ONE_DAY_SECONDS;
+const LAVENDER_SECONDS = 3 * ONE_DAY_SECONDS;
+const CLOVER_SECONDS = 3 * ONE_DAY_SECONDS;
+
+export const FLOWER_SECONDS: Record<string, number> = {
+  // Sunpetal — 1 day
+  "Red Pansy": SUNPETAL_SECONDS,
+  "Yellow Pansy": SUNPETAL_SECONDS,
+  "Purple Pansy": SUNPETAL_SECONDS,
+  "White Pansy": SUNPETAL_SECONDS,
+  "Blue Pansy": SUNPETAL_SECONDS,
+  "Red Cosmos": SUNPETAL_SECONDS,
+  "Yellow Cosmos": SUNPETAL_SECONDS,
+  "Purple Cosmos": SUNPETAL_SECONDS,
+  "White Cosmos": SUNPETAL_SECONDS,
+  "Blue Cosmos": SUNPETAL_SECONDS,
+  "Prism Petal": SUNPETAL_SECONDS,
+  // Bloom — 2 days
+  "Red Balloon Flower": BLOOM_SECONDS,
+  "Yellow Balloon Flower": BLOOM_SECONDS,
+  "Purple Balloon Flower": BLOOM_SECONDS,
+  "White Balloon Flower": BLOOM_SECONDS,
+  "Blue Balloon Flower": BLOOM_SECONDS,
+  "Red Daffodil": BLOOM_SECONDS,
+  "Yellow Daffodil": BLOOM_SECONDS,
+  "Purple Daffodil": BLOOM_SECONDS,
+  "White Daffodil": BLOOM_SECONDS,
+  "Blue Daffodil": BLOOM_SECONDS,
+  "Celestial Frostbloom": BLOOM_SECONDS,
+  // Lily — 5 days
+  "Red Carnation": LILY_SECONDS,
+  "Yellow Carnation": LILY_SECONDS,
+  "Purple Carnation": LILY_SECONDS,
+  "White Carnation": LILY_SECONDS,
+  "Blue Carnation": LILY_SECONDS,
+  "Red Lotus": LILY_SECONDS,
+  "Yellow Lotus": LILY_SECONDS,
+  "Purple Lotus": LILY_SECONDS,
+  "White Lotus": LILY_SECONDS,
+  "Blue Lotus": LILY_SECONDS,
+  "Primula Enigma": LILY_SECONDS,
+  // Edelweiss — 3 days
+  "Red Edelweiss": EDELWEISS_SECONDS,
+  "Yellow Edelweiss": EDELWEISS_SECONDS,
+  "Purple Edelweiss": EDELWEISS_SECONDS,
+  "White Edelweiss": EDELWEISS_SECONDS,
+  "Blue Edelweiss": EDELWEISS_SECONDS,
+  // Gladiolus — 3 days
+  "Red Gladiolus": GLADIOLUS_SECONDS,
+  "Yellow Gladiolus": GLADIOLUS_SECONDS,
+  "Purple Gladiolus": GLADIOLUS_SECONDS,
+  "White Gladiolus": GLADIOLUS_SECONDS,
+  "Blue Gladiolus": GLADIOLUS_SECONDS,
+  // Lavender — 3 days
+  "Red Lavender": LAVENDER_SECONDS,
+  "Yellow Lavender": LAVENDER_SECONDS,
+  "Purple Lavender": LAVENDER_SECONDS,
+  "White Lavender": LAVENDER_SECONDS,
+  "Blue Lavender": LAVENDER_SECONDS,
+  // Clover — 3 days
+  "Red Clover": CLOVER_SECONDS,
+  "Yellow Clover": CLOVER_SECONDS,
+  "Purple Clover": CLOVER_SECONDS,
+  "White Clover": CLOVER_SECONDS,
+  "Blue Clover": CLOVER_SECONDS,
+};

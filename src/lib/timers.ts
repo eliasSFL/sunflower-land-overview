@@ -2,6 +2,7 @@ import type { GameState, Rock } from "../types";
 import {
   CRIMSTONE_RECOVERY_SECONDS,
   CROP_SECONDS,
+  FLOWER_SECONDS,
   GOLD_RECOVERY_SECONDS,
   GREENHOUSE_CROP_SECONDS,
   GREENHOUSE_FRUIT_SECONDS,
@@ -22,6 +23,7 @@ export type TimerCategory =
   | "Cooking"
   | "Composters"
   | "Animals"
+  | "Flowers"
   | "Beehives"
   | "Resources"
   | "Mushrooms"
@@ -164,6 +166,21 @@ export function extractTimers(state: GameState | undefined): Timer[] {
         key: `animal-${id}`,
       });
     }
+  }
+
+  // Flowers — flower bed stores the produced flower name; the duration is
+  // derived from the flower's seed family (FLOWER_SECONDS table).
+  for (const [id, bed] of Object.entries(state.flowers?.flowerBeds ?? {})) {
+    const flower = bed.flower;
+    if (!flower) continue;
+    const seconds = FLOWER_SECONDS[flower.name];
+    if (!seconds) continue;
+    timers.push({
+      category: "Flowers",
+      label: flower.name,
+      readyAt: flower.plantedAt + seconds * 1000,
+      key: `flower-${id}`,
+    });
   }
 
   // Beehives — we approximate full-from-zero as 24h, scaled by current produced.
@@ -454,6 +471,7 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Resources",
   "Cooking",
   "Animals",
+  "Flowers",
   "Beehives",
   "Greenhouse",
   "Mushrooms",
