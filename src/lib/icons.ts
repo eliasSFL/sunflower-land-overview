@@ -76,6 +76,72 @@ const MUSHROOM_URLS: Record<string, string> = {
   "Magic Mushroom": `${CDN}/resources/magic_mushroom.png`,
 };
 
+// Fish — the aging-rack timer label is the raw input fish name, so we map
+// each FishName to its bundled file in public/icons/fish/. Names follow the
+// canonical FishName / MarineMarvelName unions in the API repo, including
+// the historical "Napoleanfish" / "Hammerhead shark" / "Football fish"
+// spellings.
+const FISH_FILES: Record<string, string> = {
+  // Basic
+  Anchovy: "anchovy.png",
+  Butterflyfish: "butterfly_fish.png",
+  Blowfish: "blowfish.png",
+  Clownfish: "clownfish.png",
+  "Sea Bass": "sea_bass.png",
+  "Sea Horse": "seahorse.png",
+  "Horse Mackerel": "horse_mackerel.png",
+  Halibut: "halibut.png",
+  Squid: "squid.png",
+  // Advanced
+  "Red Snapper": "red_snapper.png",
+  "Moray Eel": "moray_eel.png",
+  "Olive Flounder": "olive_flounder.png",
+  Napoleanfish: "napoleonfish.png",
+  Surgeonfish: "surgeonfish.png",
+  "Zebra Turkeyfish": "zebra_turkeyfish.png",
+  Angelfish: "angel_fish.png",
+  Ray: "ray.png",
+  "Hammerhead shark": "hammerhead_shark.png",
+  "Barred Knifejaw": "barred_knifejaw.png",
+  // Expert
+  Tuna: "tuna.png",
+  "Mahi Mahi": "mahi_mahi.png",
+  "Blue Marlin": "blue_marlin.png",
+  Oarfish: "oarfish.png",
+  "Football fish": "football_fish.png",
+  Sunfish: "sunfish.png",
+  Coelacanth: "coelacanth.png",
+  Parrotfish: "parrot_fish.png",
+  "Whale Shark": "whale_shark.png",
+  "Saw Shark": "saw_shark.png",
+  "White Shark": "white_shark.png",
+  Porgy: "porgy.png",
+  Muskellunge: "muskellunge.png",
+  Trout: "trout.png",
+  Walleye: "walleye.png",
+  Weakfish: "weak_fish.png",
+  "Rock Blackfish": "rock_blackfish.png",
+  Tilapia: "tilapia.png",
+  // Marine Marvels
+  "Twilight Anglerfish": "twilight_anglerfish.png",
+  "Starlight Tuna": "starlight_tuna.png",
+  "Radiant Ray": "radiant_ray.png",
+  "Phantom Barracuda": "phantom_barracuda.png",
+  "Gilded Swordfish": "gilded_swordfish.png",
+  "Crimson Carp": "crimson_carp.png",
+  "Battle Fish": "battle_fish.webp",
+  "Lemon Shark": "lemon_shark.webp",
+  "Longhorn Cowfish": "cow_fish.webp",
+  Jellyfish: "jellyfish.webp",
+  "Pink Dolphin": "pink_dolphin.webp",
+  "Giant Isopod": "isopod.webp",
+  Nautilus: "nautilus.webp",
+  Dollocaris: "dollocaris.webp",
+  "Deep Sea Pig": "deep_sea_pig.webp",
+  "Deep Sea Slug": "deep_sea_slug.webp",
+  "Crystal Shrimp": "crystal_shrimp.webp",
+};
+
 // Crustaceans (Crab Trap outputs) — all on the SFL CDN at
 // /crustaceans/{snake_case}.webp.
 const CRUSTACEAN_URLS: Record<string, string> = {
@@ -268,8 +334,13 @@ function lookup(category: TimerCategory, label: string): string | null {
       const file = COOKING_FILES[label];
       return file ? `/icons/food/${file}` : null;
     }
-    case "Aging Shed":
+    case "Aging Shed": {
+      // Aging-rack jobs label by the raw fish name; check the fish map
+      // first, then fall back to the recipe map.
+      const fish = FISH_FILES[label];
+      if (fish) return `/icons/fish/${fish}`;
       return AGING_FILES[label] ?? null;
+    }
     case "Crab Traps":
       return CRUSTACEAN_URLS[label] ?? null;
     // Composters, Crafting, Lava Pits, Bounties — no icon for now.
