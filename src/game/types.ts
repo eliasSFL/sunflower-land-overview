@@ -94,6 +94,31 @@ export type Greenhouse = {
   pots: Record<string, GreenhousePot>;
 };
 
+export type CropMachineQueueItem = {
+  crop: CropName;
+  seeds: number;
+  growTimeRemaining: number;
+  totalGrowTime: number;
+  startTime?: number;
+  // Set when the pack has finished growing and pre-computed yield is
+  // stored. Use directly when present.
+  amount?: number;
+  // The deadline at which oil runs out mid-grow; only present when the
+  // pack will pause unless more oil is added.
+  growsUntil?: number;
+  // The wall-clock time the pack will be ready; unset before the pack
+  // starts processing.
+  readyAt?: number;
+};
+
+export type CropMachineBuilding = {
+  id?: string;
+  createdAt: number;
+  readyAt?: number;
+  queue?: CropMachineQueueItem[];
+  unallocatedOilTime?: number;
+};
+
 export type GameState = {
   id?: number;
   bumpkin?: {

@@ -7,9 +7,11 @@ export {
   getCropYieldAmount,
   getPatchFruitYield,
   getGreenhouseYield,
+  getCropMachinePackYield,
   type CropYieldArgs,
   type PatchFruitYieldArgs,
   type GreenhouseYieldArgs,
+  type CropMachinePackYieldArgs,
 } from "./yields.ts";
 export { getItemIcon, getBannerUrl } from "./icons.ts";
 export type {
@@ -23,4 +25,6 @@ export type {
   GreenhousePlant,
   GreenhousePot,
   Greenhouse,
+  CropMachineQueueItem,
+  CropMachineBuilding,
 } from "./types.ts";
