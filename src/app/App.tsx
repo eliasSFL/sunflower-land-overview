@@ -123,7 +123,7 @@ export function App() {
           <InnerPanel className="flex flex-col gap-3 sm:col-span-5 md:col-span-4 lg:col-span-3">
             <p className="text-sm">
               In the game:{" "}
-              <strong>Settings → Developer Options → API Key</strong> to
+              <strong>{"Settings > Advanced > Developer Options > API Key"}</strong> to
               generate your key. Both fields are stored locally on your device.
             </p>
             <FarmIdForm
