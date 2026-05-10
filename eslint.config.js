@@ -33,6 +33,29 @@ export default defineConfig([
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // Boundary enforcement: only src/game/** and src/components/sfl-ui/**
+      // are allowed to import bare specifiers that resolve into the
+      // sunflower-land submodule via Vite aliases. Everything else must
+      // go through src/game/ for type-safe re-exports.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            "features/*",
+            "lib/*",
+            "components/*",
+            "metadata/*",
+            "assets/*",
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The boundary directories themselves need to import these.
+    files: ["src/game/**/*.ts", "src/components/sfl-ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
   {

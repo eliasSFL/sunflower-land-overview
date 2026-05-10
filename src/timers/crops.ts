@@ -35,9 +35,9 @@ export function extractCropTimers(
       });
       amount = result.amount;
     } catch {
-      // Fallback to base 1 if upstream throws — drift signal, but don't
-      // hide every other timer behind a single bad plot.
-      amount = 1;
+      // Fallback retains the `let amount = 1` initial value when upstream
+      // throws — a drift signal, but don't hide every other timer
+      // behind a single bad plot.
     }
 
     out.push({

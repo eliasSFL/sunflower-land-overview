@@ -41,10 +41,23 @@ export default {
         );
       }
 
-      const upstream = await fetch(
-        `${UPSTREAM}/community/farms/${encodeURIComponent(id)}`,
-        { headers: { "x-api-key": apiKey } },
-      );
+      let upstream: Response;
+      try {
+        upstream = await fetch(
+          `${UPSTREAM}/community/farms/${encodeURIComponent(id)}`,
+          { headers: { "x-api-key": apiKey } },
+        );
+      } catch (err) {
+        // Network / DNS / TLS failure reaching the upstream API. Surface
+        // a controlled JSON 502 so clients always get the same shape.
+        return Response.json(
+          {
+            error: "Bad Gateway",
+            message: err instanceof Error ? err.message : String(err),
+          },
+          { status: 502, headers: { "cache-control": "no-store" } },
+        );
+      }
 
       return new Response(upstream.body, {
         status: upstream.status,

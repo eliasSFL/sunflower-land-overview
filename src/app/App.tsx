@@ -70,7 +70,7 @@ export function App() {
 
   const timers = useMemo(() => {
     if (!data) return [];
-    const id = data.id ?? Number(farmId) ?? 0;
+    const id = data.id ?? (Number(farmId) || 0);
     return extractAndAggregate(data.farm, id, now);
   }, [data, farmId, now]);
 
@@ -88,12 +88,6 @@ export function App() {
     lastFetchedAt !== undefined
       ? Math.max(0, REFRESH_COOLDOWN_MS - (now - lastFetchedAt))
       : 0;
-
-  const submitLabel = data
-    ? cooldownLeft > 0
-      ? `Refresh (${Math.ceil(cooldownLeft / 1000)}s)`
-      : "Refresh"
-    : "Load farm";
 
   return (
     <div className="min-h-dvh bg-[#181425]">
@@ -137,8 +131,8 @@ export function App() {
               initialApiKey={apiKey}
               onSubmit={load}
               loading={loading}
-              submitLabel={submitLabel}
-              submitDisabled={data ? cooldownLeft > 0 : false}
+              lastLoaded={data ? { farmId, apiKey } : undefined}
+              cooldownLeftMs={cooldownLeft}
             />
             {data ? (
               <div className="flex flex-wrap items-center gap-2">

@@ -32,7 +32,9 @@ const FALSE_BOOLEANS = new Set([
 // `stub` is recursively self-returning so chained access like
 // `i18n.use(x).init({...})` resolves to the Proxy at every step. We assign
 // `stub` after the Proxy is constructed so the handler closure can reference
-// it (otherwise traps would return the bare target function).
+// it (otherwise traps would return the bare target function). `let` is
+// required: a `const` would be uninitialised when the handler is built.
+// eslint-disable-next-line prefer-const
 let stub: any;
 const handler: ProxyHandler<any> = {
   get: (_target, prop) => {

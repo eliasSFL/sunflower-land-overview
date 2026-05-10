@@ -16,7 +16,16 @@ export function extractFruitTimers(
     // Fully-exhausted bushes need re-seeding; nothing to time.
     if (fruit.harvestsLeft <= 0) continue;
 
-    const grow = PATCH_FRUIT_SECONDS[fruit.name] ?? 0;
+    // Fail closed on unknown fruit names (e.g. submodule added a new fruit
+    // before our duration table was updated). Falling back to 0 would
+    // make the patch render as "Ready" forever.
+    const grow = PATCH_FRUIT_SECONDS[fruit.name];
+    if (grow === undefined) {
+      console.warn(
+        `[fruits] unknown duration for "${fruit.name}" — skipping patch`,
+      );
+      continue;
+    }
     // After the first harvest, the next-ready clock restarts from
     // `harvestedAt`; before any harvest it ticks from `plantedAt`.
     // (sunflower-land/src/features/game/events/landExpansion/fruitPatchReadiness.ts)
@@ -34,7 +43,7 @@ export function extractFruitTimers(
       });
       amount = result.amount;
     } catch {
-      amount = 1;
+      // Retain the initial `amount = 1` on upstream throw.
     }
 
     out.push({

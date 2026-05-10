@@ -29,7 +29,7 @@ export function extractGreenhouseTimers(
       });
       amount = result.amount;
     } catch {
-      amount = 1;
+      // Retain the initial `amount = 1` on upstream throw.
     }
 
     out.push({

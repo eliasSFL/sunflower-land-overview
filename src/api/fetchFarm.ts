@@ -49,5 +49,21 @@ export async function fetchFarm(
     throw new ApiError(res.status, message, parsed);
   }
 
+  // Minimal shape check — every downstream consumer assumes `farm` is
+  // present and `id` is numeric. A malformed 200 response from a
+  // misconfigured proxy would otherwise crash deeper in the pipeline.
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !("farm" in parsed) ||
+    typeof (parsed as Record<string, unknown>).farm !== "object"
+  ) {
+    throw new ApiError(
+      502,
+      "Unexpected response shape from /api/farms",
+      parsed,
+    );
+  }
+
   return parsed as FarmResponse;
 }

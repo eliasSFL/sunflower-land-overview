@@ -34,6 +34,7 @@
   --text-base-line-height: 26px;
 
   --text-lg-size: 42px;
+  --text-lg-line-height: 28px;
 
   color-scheme: dark;
 }
@@ -74,6 +75,7 @@ body {
   }
   .text-lg {
     font-size: var(--text-lg-size);
+    line-height: var(--text-lg-line-height);
   }
 
   .text-shadow {
