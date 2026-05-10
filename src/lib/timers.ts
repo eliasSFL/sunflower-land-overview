@@ -349,12 +349,18 @@ export function extractTimers(
       displayOverride = "Idle";
     }
 
+    // Mirror the game's in-world hive popover: it truncates the fraction to
+    // 4 decimal places (Decimal.ROUND_DOWN), multiplies by 100, and renders
+    // with exactly 2 decimal places + trailing zeros — e.g. "7.61%". Using
+    // Math.floor at 1e4 is equivalent to the Decimal pipeline for any
+    // 0..1 input we'd see here, with no extra dependency on the import path.
+    const percentDisplay = (Math.floor(fullness * 10000) / 100).toFixed(2);
     timers.push({
       category: "Beehives",
       label: `Beehive ${idx + 1}`,
       // Show the stored amount in the sublabel rather than as a count prefix:
       // "0.45× Beehive 1" would read awkwardly (you can't have 0.45 of a hive).
-      sublabel: `${formatYield(currentHoney)} honey · ${(fullness * 100).toFixed(0)}% full`,
+      sublabel: `${formatYield(currentHoney)} honey · ${percentDisplay}%`,
       readyAt,
       displayOverride,
       key: `hive-${id}`,
