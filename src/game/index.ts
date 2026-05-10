@@ -14,6 +14,7 @@ export {
   type CropMachinePackYieldArgs,
 } from "./yields.ts";
 export { getItemIcon, getBannerUrl } from "./icons.ts";
+export { getFlowerGrowSeconds, getFlowerYield } from "./flowers.ts";
 export type {
   GameState,
   CropName,
@@ -27,4 +28,8 @@ export type {
   Greenhouse,
   CropMachineQueueItem,
   CropMachineBuilding,
+  FlowerName,
+  PlantedFlower,
+  FlowerBed,
+  FlowersState,
 } from "./types.ts";

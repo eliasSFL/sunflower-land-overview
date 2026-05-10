@@ -119,6 +119,36 @@ export type CropMachineBuilding = {
   unallocatedOilTime?: number;
 };
 
+// FlowerName from the submodule is a long union of every variant ("Red
+// Pansy", "Yellow Carnation", etc.). Keeping it as `string` here avoids
+// duplicating that ~80-entry union; the runtime invariant is that
+// `state.flowers.flowerBeds[*].flower.name` is always a valid key in the
+// submodule's FLOWERS table, which getFlowerGrowSeconds relies on.
+export type FlowerName = string;
+
+export type PlantedFlower = {
+  name: FlowerName;
+  plantedAt: number;
+  amount?: number;
+  // Map of boost-name → whether the random crit succeeded at plant
+  // time. Determines which collectible/skill boosts actually fire when
+  // this specific flower is harvested. See harvestFlower.ts:getFlowerAmount.
+  criticalHit?: Record<string, number>;
+};
+
+export type FlowerBed = {
+  flower?: PlantedFlower;
+  createdAt: number;
+  removedAt?: number;
+  x?: number;
+  y?: number;
+};
+
+export type FlowersState = {
+  flowerBeds: Record<string, FlowerBed>;
+  discovered?: Record<string, string[]>;
+};
+
 export type GameState = {
   id?: number;
   bumpkin?: {
@@ -134,6 +164,7 @@ export type GameState = {
   crops?: Record<string, CropPlot>;
   fruitPatches?: Record<string, FruitPatch>;
   greenhouse?: Greenhouse;
+  flowers?: FlowersState;
   farmActivity?: Record<string, number>;
   island?: { type?: string };
   season?: { season?: string };
