@@ -40,6 +40,7 @@ export function TimerCard({ timer, now }: Props) {
   const showSublabel =
     (timer.category === "Cooking" ||
       timer.category === "Salt Nodes" ||
+      timer.category === "Beehives" ||
       timer.category === "Crop Machine" ||
       timer.category === "Crafting") &&
     timer.sublabels.length > 0;

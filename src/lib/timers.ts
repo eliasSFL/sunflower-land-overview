@@ -15,6 +15,7 @@ import {
   SUNSTONE_RECOVERY_SECONDS,
   TREE_RECOVERY_SECONDS,
 } from "./durations";
+import { formatYield } from "./format";
 import {
   predictAgingShed,
   predictAnimalProduce,
@@ -277,64 +278,88 @@ export function extractTimers(
     });
   }
 
-  // Beehives — honey production is fully deterministic given the hive's
-  // attached flowers. Each entry in `hive.flowers` carries a fixed
-  // [attachedAt, attachedUntil) window and a per-ms rate; the game's
-  // updateBeehives allocates these windows up front, so we don't need to
-  // guess the future. Walk the schedule chronologically until the cumulative
-  // produced (in elapsed-ms-equivalent) reaches one full production cycle
-  // (HONEY_FULL_SECONDS × 1000 ms).
+  // Beehives — one card per hive (like Salt Nodes), labelled "Beehive 1",
+  // "Beehive 2", … so they don't aggregate. The sublabel surfaces the
+  // currently stored honey so the player can see at a glance which hives
+  // are worth harvesting now vs. waiting on.
+  //
+  // Honey production is fully deterministic given the hive's attached
+  // flowers. Each entry in `hive.flowers` carries a fixed [attachedAt,
+  // attachedUntil) window and a per-ms rate; the game's updateBeehives
+  // allocates these windows up front, so we don't need to guess. Walk the
+  // schedule chronologically until the cumulative produced (in elapsed-
+  // ms-equivalent) reaches one full production cycle (HONEY_FULL_SECONDS ×
+  // 1000 ms).
   //
   // Note `honey.produced` is stored in *milliseconds* — full hive ==
-  // HONEY_FULL_MS, NOT 1.0. The previous version of this code mistakenly
-  // treated it as a 0..1 fraction.
+  // HONEY_FULL_MS, NOT 1.0.
   const HONEY_FULL_MS = HONEY_FULL_SECONDS * 1000;
-  for (const [id, hive] of Object.entries(state.beehives ?? {})) {
+  const beehiveIds = Object.keys(state.beehives ?? {}).sort(
+    // Numeric sort so "10" doesn't come before "2" in the per-hive labels.
+    (a, b) => Number(a) - Number(b),
+  );
+  beehiveIds.forEach((id, idx) => {
+    const hive = state.beehives![id];
     const honey = hive.honey;
-    if (!honey?.updatedAt) continue;
+    if (!honey) return;
     const producedMs = honey.produced ?? 0;
-    if (producedMs >= HONEY_FULL_MS) continue;
+    const fullness = Math.min(1, producedMs / HONEY_FULL_MS);
+    const isFull = producedMs >= HONEY_FULL_MS;
+    // predictBeehive applies the player's honey multiplier to the current
+    // fraction; that's what they'd actually receive on harvest now.
+    const currentHoney = predictBeehive(state, id) ?? fullness;
 
-    // Game accrues honey contiguously starting at `updatedAt`, capped by each
-    // flower's [attachedAt, attachedUntil) window. Sort by attachedAt to walk
-    // the timeline in order. Anything ending before updatedAt has already
-    // been counted into `produced` and contributes zero remaining time.
-    const flowers = (hive.flowers ?? [])
-      .slice()
-      .sort((a, b) => a.attachedAt - b.attachedAt);
-
-    let accrued = producedMs;
-    let readyAt: number | undefined;
-    for (const f of flowers) {
-      const start = Math.max(honey.updatedAt, f.attachedAt);
-      const end = f.attachedUntil;
-      if (end <= start) continue;
-      const rate = f.rate ?? 1;
-      const remaining = HONEY_FULL_MS - accrued;
-      const fillTime = remaining / rate;
-      const windowMs = end - start;
-      if (fillTime <= windowMs) {
-        readyAt = start + fillTime;
-        break;
+    let readyAt: number = Date.now();
+    let displayOverride: string | undefined;
+    if (isFull) {
+      displayOverride = "Ready";
+    } else if (honey.updatedAt) {
+      // Game accrues honey contiguously starting at `updatedAt`, capped by
+      // each flower's [attachedAt, attachedUntil) window. Sort by attachedAt
+      // to walk the timeline in order; anything ending before updatedAt has
+      // already been counted into `produced`.
+      const flowers = (hive.flowers ?? [])
+        .slice()
+        .sort((a, b) => a.attachedAt - b.attachedAt);
+      let accrued = producedMs;
+      let computed: number | undefined;
+      for (const f of flowers) {
+        const start = Math.max(honey.updatedAt, f.attachedAt);
+        const end = f.attachedUntil;
+        if (end <= start) continue;
+        const rate = f.rate ?? 1;
+        const remaining = HONEY_FULL_MS - accrued;
+        const fillTime = remaining / rate;
+        const windowMs = end - start;
+        if (fillTime <= windowMs) {
+          computed = start + fillTime;
+          break;
+        }
+        accrued += windowMs * rate;
       }
-      accrued += windowMs * rate;
+      if (computed !== undefined) {
+        readyAt = computed;
+      } else {
+        // No scheduled flower coverage is long enough to fill this hive —
+        // without additional flowers being planted, it sits idle. Anchor at
+        // now and signal that to the UI rather than implying a countdown.
+        displayOverride = hive.flowers?.length ? "Waiting on flowers" : "Idle";
+      }
+    } else {
+      displayOverride = "Idle";
     }
 
-    // No scheduled flower window is long enough to fill this hive — without
-    // additional flowers being planted, it'll never fill. Skip rather than
-    // showing a misleading countdown.
-    if (readyAt === undefined) continue;
-
-    const fullness = Math.min(1, producedMs / HONEY_FULL_MS);
     timers.push({
       category: "Beehives",
-      label: "Honey",
-      sublabel: `Hive ${id} · ${(fullness * 100).toFixed(0)}% full`,
+      label: `Beehive ${idx + 1}`,
+      // Show the stored amount in the sublabel rather than as a count prefix:
+      // "0.45× Beehive 1" would read awkwardly (you can't have 0.45 of a hive).
+      sublabel: `${formatYield(currentHoney)} honey · ${(fullness * 100).toFixed(0)}% full`,
       readyAt,
+      displayOverride,
       key: `hive-${id}`,
-      predictedYield: predictBeehive(state, id) ?? undefined,
     });
-  }
+  });
 
   // Resources (trees + rock-shaped resources). We skip entries where the
   // resource has never been touched (minedAt/choppedAt === 0) — they're
@@ -931,19 +956,22 @@ export function groupByCategory(
     else buckets.set(t.category, [t]);
   }
 
-  // Salt nodes are individually keyed ("Salt Node 1" … "Salt Node 6") so
-  // each lands in its own aggregation bucket. The default earliest-ready
-  // ordering interleaves them by milliseconds-of-next-charge, which makes
-  // the list look randomly shuffled. Re-sort numerically by the label's
-  // trailing digit so they read 1, 2, 3, …
-  const saltNodes = buckets.get("Salt Nodes");
-  if (saltNodes) {
-    saltNodes.sort((a, b) => {
+  // Salt nodes and beehives are individually keyed ("Salt Node 1" …,
+  // "Beehive 1" …) so each lands in its own aggregation bucket. The default
+  // earliest-ready ordering interleaves them by ready time, which makes the
+  // list look randomly shuffled. Re-sort numerically by the label's trailing
+  // digit so they read 1, 2, 3, …
+  const sortByTrailingNumber = (list: AggregatedTimer[]) => {
+    list.sort((a, b) => {
       const ai = parseInt(a.label.match(/(\d+)$/)?.[1] ?? "0", 10);
       const bi = parseInt(b.label.match(/(\d+)$/)?.[1] ?? "0", 10);
       return ai - bi;
     });
-  }
+  };
+  const saltNodes = buckets.get("Salt Nodes");
+  if (saltNodes) sortByTrailingNumber(saltNodes);
+  const beehives = buckets.get("Beehives");
+  if (beehives) sortByTrailingNumber(beehives);
 
   const out: Record<string, AggregatedTimer[]> = {};
   for (const cat of CATEGORY_ORDER) {
