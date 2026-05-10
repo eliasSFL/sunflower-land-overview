@@ -8,7 +8,17 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const ASSET_STUB = r("./src/game/stubs/asset-stub.ts");
 const EXTERNAL_STUB = r("./src/game/stubs/external-stub.ts");
 
+// SFL public asset CDN. The submodule reads this through
+// `import.meta.env.VITE_PRIVATE_IMAGE_URL` (lib/config.ts) and threads it
+// through `SUNNYSIDE.*` plus `CROP_LIFECYCLE` URL builders. Inlining it
+// here as a build-time constant means we don't need a `.env` file and the
+// value can't drift between local dev and the deployed Worker.
+const SFL_ASSET_CDN = "https://sunflower-land.com/testnet-assets";
+
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(SFL_ASSET_CDN),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     // Order matters: more-specific patterns first.
