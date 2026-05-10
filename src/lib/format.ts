@@ -1,39 +1,19 @@
 export function formatRemaining(ms: number): string {
   if (ms <= 0) return "Ready";
-  const totalSeconds = Math.ceil(ms / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
+  const s = Math.ceil(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 }
 
-export function formatAbsolute(ts: number): string {
-  return new Date(ts).toLocaleString(undefined, {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-export function statusFor(ms: number): "ready" | "soon" | "later" {
-  if (ms <= 0) return "ready";
-  if (ms <= 60 * 60 * 1000) return "soon";
-  return "later";
-}
-
-/** Compact yield-amount formatter: integers stay as-is, fractions get up
- * to two decimals with trailing zeros trimmed (e.g. 3 → "3", 3.1 → "3.1",
- * 3.14 → "3.14", 3.145 → "3.15"). Used for the count prefix on item cards. */
-export function formatYield(n: number): string {
-  if (Number.isInteger(n)) return n.toString();
-  const rounded = Math.round(n * 100) / 100;
-  if (Number.isInteger(rounded)) return rounded.toString();
-  // toFixed(2) keeps trailing zeros (3.1 → "3.10"); strip them so we render
-  // "3.1" not "3.10". The leading "0." case is already covered by isInteger.
-  return rounded.toFixed(2).replace(/0+$/, "");
+export function formatYield(amount: number): string {
+  if (!Number.isFinite(amount)) return "0";
+  // Trim trailing zeros: 3.10 → "3.1", 3.00 → "3", 3.14159 → "3.14".
+  const fixed = amount.toFixed(2);
+  return fixed.replace(/\.?0+$/, "");
 }

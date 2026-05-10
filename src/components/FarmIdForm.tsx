@@ -1,105 +1,89 @@
 import { useState } from "react";
 
+import { Button } from "./sfl-ui/index.ts";
+
 type Props = {
-  initialFarmId: string;
-  initialApiKey: string;
-  loading: boolean;
-  cooldownRemainingMs: number;
+  initialFarmId?: string;
+  initialApiKey?: string;
   onSubmit: (farmId: string, apiKey: string) => void;
-  onClear: () => void;
+  loading?: boolean;
+  // The most recently loaded credentials, if any. When the current form
+  // values differ from these, the cooldown doesn't apply (so switching
+  // farms / keys is instant). When they match, the cooldown gates the
+  // submit button to prevent rapid-refresh spam against the same farm.
+  lastLoaded?: { farmId: string; apiKey: string };
+  cooldownLeftMs?: number;
 };
 
 export function FarmIdForm({
-  initialFarmId,
-  initialApiKey,
-  loading,
-  cooldownRemainingMs,
+  initialFarmId = "",
+  initialApiKey = "",
   onSubmit,
-  onClear,
+  loading,
+  lastLoaded,
+  cooldownLeftMs = 0,
 }: Props) {
   const [farmId, setFarmId] = useState(initialFarmId);
   const [apiKey, setApiKey] = useState(initialApiKey);
-  const [revealKey, setRevealKey] = useState(false);
 
-  const cooldownSeconds = Math.ceil(cooldownRemainingMs / 1000);
-  const onCooldown = cooldownSeconds > 0;
+  const trimmedFarmId = farmId.trim();
+  const trimmedApiKey = apiKey.trim();
+  const valid = /^\d+$/.test(trimmedFarmId) && trimmedApiKey.length > 0;
+
+  const matchesLastLoaded =
+    lastLoaded != null &&
+    trimmedFarmId === lastLoaded.farmId &&
+    trimmedApiKey === lastLoaded.apiKey;
+
+  const cooldownBlocks = matchesLastLoaded && cooldownLeftMs > 0;
+  const disabled = !valid || loading || cooldownBlocks;
+
+  let label: string;
+  if (loading) {
+    label = "Loading…";
+  } else if (!matchesLastLoaded) {
+    label = "Load farm";
+  } else if (cooldownLeftMs > 0) {
+    label = `Refresh (${Math.ceil(cooldownLeftMs / 1000)}s)`;
+  } else {
+    label = "Refresh";
+  }
 
   return (
     <form
-      className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] items-end"
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!farmId || !apiKey) return;
-        onSubmit(farmId.trim(), apiKey.trim());
+        if (!disabled) onSubmit(trimmedFarmId, trimmedApiKey);
       }}
     >
-      <label className="block">
-        <span className="text-xs font-medium text-[--color-muted] uppercase tracking-wide">
-          Farm ID
-        </span>
+      <label className="flex flex-col gap-1 text-sm">
+        <span>Farm ID</span>
         <input
-          className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="rounded border border-[#3e2731] bg-[#f7e4c2] px-2 py-1 outline-none"
           inputMode="numeric"
-          placeholder="e.g. 12345"
+          pattern="\d*"
           value={farmId}
           onChange={(e) => setFarmId(e.target.value)}
-          disabled={loading}
+          placeholder="123456"
+          aria-label="Farm ID"
         />
       </label>
-
-      <label className="block">
-        <span className="flex items-center justify-between text-xs font-medium text-[--color-muted] uppercase tracking-wide">
-          API Key
-          <button
-            type="button"
-            className="text-amber-700 normal-case text-[11px] hover:underline"
-            onClick={() => setRevealKey((v) => !v)}
-            tabIndex={-1}
-          >
-            {revealKey ? "Hide" : "Show"}
-          </button>
-        </span>
+      <label className="flex flex-col gap-1 text-sm">
+        <span>API Key</span>
         <input
-          className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-mono shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          type={revealKey ? "text" : "password"}
-          placeholder="sfl.xxxxx.yyyyy"
+          className="rounded border border-[#3e2731] bg-[#f7e4c2] px-2 py-1 outline-none"
+          type="password"
+          autoComplete="off"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          disabled={loading}
+          placeholder="generated in Settings → Developer Options"
+          aria-label="API Key"
         />
       </label>
-
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 disabled:opacity-50"
-          disabled={loading || onCooldown || !farmId || !apiKey}
-          title={
-            onCooldown
-              ? `Wait ${cooldownSeconds}s before refreshing again`
-              : undefined
-          }
-        >
-          {loading
-            ? "Loading…"
-            : onCooldown
-              ? `Wait ${cooldownSeconds}s`
-              : "Load farm"}
-        </button>
-        {(initialFarmId || initialApiKey) && (
-          <button
-            type="button"
-            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[--color-muted] hover:bg-black/5"
-            onClick={() => {
-              setFarmId("");
-              setApiKey("");
-              onClear();
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <Button type="submit" disabled={disabled}>
+        {label}
+      </Button>
     </form>
   );
 }

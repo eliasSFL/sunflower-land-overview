@@ -1,0 +1,26 @@
+// Public surface of the submodule boundary. Every other module in the
+// overview imports from here, never directly from "features/..." or
+// "sunflower-land/..." paths. Re-exports are explicit (not export *) so
+// upstream signature changes fail to compile here, not 12 callsites away.
+
+export {
+  getCropYieldAmount,
+  getPatchFruitYield,
+  getGreenhouseYield,
+  type CropYieldArgs,
+  type PatchFruitYieldArgs,
+  type GreenhouseYieldArgs,
+} from "./yields.ts";
+export { getItemIcon, getBannerUrl } from "./icons.ts";
+export type {
+  GameState,
+  CropName,
+  CropPlot,
+  PatchFruitName,
+  PlantedFruit,
+  FruitPatch,
+  GreenhousePlantName,
+  GreenhousePlant,
+  GreenhousePot,
+  Greenhouse,
+} from "./types.ts";

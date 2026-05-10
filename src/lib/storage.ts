@@ -1,76 +1,37 @@
-// API key storage with a 7-day TTL.
-// We store `{ value, savedAt }` as JSON; on read, anything older than the TTL
-// is treated as absent (and removed). Farm ID has no TTL — it's not sensitive.
+// Tiny localStorage wrapper with a 7-day TTL so stale farm/api credentials
+// don't pin forever after a player rotates them.
 
-const API_KEY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const STORAGE_KEYS = {
-  farmId: "sl-overview:farmId",
-  apiKey: "sl-overview:apiKey",
-} as const;
+type Entry<T> = { v: T; at: number };
 
-type StoredKey = { value: string; savedAt: number };
-
-export function loadFarmId(): string {
-  return localStorage.getItem(STORAGE_KEYS.farmId) ?? "";
-}
-
-export function saveFarmId(id: string): void {
-  localStorage.setItem(STORAGE_KEYS.farmId, id);
-}
-
-export function clearFarmId(): void {
-  localStorage.removeItem(STORAGE_KEYS.farmId);
-}
-
-export function loadApiKey(): string {
-  const raw = localStorage.getItem(STORAGE_KEYS.apiKey);
-  if (!raw) return "";
-
-  let parsed: StoredKey;
+export function load<T>(key: string): T | undefined {
   try {
-    parsed = JSON.parse(raw) as StoredKey;
+    const raw = localStorage.getItem(key);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as Entry<T>;
+    if (Date.now() - parsed.at > TTL_MS) {
+      localStorage.removeItem(key);
+      return undefined;
+    }
+    return parsed.v;
   } catch {
-    // Legacy plain-string entry from before TTL was added — drop it.
-    localStorage.removeItem(STORAGE_KEYS.apiKey);
-    return "";
+    return undefined;
   }
-
-  if (
-    !parsed ||
-    typeof parsed.value !== "string" ||
-    typeof parsed.savedAt !== "number"
-  ) {
-    localStorage.removeItem(STORAGE_KEYS.apiKey);
-    return "";
-  }
-
-  if (Date.now() - parsed.savedAt > API_KEY_TTL_MS) {
-    localStorage.removeItem(STORAGE_KEYS.apiKey);
-    return "";
-  }
-
-  return parsed.value;
 }
 
-export function saveApiKey(value: string): void {
-  const entry: StoredKey = { value, savedAt: Date.now() };
-  localStorage.setItem(STORAGE_KEYS.apiKey, JSON.stringify(entry));
-}
-
-export function clearApiKey(): void {
-  localStorage.removeItem(STORAGE_KEYS.apiKey);
-}
-
-/** ms remaining before the stored API key expires; null if none stored. */
-export function apiKeyExpiresIn(): number | null {
-  const raw = localStorage.getItem(STORAGE_KEYS.apiKey);
-  if (!raw) return null;
+export function save<T>(key: string, value: T): void {
   try {
-    const parsed = JSON.parse(raw) as StoredKey;
-    if (typeof parsed.savedAt !== "number") return null;
-    return Math.max(0, parsed.savedAt + API_KEY_TTL_MS - Date.now());
+    localStorage.setItem(key, JSON.stringify({ v: value, at: Date.now() }));
   } catch {
-    return null;
+    // Quota exceeded or storage disabled — ignore.
+  }
+}
+
+export function clear(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* noop */
   }
 }

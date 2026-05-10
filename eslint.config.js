@@ -33,15 +33,38 @@ export default defineConfig([
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // Boundary enforcement: only src/game/** and src/components/sfl-ui/**
+      // are allowed to import bare specifiers that resolve into the
+      // sunflower-land submodule via Vite aliases. Everything else must
+      // go through src/game/ for type-safe re-exports.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            "features/*",
+            "lib/*",
+            "components/*",
+            "metadata/*",
+            "assets/*",
+          ],
+        },
+      ],
     },
   },
   {
-    // The yield-prediction service crosses the boundary into the sunflower-
-    // land submodule, whose modules are typed as ambient `any` (see
-    // src/types/game-modules.d.ts). We deliberately use `any` at the call
-    // boundary and re-narrow on the way out — disabling no-explicit-any
-    // here keeps the rule strict everywhere else in the overview.
-    files: ["src/lib/yields.ts", "src/stubs/**/*.ts"],
+    // The boundary directories themselves need to import these.
+    files: ["src/game/**/*.ts", "src/components/sfl-ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
+    // src/game/ is the only place that crosses the boundary into the
+    // sunflower-land submodule. Its modules are typed as ambient `any`
+    // (see src/game/game-modules.d.ts). We deliberately use `any` at the
+    // call boundary and re-narrow on the way out — disabling no-explicit-
+    // any here keeps the rule strict everywhere else in the overview.
+    files: ["src/game/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },
