@@ -1,40 +1,16 @@
 export type Category =
-  | "Daily Rewards"
   | "Crops"
   | "Fruit Patches"
   | "Greenhouse"
   | "Crop Machine"
-  | "Resources"
-  | "Salt Nodes"
-  | "Lava Pits"
-  | "Cooking"
-  | "Animals"
-  | "Flowers"
-  | "Beehives"
-  | "Mushrooms"
-  | "Crab Traps"
-  | "Aging Shed"
-  | "Composters"
-  | "Crafting";
+  | "Flowers";
 
 export const CATEGORY_ORDER: Category[] = [
-  "Daily Rewards",
   "Crops",
   "Fruit Patches",
   "Greenhouse",
   "Crop Machine",
-  "Resources",
-  "Salt Nodes",
-  "Lava Pits",
-  "Cooking",
-  "Animals",
   "Flowers",
-  "Beehives",
-  "Mushrooms",
-  "Crab Traps",
-  "Aging Shed",
-  "Composters",
-  "Crafting",
 ];
 
 export type Timer = {
