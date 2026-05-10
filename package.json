@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "npm run build && wrangler pages dev dist",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
