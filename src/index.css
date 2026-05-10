@@ -1,30 +1,98 @@
 @import "tailwindcss";
 
-@theme {
-  --color-bg: #faf3e0;
-  --color-surface: #ffffff;
-  --color-ink: #2b2b2b;
-  --color-muted: #6b7280;
-  --color-accent: #f59e0b;
-  --color-ready: #16a34a;
-  --color-soon: #f59e0b;
-  --color-later: #3b82f6;
+/* SFL pixel-art fonts, hosted on the testnet asset CDN. We pull only the
+   ones the UI actually uses; the submodule's full styles.css references
+   more deps than we want. */
+@font-face {
+  font-family: "Basic";
+  src: url("https://sunflower-land.com/testnet-assets/fonts/Hint.ttf");
+}
+@font-face {
+  font-family: "Teeny";
+  src: url("https://sunflower-land.com/testnet-assets/fonts/Teeny.otf");
+}
+@font-face {
+  font-family: "Secondary";
+  src: url("https://sunflower-land.com/testnet-assets/fonts/Secondary.ttf");
+}
+
+/* Font sizes copied verbatim from sunflower-land/src/styles.css so the
+   chrome's `text-xs`/`text-sm`/etc. match the game's typographic scale. */
+:root {
+  --font-family: "Basic", "Ark", sans-serif;
+
+  --text-xxs-size: 20px;
+  --text-xxs-line-height: 12px;
+
+  --text-xs-size: 24px;
+  --text-xs-line-height: 14px;
+
+  --text-sm-size: 30px;
+  --text-sm-line-height: 20px;
+
+  --text-base-size: 36px;
+  --text-base-line-height: 26px;
+
+  --text-lg-size: 42px;
+
+  color-scheme: dark;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
-  background: var(--color-bg);
-  color: var(--color-ink);
+  font-family: var(--font-family);
 }
 
 body {
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  margin: 0;
+  background: #0b1220;
+  color: #e2e8f0;
+  font-size: var(--text-sm-size);
+  line-height: var(--text-sm-line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Override Tailwind's `text-*` classes with the game's pixel-art scale.
+   `@layer utilities` ensures these win over Tailwind's defaults. */
+@layer utilities {
+  .text-xxs {
+    font-size: var(--text-xxs-size);
+    line-height: var(--text-xxs-line-height);
+  }
+  .text-xs {
+    font-size: var(--text-xs-size);
+    line-height: var(--text-xs-line-height);
+  }
+  .text-sm {
+    font-size: var(--text-sm-size);
+    line-height: var(--text-sm-line-height);
+  }
+  .text-base {
+    font-size: var(--text-base-size);
+    line-height: var(--text-base-line-height);
+  }
+  .text-lg {
+    font-size: var(--text-lg-size);
+  }
+
+  .text-shadow {
+    text-shadow: 0px 1px #714431;
+  }
+  .text-shadow-md {
+    text-shadow: 0px 2px #714431;
+  }
+}
+
+/* Crisp pixel-art for upscaled images (border-image, icons). */
+img,
+[style*="border-image"] {
+  image-rendering: pixelated;
+}
+
+/* Anything wearing the SFL pixel chrome has a beige/orange background, so
+   text must be dark (matches submodule's body/button/input color rule). */
+[style*="border-image"],
+[style*="border-image"] input {
+  color: #3e2731;
 }

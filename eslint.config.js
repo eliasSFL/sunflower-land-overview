@@ -36,12 +36,12 @@ export default defineConfig([
     },
   },
   {
-    // The yield-prediction service crosses the boundary into the sunflower-
-    // land submodule, whose modules are typed as ambient `any` (see
-    // src/types/game-modules.d.ts). We deliberately use `any` at the call
-    // boundary and re-narrow on the way out — disabling no-explicit-any
-    // here keeps the rule strict everywhere else in the overview.
-    files: ["src/lib/yields.ts", "src/stubs/**/*.ts"],
+    // src/game/ is the only place that crosses the boundary into the
+    // sunflower-land submodule. Its modules are typed as ambient `any`
+    // (see src/game/game-modules.d.ts). We deliberately use `any` at the
+    // call boundary and re-narrow on the way out — disabling no-explicit-
+    // any here keeps the rule strict everywhere else in the overview.
+    files: ["src/game/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },

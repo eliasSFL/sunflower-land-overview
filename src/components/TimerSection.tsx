@@ -1,45 +1,31 @@
-import type { AggregatedTimer } from "../lib/timers";
-import { TimerCard } from "./TimerCard";
+import type { AggregatedTimer, Category } from "../timers/index.ts";
+import { TimerCard } from "./TimerCard.tsx";
+import { InnerPanel, Label } from "./sfl-ui/index.ts";
 
 type Props = {
-  category: string;
-  id: string;
+  category: Category;
   timers: AggregatedTimer[];
   now: number;
 };
 
-export function TimerSection({ category, id, timers, now }: Props) {
-  const readyItems = timers.reduce(
-    (sum, t) => (t.earliestReadyAt - now <= 0 ? sum + t.count : sum),
-    0,
-  );
-  const totalItems = timers.reduce((sum, t) => sum + t.count, 0);
+export function TimerSection({ category, timers, now }: Props) {
+  if (timers.length === 0) return null;
+
+  const sorted = [...timers].sort((a, b) => a.readyAt - b.readyAt);
+  const totalCount = sorted.reduce((acc, t) => acc + t.count, 0);
 
   return (
-    // scroll-mt accounts for the sticky header on small screens so the
-    // section title isn't tucked under the bar after a jump.
-    <section id={id} className="scroll-mt-20 space-y-2">
-      <header className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[--color-muted]">
-          {category}
-        </h2>
-        <span className="text-xs text-[--color-muted]">
-          {readyItems > 0
-            ? `${readyItems} ready · ${totalItems} total`
-            : `${totalItems} total`}
-        </span>
+    <InnerPanel className="mb-2 flex w-full break-inside-avoid flex-col gap-2">
+      <header>
+        <Label type="default">
+          {category} · {totalCount}
+        </Label>
       </header>
-      {timers.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-black/10 bg-white p-4 text-center text-xs text-[--color-muted]">
-          Nothing active
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {timers.map((t) => (
-            <TimerCard key={t.key} timer={t} now={now} />
-          ))}
-        </ul>
-      )}
-    </section>
+      <div className="flex flex-col gap-2">
+        {sorted.map((t) => (
+          <TimerCard key={t.id} timer={t} now={now} />
+        ))}
+      </div>
+    </InnerPanel>
   );
 }

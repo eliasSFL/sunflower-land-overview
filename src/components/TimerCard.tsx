@@ -1,120 +1,48 @@
-import { useState } from "react";
-import type { AggregatedTimer } from "../lib/timers";
-import {
-  formatAbsolute,
-  formatRemaining,
-  formatYield,
-  statusFor,
-} from "../lib/format";
-import { getIconUrl } from "../lib/icons";
+import type { AggregatedTimer } from "../timers/index.ts";
+import { statusOf } from "../timers/index.ts";
+import { formatRemaining, formatYield } from "../lib/format.ts";
+import { Label } from "./sfl-ui/index.ts";
 
-type Props = { timer: AggregatedTimer; now: number };
+type Props = {
+  timer: AggregatedTimer;
+  now: number;
+};
 
-const STATUS_STYLES: Record<
-  ReturnType<typeof statusFor>,
-  { dot: string; text: string }
-> = {
-  ready: { dot: "bg-green-500", text: "text-green-700" },
-  soon: { dot: "bg-amber-500", text: "text-amber-700" },
-  later: { dot: "bg-blue-500", text: "text-blue-700" },
+type LabelType = "success" | "warning" | "info" | "default";
+
+const STATUS_LABEL: Record<ReturnType<typeof statusOf>, LabelType> = {
+  ready: "success",
+  soon: "warning",
+  later: "info",
 };
 
 export function TimerCard({ timer, now }: Props) {
-  const earliestRemaining = timer.earliestReadyAt - now;
-  const status = statusFor(earliestRemaining);
-  const style = STATUS_STYLES[status];
+  const status = statusOf(timer.readyAt, now);
+  const remaining = formatRemaining(timer.readyAt - now);
+  const yieldAmount = timer.predictedYield?.amount ?? 0;
+  const item = timer.predictedYield?.item ?? timer.label;
 
-  // Only show the "all ready" line when items in the group finish at
-  // different times — usually they're planted/queued together and share one
-  // ready time, so the extra line would just be noise.
-  const hasRange =
-    timer.count > 1 && timer.latestReadyAt > timer.earliestReadyAt;
-
-  const iconUrl = getIconUrl(timer.category, timer.label);
-  const [iconBroken, setIconBroken] = useState(false);
-  const showIcon = iconUrl && !iconBroken;
-
-  // Sublabels (e.g. cooking buildings, salt charge counts). Joined with " · "
-  // when there's more than one — currently only Cooking can have multiple
-  // (e.g. same recipe queued in Bakery + Kitchen).
-  const showSublabel =
-    (timer.category === "Cooking" ||
-      timer.category === "Salt Nodes" ||
-      timer.category === "Crop Machine" ||
-      timer.category === "Crafting") &&
-    timer.sublabels.length > 0;
-  const sublabelText = showSublabel ? timer.sublabels.join(" · ") : null;
+  const headline =
+    yieldAmount > 0
+      ? `${formatYield(yieldAmount)} ${item}`
+      : timer.count > 1
+        ? `${timer.count}× ${timer.label}`
+        : timer.label;
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-white p-3 shadow-sm">
-      <div className="flex min-w-0 items-center gap-3">
-        {showIcon ? (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 min-w-0">
+        {timer.icon ? (
           <img
-            src={iconUrl}
+            src={timer.icon}
             alt=""
-            // object-contain keeps the source aspect ratio inside a square
-            // 28×28 box — non-square pixel art (oil barrel, ores) stays
-            // un-stretched while every row still allocates the same width.
-            className="h-7 w-7 shrink-0 object-contain"
-            style={{ imageRendering: "pixelated" }}
-            onError={() => setIconBroken(true)}
-            loading="lazy"
-            decoding="async"
+            className="h-8 w-8 shrink-0 object-contain"
+            aria-hidden
           />
-        ) : (
-          <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-        )}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {showIcon && (
-              <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-            )}
-            <span className="truncate font-medium">
-              {timer.totalPredictedYield != null ? (
-                // When a yield prediction is available, surface it as the
-                // count prefix directly (e.g. "204.6× Soybean") instead of
-                // splitting it into "66× Soybean → est. 204.6". The raw
-                // plot/node count is still implicit in the section header
-                // (e.g. "CROPS · 66 total").
-                <span className="mr-1.5 text-[--color-muted]">
-                  {formatYield(timer.totalPredictedYield)}×
-                </span>
-              ) : (
-                timer.count > 1 && (
-                  <span className="mr-1.5 text-[--color-muted]">
-                    {timer.count}×
-                  </span>
-                )
-              )}
-              {timer.label}
-            </span>
-          </div>
-          {sublabelText && (
-            <div className="truncate text-xs text-[--color-muted]">
-              {sublabelText}
-            </div>
-          )}
-          {hasRange && (
-            <div className="truncate text-xs text-[--color-muted]">
-              all ready in {formatRemaining(timer.latestReadyAt - now)}
-            </div>
-          )}
-        </div>
+        ) : null}
+        <span className="text-sm truncate">{headline}</span>
       </div>
-      <div className="shrink-0 text-right">
-        <div className={`text-sm ${style.text}`}>
-          {timer.displayOverride
-            ? timer.displayOverride
-            : timer.isDeadline && earliestRemaining > 0
-              ? `in ${formatRemaining(earliestRemaining)}`
-              : formatRemaining(earliestRemaining)}
-        </div>
-        {!timer.displayOverride && (
-          <div className="text-[11px] text-[--color-muted]">
-            {formatAbsolute(timer.earliestReadyAt)}
-          </div>
-        )}
-      </div>
-    </li>
+      <Label type={STATUS_LABEL[status]}>{remaining}</Label>
+    </div>
   );
 }
