@@ -97,8 +97,8 @@ export function extractTimers(
   //
   // `nextCounter("Soybean Harvested", farmActivity)` returns the right
   // counter for the i-th Soybean we emit and bumps the local sequence.
-  const farmActivity = (state as { farmActivity?: Record<string, number> })
-    .farmActivity ?? {};
+  const farmActivity =
+    (state as { farmActivity?: Record<string, number> }).farmActivity ?? {};
   const sequenceCounters = new Map<string, number>();
   const nextCounter = (activityName: string): number => {
     const base = farmActivity[activityName] ?? 0;
@@ -277,17 +277,60 @@ export function extractTimers(
     });
   }
 
-  // Beehives — we approximate full-from-zero as 24h, scaled by current produced.
+  // Beehives — honey production is fully deterministic given the hive's
+  // attached flowers. Each entry in `hive.flowers` carries a fixed
+  // [attachedAt, attachedUntil) window and a per-ms rate; the game's
+  // updateBeehives allocates these windows up front, so we don't need to
+  // guess the future. Walk the schedule chronologically until the cumulative
+  // produced (in elapsed-ms-equivalent) reaches one full production cycle
+  // (HONEY_FULL_SECONDS × 1000 ms).
+  //
+  // Note `honey.produced` is stored in *milliseconds* — full hive ==
+  // HONEY_FULL_MS, NOT 1.0. The previous version of this code mistakenly
+  // treated it as a 0..1 fraction.
+  const HONEY_FULL_MS = HONEY_FULL_SECONDS * 1000;
   for (const [id, hive] of Object.entries(state.beehives ?? {})) {
-    const produced = hive.honey?.produced ?? 0;
-    const updatedAt = hive.honey?.updatedAt;
-    if (!updatedAt || produced >= 1) continue;
-    const remainingSeconds = HONEY_FULL_SECONDS * (1 - produced);
+    const honey = hive.honey;
+    if (!honey?.updatedAt) continue;
+    const producedMs = honey.produced ?? 0;
+    if (producedMs >= HONEY_FULL_MS) continue;
+
+    // Game accrues honey contiguously starting at `updatedAt`, capped by each
+    // flower's [attachedAt, attachedUntil) window. Sort by attachedAt to walk
+    // the timeline in order. Anything ending before updatedAt has already
+    // been counted into `produced` and contributes zero remaining time.
+    const flowers = (hive.flowers ?? [])
+      .slice()
+      .sort((a, b) => a.attachedAt - b.attachedAt);
+
+    let accrued = producedMs;
+    let readyAt: number | undefined;
+    for (const f of flowers) {
+      const start = Math.max(honey.updatedAt, f.attachedAt);
+      const end = f.attachedUntil;
+      if (end <= start) continue;
+      const rate = f.rate ?? 1;
+      const remaining = HONEY_FULL_MS - accrued;
+      const fillTime = remaining / rate;
+      const windowMs = end - start;
+      if (fillTime <= windowMs) {
+        readyAt = start + fillTime;
+        break;
+      }
+      accrued += windowMs * rate;
+    }
+
+    // No scheduled flower window is long enough to fill this hive — without
+    // additional flowers being planted, it'll never fill. Skip rather than
+    // showing a misleading countdown.
+    if (readyAt === undefined) continue;
+
+    const fullness = Math.min(1, producedMs / HONEY_FULL_MS);
     timers.push({
       category: "Beehives",
       label: "Honey",
-      sublabel: `Hive ${id} · ${(produced * 100).toFixed(0)}% full`,
-      readyAt: updatedAt + remainingSeconds * 1000,
+      sublabel: `Hive ${id} · ${(fullness * 100).toFixed(0)}% full`,
+      readyAt,
       key: `hive-${id}`,
       predictedYield: predictBeehive(state, id) ?? undefined,
     });
@@ -802,7 +845,6 @@ const CATEGORY_ORDER: TimerCategory[] = [
   "Composters",
   "Crafting",
 ];
-
 
 /**
  * Categories the player has infrastructure for, even if no timers are running

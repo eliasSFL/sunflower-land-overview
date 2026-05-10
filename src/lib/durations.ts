@@ -50,10 +50,11 @@ export const GREENHOUSE_FRUIT_SECONDS: Record<string, number> = {
   Grape: 12 * 60 * 60,
 };
 
-// Honey production: a beehive's `honey.produced` counts up to 1 unit (1.0).
-// Production rate depends on attached flowers; without flowers, no progress.
-// We approximate full-from-zero as 24h — used only when we cannot infer
-// attached-flower rate.
+// Honey production: a beehive's `honey.produced` is stored in milliseconds
+// (elapsed-ms-equivalent). A full hive is HONEY_FULL_SECONDS × 1000 ms — i.e.
+// one complete production cycle equals 24 hours of attached-flower time at
+// 1× rate. Production only accrues while a flower is attached; rate boosts
+// (Queen Bee, Beekeeper Hat, etc.) speed up the per-flower contribution.
 export const HONEY_FULL_SECONDS = 24 * 60 * 60;
 
 // Resource recovery times (seconds) — sourced from

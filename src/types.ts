@@ -67,8 +67,21 @@ export type Animal = {
   asleepAt: number;
 };
 
+export type AttachedFlower = {
+  id: string;
+  attachedAt: number;
+  attachedUntil: number;
+  rate?: number;
+};
+
 export type Beehive = {
   honey: { updatedAt: number; produced: number };
+  /** Pre-scheduled flower attachments. The game's `attachFlowers` allocates
+   * upcoming flower bloom windows to hives at every state mutation, so this
+   * array is the authoritative deterministic source for when honey will
+   * accrue. Each entry contributes `(attachedUntil - attachedAt) * rate`
+   * milliseconds of honey to `produced`. */
+  flowers?: AttachedFlower[];
 };
 
 export type GreenhouseSlot = {
