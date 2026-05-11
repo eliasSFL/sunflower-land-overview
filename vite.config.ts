@@ -8,16 +8,23 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const ASSET_STUB = r("./src/game/stubs/asset-stub.ts");
 const EXTERNAL_STUB = r("./src/game/stubs/external-stub.ts");
 
-// SFL public asset CDN. The submodule reads this through
-// `import.meta.env.VITE_PRIVATE_IMAGE_URL` (lib/config.ts) and threads it
-// through `SUNNYSIDE.*` plus `CROP_LIFECYCLE` URL builders. Inlining it
-// here as a build-time constant means we don't need a `.env` file and the
-// value can't drift between local dev and the deployed Worker.
-const SFL_ASSET_CDN = "https://sunflower-land.com/testnet-assets";
+// SFL public asset CDN + network. The submodule reads both through
+// `import.meta.env.*` (lib/config.ts) and threads them through
+// `SUNNYSIDE.*`, `CROP_LIFECYCLE`, and `getBudImage` URL builders.
+// Inlining as build-time constants means we don't need a `.env` file
+// and the values can't drift between local dev and the deployed Worker.
+//
+// We always point at MAINNET — this app shows live mainnet farm data
+// (`api.sunflower-land.com/community/farms/<id>`), so the asset CDN and
+// the `mainnet` ↔ `testnet-buds` switch in `getBudImage` need to match.
+// Values mirror the upstream's `.github/workflows/mainnet.yml`.
+const SFL_ASSET_CDN = "https://sunflower-land.com/game-assets";
+const SFL_NETWORK = "mainnet";
 
 export default defineConfig({
   define: {
     "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(SFL_ASSET_CDN),
+    "import.meta.env.VITE_NETWORK": JSON.stringify(SFL_NETWORK),
   },
   plugins: [react(), tailwindcss()],
   resolve: {
