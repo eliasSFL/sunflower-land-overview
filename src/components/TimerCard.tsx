@@ -1,7 +1,10 @@
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
-import { formatRemaining, formatYield } from "../lib/format.ts";
+import { getChromeIcon } from "../game/index.ts";
+import { formatReadyAt, formatRemaining, formatYield } from "../lib/format.ts";
 import { Label } from "./sfl-ui/index.ts";
+
+const CHEVRON_DOWN = getChromeIcon("chevron_down");
 
 type Props = {
   timer: AggregatedTimer;
@@ -46,18 +49,35 @@ export function TimerCard({ timer, now }: Props) {
             aria-hidden
           />
         ) : null}
-        <span className="text-sm truncate">{headline}</span>
-        {hasBoosts ? (
-          <span
-            className="text-xs opacity-60 shrink-0"
-            aria-hidden
-            title="Click to see boosts"
-          >
-            ⓘ
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-sm truncate">{headline}</span>
+            {hasBoosts ? (
+              <img
+                src={CHEVRON_DOWN}
+                alt=""
+                aria-hidden
+                title="Click to see boosts"
+                className="h-auto w-[24px] shrink-0 transition-transform group-open:rotate-180"
+                style={{ imageRendering: "pixelated" }}
+              />
+            ) : null}
+          </div>
+          {timer.subtext ? (
+            <span className="text-xs opacity-60 truncate">
+              {timer.subtext}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        <Label type={STATUS_LABEL[status]}>{remaining}</Label>
+        {status !== "ready" ? (
+          <span className="text-xs opacity-60 whitespace-nowrap">
+            {formatReadyAt(timer.readyAt, now)}
           </span>
         ) : null}
       </div>
-      <Label type={STATUS_LABEL[status]}>{remaining}</Label>
     </div>
   );
 

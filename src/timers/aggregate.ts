@@ -12,25 +12,29 @@ import type { AggregatedBoost, AggregatedTimer, Boost, Timer } from "./types.ts"
 // Order within the input is preserved for the first-seen entry per group.
 
 // Merge a per-plot boost list into the running tally for an aggregated
-// timer. Same name+value pair increments count; otherwise pushed.
+// timer. Same name+value pair adds `weight ?? 1` to the count; otherwise
+// pushed. `weight` captures the source node's innate multiplier (Tree/
+// Rock `multiplier`) so an ancient tree (mult=16) firing one Foreman
+// Beaver shows as "x1.2 ×16" rather than "x1.2 ×1".
 function mergeBoosts(
   tally: AggregatedBoost[],
   incoming: Boost[] | undefined,
 ): AggregatedBoost[] {
   if (!incoming || incoming.length === 0) return tally;
   for (const b of incoming) {
+    const w = b.weight ?? 1;
     const existing = tally.find(
       (t) => t.name === b.name && t.value === b.value,
     );
     if (existing) {
-      existing.count += 1;
+      existing.count += w;
     } else {
       tally.push({
         name: b.name,
         value: b.value,
         icon: b.icon,
         label: b.label,
-        count: 1,
+        count: w,
       });
     }
   }

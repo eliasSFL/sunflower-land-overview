@@ -50,6 +50,15 @@ export function getBannerUrl(
   return banners?.[key] ?? "";
 }
 
+// Common chrome icons (chevrons, arrows). Narrow accessor — callers
+// avoid importing SUNNYSIDE directly to keep the boundary clean.
+export function getChromeIcon(
+  key: "chevron_down" | "chevron_up" | "chevron_right",
+): string {
+  const icons = (UPSTREAM_SUNNYSIDE as { icons?: Record<string, string> }).icons;
+  return icons?.[key] ?? "";
+}
+
 // Boost name → icon URL. Mirrors what BoostsDisplay.tsx shows in-game,
 // but reimplemented locally so we don't pull in the BoostsDisplay React
 // component and its transitive .tsx dependencies (RequirementsLabel,

@@ -17,3 +17,37 @@ export function formatYield(amount: number): string {
   const fixed = amount.toFixed(2);
   return fixed.replace(/\.?0+$/, "");
 }
+
+// Wall-clock time of a future `readyAt` in the viewer's locale. Adds a
+// "tomorrow" / weekday hint when the time falls on a different calendar
+// day from `now` so a "9:15 PM" tag doesn't look like it's coming up in
+// 20 minutes when it's actually the next morning.
+export function formatReadyAt(readyAt: number, now: number): string {
+  const ready = new Date(readyAt);
+  const ref = new Date(now);
+  const time = ready.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  // Same calendar day → just the time.
+  if (
+    ready.getFullYear() === ref.getFullYear() &&
+    ready.getMonth() === ref.getMonth() &&
+    ready.getDate() === ref.getDate()
+  ) {
+    return time;
+  }
+  // Next calendar day → "tomorrow 9:15 AM".
+  const oneDay = 24 * 60 * 60 * 1000;
+  const tomorrow = new Date(ref.getTime() + oneDay);
+  if (
+    ready.getFullYear() === tomorrow.getFullYear() &&
+    ready.getMonth() === tomorrow.getMonth() &&
+    ready.getDate() === tomorrow.getDate()
+  ) {
+    return `tomorrow ${time}`;
+  }
+  // Further out → "Tue 9:15 AM" (short weekday).
+  const weekday = ready.toLocaleDateString(undefined, { weekday: "short" });
+  return `${weekday} ${time}`;
+}

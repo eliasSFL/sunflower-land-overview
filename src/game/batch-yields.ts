@@ -51,6 +51,13 @@ export type YieldBoost = {
   value: string;
   icon: string;
   label: string;
+  // Per-node multiplier weight; absent ≡ 1. Resource nodes (trees,
+  // stones, iron, gold) can have an innate `multiplier` (e.g. 16 for
+  // an ancient tree) — every boost firing on that node contributes
+  // `multiplier` times harder. The aggregator uses this when merging
+  // identical name+value pairs so a single ancient tree shows as
+  // "x1.2 ×16" instead of "x1.2 ×1".
+  weight?: number;
 };
 
 export type YieldEntry = {
@@ -85,6 +92,31 @@ function normBoosts(raw: unknown, state: GameState): YieldBoost[] {
     }
   }
   return out;
+}
+
+// Tag every boost on a resource node with the node's innate multiplier.
+// Resource yields in the submodule scale the whole accumulated `amount`
+// by `node.multiplier ?? 1` before returning, so a single ancient tree
+// (multiplier 16) contributes 16× the effect of a normal tree (1) for
+// every boost. The aggregator uses `boost.weight` to weight the merge
+// count: a Foreman Beaver firing on one ancient tree shows up as
+// "x1.2 ×16", not "x1.2 ×1".
+//
+// EXCEPTION: Tier 2/3 Bonus rows are pushed by upstream AFTER the
+// innate multiplier (`amount *= multiplier; amount += 0.5;`), so their
+// face value already reflects the true contribution regardless of
+// node multiplier. They get weight 1 — a single ancient tree shows
+// "Tier 3 Bonus +2.5 ×1", not "×16".
+const POST_MULTIPLIER_BOOSTS = new Set(["Tier 2 Bonus", "Tier 3 Bonus"]);
+
+function weightBoosts(
+  boosts: YieldBoost[],
+  nodeMultiplier: number,
+): YieldBoost[] {
+  if (!Number.isFinite(nodeMultiplier) || nodeMultiplier === 1) return boosts;
+  return boosts.map((b) =>
+    POST_MULTIPLIER_BOOSTS.has(b.name) ? b : { ...b, weight: nodeMultiplier },
+  );
 }
 
 // --- Crops ----------------------------------------------------------
@@ -251,7 +283,10 @@ export function batchWoodYields(args: {
       });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed, game),
+        boosts: weightBoosts(
+          normBoosts(upstream?.boostsUsed, game),
+          tree.multiplier ?? 1,
+        ),
       });
       // getWoodDropAmount doesn't return aoe — wood bonuses aren't
       // AOE-gated. No state threading needed.
@@ -311,7 +346,10 @@ function batchRockYields(
       });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed, game),
+        boosts: weightBoosts(
+          normBoosts(upstream?.boostsUsed, game),
+          rock.multiplier ?? 1,
+        ),
       });
       if (upstream?.aoe) {
         workingGame = {

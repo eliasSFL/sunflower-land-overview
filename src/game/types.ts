@@ -60,3 +60,6 @@ export type FlowersState = GameState["flowers"];
 // PlantedFruit was historically exposed as a top-level type; mirror the
 // submodule's shape for that key too.
 export type { PlantedFlower } from "features/game/types/game";
+
+// Salt farm.
+export type { SaltNode, SaltNodes, SaltFarm, Salt } from "features/game/types/salt";

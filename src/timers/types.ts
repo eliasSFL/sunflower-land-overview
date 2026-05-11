@@ -5,7 +5,8 @@ export type Category =
   | "Crop Machine"
   | "Flowers"
   | "Beehives"
-  | "Resources";
+  | "Resources"
+  | "Salt";
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -15,6 +16,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Flowers",
   "Beehives",
   "Resources",
+  "Salt",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
@@ -24,11 +26,15 @@ export const CATEGORY_ORDER: Category[] = [
 // the same upstream helper BoostsDisplay uses; empty string when the
 // resolver returns nothing (rare — usually the lightning fallback).
 // `label` is the display string (startCased / translated upstream).
+// `weight` is the per-node multiplier (innate Tree/Rock `multiplier` —
+// ancient trees, upgraded rocks, etc.); absent ≡ 1. The aggregator
+// sums weights into the `count` shown on the right of each row.
 export type Boost = {
   name: string;
   value: string;
   icon?: string;
   label?: string;
+  weight?: number;
 };
 
 // Aggregated boost: same name+value seen on `count` plots in the merged
@@ -57,6 +63,9 @@ export type Timer = {
   // Sourced from the upstream `boostsUsed` arrays — see
   // sunflower-land/src/features/game/events/landExpansion/harvest.ts.
   boosts?: Boost[];
+  // Small text rendered under the headline. Useful for state that
+  // doesn't fit "<amount> <item>" — e.g. salt charges "2/3 charges".
+  subtext?: string;
   metadata?: Record<string, string>;
 };
 

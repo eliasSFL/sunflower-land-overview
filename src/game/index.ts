@@ -42,6 +42,7 @@ export {
   getBannerUrl,
   getBoostIcon,
   getBoostLabel,
+  getChromeIcon,
 } from "./icons.ts";
 
 // Pure passthroughs from the submodule. Re-exporting keeps timer files
@@ -60,6 +61,18 @@ export {
   SUNSTONE_RECOVERY_TIME,
 } from "features/game/lib/constants";
 export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/drillOilReserve";
+// Salt farm — these are deterministic helpers; never read salt.storedCharges
+// or salt.nextChargeAt directly off the game state. Run the node through
+// `materializeSaltRegen` first so accrued charges since the last server
+// touch are realized against `now`.
+export {
+  materializeSaltRegen,
+  getSaltChargeGenerationTime,
+  getMaxStoredSaltCharges,
+  getNextSaltChargeInSeconds,
+  SALT_CHARGE_GENERATION_TIME,
+  MAX_STORED_SALT_CHARGES_PER_NODE,
+} from "features/game/types/salt";
 export {
   DEFAULT_HONEY_PRODUCTION_TIME,
   refreshBeehives,
@@ -94,4 +107,8 @@ export type {
   FiniteResource,
   Oil,
   OilReserve,
+  SaltNode,
+  SaltNodes,
+  SaltFarm,
+  Salt,
 } from "./types.ts";
