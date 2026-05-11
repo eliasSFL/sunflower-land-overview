@@ -40,9 +40,9 @@
   //   3. Uncomment "triggers" + "vars" below and set VAPID_SUBJECT to
   //      a real mailto: or https: URL (RFC 8292).
   //
-  // "kv_namespaces": [
-  //   { "binding": "PUSH_SUBS", "id": "<kv-namespace-id>" }
-  // ],
-  // "triggers": { "crons": ["* * * * *"] },
-  // "vars": { "VAPID_SUBJECT": "mailto:you@example.com" },
+  "kv_namespaces": [
+    { "binding": "PUSH_SUBS", "id": "c9ac8059fa5247fcbd943937cbc7f3d5" },
+  ],
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": { "VAPID_SUBJECT": "mailto:elias@sunflower-land.com" },
 }
