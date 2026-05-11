@@ -10,12 +10,11 @@
 // Bump SHELL_CACHE when the cache contract changes. Hashed assets carry
 // their own cache key in the filename so they don't need versioning.
 
-const SHELL_CACHE = "sfl-overview-shell-v1";
+const SHELL_CACHE = "sfl-overview-shell-v3";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/favicon.webp",
-  "/icons/app-icon.svg",
+  "/icons/sfl_overview-192.webp",
 ];
 
 self.addEventListener("install", (event) => {
@@ -93,8 +92,8 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "Sunflower Land Overview";
   const options = {
     body: data.body ?? "",
-    icon: data.icon ?? "/icons/app-icon.svg",
-    badge: "/icons/app-icon.svg",
+    icon: data.icon ?? "/icons/sfl_overview-192.webp",
+    badge: "/icons/sfl_overview-badge-96.webp",
     tag: data.tag,
     data: { url: data.url ?? "/" },
     // Re-notify even when tag matches, so the user sees a fresh bump if

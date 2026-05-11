@@ -56,8 +56,8 @@ async function fireNotification(t: AggregatedTimer): Promise<void> {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(`${t.category}: ${t.label} ready`, {
       body: bodyOf(t),
-      icon: t.icon ?? "/icons/app-icon.svg",
-      badge: "/icons/app-icon.svg",
+      icon: t.icon ?? "/icons/sfl_overview-192.webp",
+      badge: "/icons/sfl_overview-badge-96.webp",
       tag: keyOf(t),
       data: { url: "/" },
       // `renotify` is widely supported by browsers but missing from the
