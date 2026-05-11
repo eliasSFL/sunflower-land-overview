@@ -15,9 +15,15 @@
   // Web Push pipeline — see worker/push.ts, worker/routes.ts,
   // worker/scheduler.ts.
   //
-  // Setup (one-time):
-  //   1. Create a KV namespace and paste its id below:
+  // Push is OPT-IN at the deploy level: the routes return 503 and the
+  // scheduled() handler logs + returns until you wire up the bindings
+  // below. The base app (timer dashboard + foreground notifications)
+  // works without any of this.
+  //
+  // To enable push:
+  //   1. Create the KV namespace:
   //        npx wrangler kv namespace create PUSH_SUBS
+  //      Then uncomment "kv_namespaces" below and paste the printed id.
   //   2. Generate VAPID keys (one-time, keep the private one safe):
   //        node -e "
   //          (async()=>{
@@ -28,20 +34,15 @@
   //            console.log('PUBLIC: ',b(pub));
   //            console.log('PRIVATE:',jwk.d);
   //          })()"
-  //   3. Store as secrets:
+  //      Store both as Worker secrets:
   //        npx wrangler secret put VAPID_PUBLIC
   //        npx wrangler secret put VAPID_PRIVATE
-  //   4. Set VAPID_SUBJECT (a mailto: or https: URL, see RFC 8292) below.
-  "kv_namespaces": [
-    {
-      "binding": "PUSH_SUBS",
-      "id": "REPLACE_WITH_KV_NAMESPACE_ID",
-    },
-  ],
-  "triggers": {
-    "crons": ["* * * * *"],
-  },
-  "vars": {
-    "VAPID_SUBJECT": "mailto:noreply@example.com",
-  },
+  //   3. Uncomment "triggers" + "vars" below and set VAPID_SUBJECT to
+  //      a real mailto: or https: URL (RFC 8292).
+  //
+  // "kv_namespaces": [
+  //   { "binding": "PUSH_SUBS", "id": "<kv-namespace-id>" }
+  // ],
+  // "triggers": { "crons": ["* * * * *"] },
+  // "vars": { "VAPID_SUBJECT": "mailto:you@example.com" },
 }
