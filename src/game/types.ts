@@ -174,6 +174,50 @@ export type Beehive = {
 
 export type Beehives = Record<string, Beehive>;
 
+// Resource nodes. Each "ready" check is `now > lastActionAt + RECOVERY *
+// 1000`. Wood/Stone/Oil wrap their last-action timestamp under different
+// inner field names — see RESOURCE_RECOVERY_SECONDS in src/lib/durations.ts.
+
+export type Wood = {
+  choppedAt: number;
+};
+
+export type Tree = {
+  wood: Wood;
+  removedAt?: number;
+  x?: number;
+  y?: number;
+};
+
+export type Stone = {
+  minedAt: number;
+};
+
+export type Rock = {
+  stone: Stone;
+  removedAt?: number;
+  x?: number;
+  y?: number;
+};
+
+// Crimstone / sunstone use a Rock with a finite mine count — when
+// `minesLeft` hits 0 the node needs re-seeding rather than re-mining.
+export type FiniteResource = Rock & {
+  minesLeft: number;
+};
+
+export type Oil = {
+  drilledAt: number;
+};
+
+export type OilReserve = {
+  oil: Oil;
+  drilled: number;
+  removedAt?: number;
+  x?: number;
+  y?: number;
+};
+
 export type GameState = {
   id?: number;
   bumpkin?: {
@@ -191,6 +235,13 @@ export type GameState = {
   greenhouse?: Greenhouse;
   flowers?: FlowersState;
   beehives?: Beehives;
+  trees?: Record<string, Tree>;
+  stones?: Record<string, Rock>;
+  iron?: Record<string, Rock>;
+  gold?: Record<string, Rock>;
+  crimstones?: Record<string, FiniteResource>;
+  sunstones?: Record<string, FiniteResource>;
+  oilReserves?: Record<string, OilReserve>;
   farmActivity?: Record<string, number>;
   island?: { type?: string };
   season?: { season?: string };

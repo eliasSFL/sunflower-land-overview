@@ -6,14 +6,25 @@ import { getCropYieldAmount as upstreamGetCropYieldAmount } from "features/game/
 import { getFruitYield as upstreamGetFruitYield } from "features/game/events/landExpansion/fruitHarvested";
 import { getGreenhouseCropYieldAmount as upstreamGetGreenhouseYield } from "features/game/events/landExpansion/harvestGreenHouse";
 import { getPackYieldAmount as upstreamGetPackYieldAmount } from "features/game/events/landExpansion/harvestCropMachine";
+import { getWoodDropAmount as upstreamGetWoodDropAmount } from "features/game/events/landExpansion/chop";
+import { getStoneDropAmount as upstreamGetStoneDropAmount } from "features/game/events/landExpansion/stoneMine";
+import { getIronDropAmount as upstreamGetIronDropAmount } from "features/game/events/landExpansion/ironMine";
+import { getGoldDropAmount as upstreamGetGoldDropAmount } from "features/game/events/landExpansion/mineGold";
+import { getCrimstoneDropAmount as upstreamGetCrimstoneDropAmount } from "features/game/events/landExpansion/mineCrimstone";
+import { getOilDropAmount as upstreamGetOilDropAmount } from "features/game/events/landExpansion/drillOilReserve";
+import { KNOWN_IDS } from "features/game/types";
 
 import type {
   CropMachineQueueItem,
   CropName,
   CropPlot,
+  FiniteResource,
   GameState,
   GreenhousePlantName,
+  OilReserve,
   PatchFruitName,
+  Rock,
+  Tree,
 } from "./types.ts";
 
 export type CropYieldArgs = {
@@ -77,5 +88,116 @@ export function getCropMachinePackYield(
   args: CropMachinePackYieldArgs,
 ): CropYieldResult {
   const result = upstreamGetPackYieldAmount(args);
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+// --- Resource yields ---
+// Each upstream function has its own arg shape; wrappers narrow to a
+// uniform `{ amount: number }`. itemId comes from KNOWN_IDS so callers
+// don't have to thread it. Sunstone doesn't have an upstream predictor
+// — its yield is always 1 (see mineSunstone.ts:59).
+
+export type WoodYieldArgs = {
+  game: GameState;
+  tree: Tree;
+  farmId: number;
+  counter: number;
+};
+
+export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
+  const result = upstreamGetWoodDropAmount({
+    game: args.game,
+    farmId: args.farmId,
+    itemId: (KNOWN_IDS as Record<string, number>).Wood ?? 0,
+    counter: args.counter,
+    tree: args.tree,
+  });
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+export type StoneYieldArgs = {
+  game: GameState;
+  rock: Rock;
+  id: string;
+  createdAt: number;
+  farmId: number;
+  counter: number;
+};
+
+export function getStoneYield(args: StoneYieldArgs): CropYieldResult {
+  const result = upstreamGetStoneDropAmount({
+    game: args.game,
+    rock: args.rock,
+    createdAt: args.createdAt,
+    id: args.id,
+    farmId: args.farmId,
+    counter: args.counter,
+    itemId: (KNOWN_IDS as Record<string, number>).Stone ?? 0,
+  });
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+export type IronYieldArgs = {
+  game: GameState;
+  rock: Rock;
+  createdAt: number;
+  farmId: number;
+  counter: number;
+};
+
+export function getIronYield(args: IronYieldArgs): CropYieldResult {
+  const result = upstreamGetIronDropAmount({
+    game: args.game,
+    rock: args.rock,
+    createdAt: args.createdAt,
+    farmId: args.farmId,
+    counter: args.counter,
+    itemId: (KNOWN_IDS as Record<string, number>).Iron ?? 0,
+  });
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+export type GoldYieldArgs = {
+  game: GameState;
+  rock: Rock;
+  createdAt: number;
+  farmId: number;
+  counter: number;
+};
+
+export function getGoldYield(args: GoldYieldArgs): CropYieldResult {
+  const result = upstreamGetGoldDropAmount({
+    game: args.game,
+    rock: args.rock,
+    createdAt: args.createdAt,
+    farmId: args.farmId,
+    counter: args.counter,
+    itemId: (KNOWN_IDS as Record<string, number>).Gold ?? 0,
+  });
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+export type CrimstoneYieldArgs = {
+  game: GameState;
+  rock: FiniteResource;
+};
+
+export function getCrimstoneYield(
+  args: CrimstoneYieldArgs,
+): CropYieldResult {
+  const result = upstreamGetCrimstoneDropAmount({
+    game: args.game,
+    rock: args.rock,
+  });
+  return { amount: Number(result?.amount ?? 0) };
+}
+
+export type OilYieldArgs = {
+  game: GameState;
+  reserve: OilReserve;
+};
+
+export function getOilYield(args: OilYieldArgs): CropYieldResult {
+  const result = upstreamGetOilDropAmount(args.game, args.reserve);
   return { amount: Number(result?.amount ?? 0) };
 }

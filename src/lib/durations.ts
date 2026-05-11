@@ -64,3 +64,25 @@ export const GREENHOUSE_SECONDS: Record<GreenhousePlantName, number> = {
   Rice: 32 * HOUR,
   Olive: 44 * HOUR,
 };
+
+// Resource node recovery times — mirrors the *_RECOVERY_TIME constants
+// in sunflower-land/src/features/game/lib/constants.ts (+ Oil Reserve in
+// drillOilReserve.ts).
+export type ResourceKind =
+  | "Wood"
+  | "Stone"
+  | "Iron"
+  | "Gold"
+  | "Crimstone"
+  | "Sunstone"
+  | "Oil";
+
+export const RESOURCE_RECOVERY_SECONDS: Record<ResourceKind, number> = {
+  Wood: 2 * HOUR,
+  Stone: 4 * HOUR,
+  Iron: 8 * HOUR,
+  Gold: 24 * HOUR,
+  Crimstone: 24 * HOUR,
+  Sunstone: 3 * 24 * HOUR,
+  Oil: 20 * HOUR,
+};

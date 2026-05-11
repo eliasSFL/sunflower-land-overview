@@ -4,7 +4,8 @@ export type Category =
   | "Greenhouse"
   | "Crop Machine"
   | "Flowers"
-  | "Beehives";
+  | "Beehives"
+  | "Resources";
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -13,6 +14,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Crop Machine",
   "Flowers",
   "Beehives",
+  "Resources",
 ];
 
 export type Timer = {

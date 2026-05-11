@@ -6,6 +6,7 @@ import { extractCropMachineTimers } from "./cropMachine.ts";
 import { extractFlowerTimers } from "./flowers.ts";
 import { extractFruitTimers } from "./fruits.ts";
 import { extractGreenhouseTimers } from "./greenhouse.ts";
+import { extractResourceTimers } from "./resources.ts";
 import type { AggregatedTimer, Timer, TimerContext } from "./types.ts";
 
 export type {
@@ -37,6 +38,7 @@ export function extractAllTimers(
     ...extractCropMachineTimers(state, ctx),
     ...extractFlowerTimers(state, ctx),
     ...extractBeehiveTimers(state, ctx),
+    ...extractResourceTimers(state, ctx),
   ];
 }
 
