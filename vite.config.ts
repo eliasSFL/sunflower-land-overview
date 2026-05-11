@@ -49,6 +49,17 @@ export default defineConfig({
         find: /^lib\/utils\/hooks\/useSound$/,
         replacement: r("./src/game/stubs/useSound-stub.ts"),
       },
+      // Upstream `features/community/lib/CommunitySDK.ts` returns an
+      // anonymous class with private fields from `prepareAPI`, which
+      // trips TS4094 during composite .d.ts emit. We never invoke it,
+      // but features/world/Phaser.tsx imports it, so resolution still
+      // happens. Redirect to a local stub with the same export shape —
+      // the submodule file is never read. See src/game/stubs/
+      // community-sdk-stub.ts for the long explanation.
+      {
+        find: /^features\/community\/lib\/CommunitySDK$/,
+        replacement: r("./src/game/stubs/community-sdk-stub.ts"),
+      },
       { find: "web3-utils", replacement: EXTERNAL_STUB },
       { find: "@xstate/react", replacement: EXTERNAL_STUB },
       { find: /^xstate$/, replacement: EXTERNAL_STUB },

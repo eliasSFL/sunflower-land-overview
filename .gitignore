@@ -33,3 +33,7 @@ dist-ssr
 
 # Claude Code workspace (plans, launch config)
 .claude/
+
+# tsc-emitted declarations for files referenced by the composite project
+# from outside its rootDir (e.g. src/game/stubs/* redirected via paths).
+src/**/*.d.ts
