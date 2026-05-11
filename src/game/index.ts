@@ -37,7 +37,12 @@ export {
   batchSunstoneYields,
   batchOilYields,
 } from "./batch-yields.ts";
-export { getItemIcon, getBannerUrl } from "./icons.ts";
+export {
+  getItemIcon,
+  getBannerUrl,
+  getBoostIcon,
+  getBoostLabel,
+} from "./icons.ts";
 
 // Pure passthroughs from the submodule. Re-exporting keeps timer files
 // inside the boundary rule (only src/game/** may import from features/*).

@@ -74,7 +74,17 @@ export function TimerCard({ timer, now }: Props) {
             key={`${b.name}:${b.value}:${i}`}
             className="flex items-center justify-between gap-2"
           >
-            <span className="truncate">{b.name}</span>
+            <span className="flex items-center gap-1 min-w-0">
+              {b.icon ? (
+                <img
+                  src={b.icon}
+                  alt=""
+                  className="h-4 w-4 shrink-0 object-contain"
+                  aria-hidden
+                />
+              ) : null}
+              <span className="truncate">{b.label ?? b.name}</span>
+            </span>
             <span className="shrink-0 tabular-nums">
               {b.value}
               {b.count > 1 ? (

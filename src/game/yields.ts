@@ -13,6 +13,7 @@ import { getGoldDropAmount as upstreamGetGoldDropAmount } from "features/game/ev
 import { getCrimstoneDropAmount as upstreamGetCrimstoneDropAmount } from "features/game/events/landExpansion/mineCrimstone";
 import { getOilDropAmount as upstreamGetOilDropAmount } from "features/game/events/landExpansion/drillOilReserve";
 import { KNOWN_IDS } from "features/game/types";
+import { getBoostIcon, getBoostLabel } from "./icons.ts";
 
 import type {
   CropMachineQueueItem,
@@ -35,21 +36,29 @@ export type CropYieldArgs = {
   prngArgs?: { farmId: number; counter: number };
 };
 
-export type YieldBoost = { name: string; value: string };
+export type YieldBoost = {
+  name: string;
+  value: string;
+  icon: string;
+  label: string;
+};
 
 export type CropYieldResult = {
   amount: number;
   boosts: YieldBoost[];
 };
 
-function normBoosts(raw: unknown): YieldBoost[] {
+function normBoosts(raw: unknown, state: GameState): YieldBoost[] {
   if (!Array.isArray(raw)) return [];
   const out: YieldBoost[] = [];
   for (const b of raw) {
     if (b && typeof b === "object" && "name" in b && "value" in b) {
+      const name = String((b as { name: unknown }).name);
       out.push({
-        name: String((b as { name: unknown }).name),
+        name,
         value: String((b as { value: unknown }).value),
+        icon: getBoostIcon(name, state),
+        label: getBoostLabel(name),
       });
     }
   }
@@ -60,7 +69,7 @@ export function getCropYieldAmount(args: CropYieldArgs): CropYieldResult {
   const result = upstreamGetCropYieldAmount(args);
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -80,7 +89,7 @@ export function getPatchFruitYield(
   const result = upstreamGetFruitYield(args as Parameters<typeof upstreamGetFruitYield>[0]);
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -100,7 +109,7 @@ export function getGreenhouseYield(
   );
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -121,7 +130,7 @@ export function getCropMachinePackYield(
   const result = upstreamGetPackYieldAmount(args);
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.state),
   };
 }
 
@@ -157,7 +166,7 @@ export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
   });
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -183,7 +192,7 @@ export function getStoneYield(args: StoneYieldArgs): CropYieldResult {
   });
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -207,7 +216,7 @@ export function getIronYield(args: IronYieldArgs): CropYieldResult {
   });
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -231,7 +240,7 @@ export function getGoldYield(args: GoldYieldArgs): CropYieldResult {
   });
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -249,7 +258,7 @@ export function getCrimstoneYield(
   });
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }
 
@@ -262,6 +271,6 @@ export function getOilYield(args: OilYieldArgs): CropYieldResult {
   const result = upstreamGetOilDropAmount(args.game, args.reserve);
   return {
     amount: Number(result?.amount ?? 0),
-    boosts: normBoosts(result?.boostsUsed),
+    boosts: normBoosts(result?.boostsUsed, args.game),
   };
 }

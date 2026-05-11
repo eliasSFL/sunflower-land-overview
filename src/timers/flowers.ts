@@ -1,6 +1,8 @@
 import {
   FLOWERS,
   FLOWER_SEEDS,
+  getBoostIcon,
+  getBoostLabel,
   getFlowerAmount,
   getItemIcon,
   type GameState,
@@ -29,10 +31,15 @@ function predictAmount(
     criticalDrop: (name: string) => Boolean(criticalHit[name] ?? 0),
   }) as { amount?: number; boostsUsed?: Array<{ name: string; value: string }> };
   const boosts: Boost[] = Array.isArray(result?.boostsUsed)
-    ? result.boostsUsed.map((b) => ({
-        name: String(b.name),
-        value: String(b.value),
-      }))
+    ? result.boostsUsed.map((b) => {
+        const name = String(b.name);
+        return {
+          name,
+          value: String(b.value),
+          icon: getBoostIcon(name, game),
+          label: getBoostLabel(name),
+        };
+      })
     : [];
   return { amount: Number(result?.amount ?? 1), boosts };
 }

@@ -26,6 +26,7 @@ import { getGoldDropAmount as upstreamGetGoldDropAmount } from "features/game/ev
 import { getCrimstoneDropAmount as upstreamGetCrimstoneDropAmount } from "features/game/events/landExpansion/mineCrimstone";
 import { getOilDropAmount as upstreamGetOilDropAmount } from "features/game/events/landExpansion/drillOilReserve";
 import { KNOWN_IDS } from "features/game/types";
+import { getBoostIcon, getBoostLabel } from "./icons.ts";
 
 import type {
   CropName,
@@ -42,10 +43,19 @@ import type {
 } from "./types.ts";
 
 // Per-node yield prediction. `boosts` lists every boost the upstream
-// reported via `boostsUsed`; empty array if none fired.
+// reported via `boostsUsed`; empty array if none fired. Icons + labels
+// are resolved here (same `state` we already have) so downstream UI
+// doesn't need to know about GameState.
+export type YieldBoost = {
+  name: string;
+  value: string;
+  icon: string;
+  label: string;
+};
+
 export type YieldEntry = {
   amount: number;
-  boosts: Array<{ name: string; value: string }>;
+  boosts: YieldBoost[];
 };
 
 export type YieldMap = Map<string, YieldEntry>;
@@ -59,15 +69,18 @@ const farmActivity = (
   (state.farmActivity ?? {}) as Record<string, number | undefined>;
 
 // Normalize upstream `boostsUsed` (might be missing/non-array on
-// fallback paths) to a plain array of plain `{ name, value }` objects.
-function normBoosts(raw: unknown): Array<{ name: string; value: string }> {
+// fallback paths) and attach icon + label resolved against `state`.
+function normBoosts(raw: unknown, state: GameState): YieldBoost[] {
   if (!Array.isArray(raw)) return [];
-  const out: Array<{ name: string; value: string }> = [];
+  const out: YieldBoost[] = [];
   for (const b of raw) {
     if (b && typeof b === "object" && "name" in b && "value" in b) {
+      const name = String((b as { name: unknown }).name);
       out.push({
-        name: String((b as { name: unknown }).name),
+        name,
         value: String((b as { value: unknown }).value),
+        icon: getBoostIcon(name, state),
+        label: getBoostLabel(name),
       });
     }
   }
@@ -105,7 +118,7 @@ export function batchCropYields(args: {
       });
       result.set(plotId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
       if (upstream?.aoe) {
         // Carry the mutated aoe forward so an AOE that fired on this
@@ -152,7 +165,7 @@ export function batchPatchFruitYields(args: {
       });
       result.set(patchId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
     } catch {
       result.set(patchId, { amount: 1, boosts: [] });
@@ -195,7 +208,7 @@ export function batchGreenhouseYields(args: {
       });
       result.set(potId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
     } catch {
       result.set(potId, { amount: 1, boosts: [] });
@@ -238,7 +251,7 @@ export function batchWoodYields(args: {
       });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
       // getWoodDropAmount doesn't return aoe — wood bonuses aren't
       // AOE-gated. No state threading needed.
@@ -298,7 +311,7 @@ function batchRockYields(
       });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
       if (upstream?.aoe) {
         workingGame = {
@@ -341,7 +354,7 @@ export function batchCrimstoneYields(args: {
       const upstream = upstreamGetCrimstoneDropAmount({ game, rock });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
     } catch {
       result.set(nodeId, { amount: 1, boosts: [] });
@@ -378,7 +391,7 @@ export function batchOilYields(args: {
       const upstream = upstreamGetOilDropAmount(game, reserve);
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
-        boosts: normBoosts(upstream?.boostsUsed),
+        boosts: normBoosts(upstream?.boostsUsed, game),
       });
     } catch {
       result.set(nodeId, { amount: 1, boosts: [] });

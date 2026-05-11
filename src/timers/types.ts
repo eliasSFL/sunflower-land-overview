@@ -20,8 +20,16 @@ export const CATEGORY_ORDER: Category[] = [
 // One boost as returned by upstream yield functions. `name` is a
 // BoostName from the submodule; `value` is the formatted contribution
 // (e.g. "+0.2", "x1.2"). We keep this as plain strings so callers don't
-// need to import BoostName.
-export type Boost = { name: string; value: string };
+// need to import BoostName. `icon` is resolved at extraction time via
+// the same upstream helper BoostsDisplay uses; empty string when the
+// resolver returns nothing (rare — usually the lightning fallback).
+// `label` is the display string (startCased / translated upstream).
+export type Boost = {
+  name: string;
+  value: string;
+  icon?: string;
+  label?: string;
+};
 
 // Aggregated boost: same name+value seen on `count` plots in the merged
 // group. AOE-gated boosts (Scary Mike, Sir Goldensnout) typically have

@@ -25,7 +25,13 @@ function mergeBoosts(
     if (existing) {
       existing.count += 1;
     } else {
-      tally.push({ name: b.name, value: b.value, count: 1 });
+      tally.push({
+        name: b.name,
+        value: b.value,
+        icon: b.icon,
+        label: b.label,
+        count: 1,
+      });
     }
   }
   return tally;
