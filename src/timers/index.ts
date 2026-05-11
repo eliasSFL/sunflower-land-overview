@@ -1,5 +1,6 @@
 import type { GameState } from "../game/index.ts";
 import { aggregateTimers } from "./aggregate.ts";
+import { extractBeehiveTimers } from "./beehives.ts";
 import { extractCropTimers } from "./crops.ts";
 import { extractCropMachineTimers } from "./cropMachine.ts";
 import { extractFlowerTimers } from "./flowers.ts";
@@ -35,6 +36,7 @@ export function extractAllTimers(
     ...extractGreenhouseTimers(state, ctx),
     ...extractCropMachineTimers(state, ctx),
     ...extractFlowerTimers(state, ctx),
+    ...extractBeehiveTimers(state, ctx),
   ];
 }
 

@@ -15,6 +15,13 @@ export {
 } from "./yields.ts";
 export { getItemIcon, getBannerUrl } from "./icons.ts";
 export { getFlowerGrowSeconds, getFlowerYield } from "./flowers.ts";
+export {
+  DEFAULT_HONEY_PRODUCTION_TIME,
+  refreshBeehives,
+  getCurrentHoneyProduced,
+  getCurrentSpeed,
+  getHoneyMultiplier,
+} from "./beehives.ts";
 export type {
   GameState,
   CropName,
@@ -32,4 +39,7 @@ export type {
   PlantedFlower,
   FlowerBed,
   FlowersState,
+  AttachedFlower,
+  Beehive,
+  Beehives,
 } from "./types.ts";

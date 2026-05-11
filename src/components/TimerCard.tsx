@@ -22,12 +22,15 @@ export function TimerCard({ timer, now }: Props) {
   const yieldAmount = timer.predictedYield?.amount ?? 0;
   const item = timer.predictedYield?.item ?? timer.label;
 
-  const headline =
+  let headline =
     yieldAmount > 0
       ? `${formatYield(yieldAmount)} ${item}`
       : timer.count > 1
         ? `${timer.count}× ${timer.label}`
         : timer.label;
+  if (timer.progressPercent !== undefined) {
+    headline += ` · ${Math.floor(timer.progressPercent)}%`;
+  }
 
   return (
     <div className="flex items-center justify-between gap-3">

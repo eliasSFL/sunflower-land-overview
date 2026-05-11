@@ -149,6 +149,31 @@ export type FlowersState = {
   discovered?: Record<string, string[]>;
 };
 
+// Mirrors sunflower-land/src/features/game/types/game.ts:Beehive. Honey
+// progresses deterministically from `honey.produced` at `honey.updatedAt`,
+// and each attached flower contributes `(end - start) * rate` honey while
+// the flower's [attachedAt, attachedUntil] window is active.
+export type AttachedFlower = {
+  id: string;
+  attachedAt: number;
+  attachedUntil: number;
+  rate?: number;
+};
+
+export type Beehive = {
+  swarm: boolean;
+  honey: {
+    updatedAt: number;
+    produced: number;
+  };
+  flowers: AttachedFlower[];
+  removedAt?: number;
+  x?: number;
+  y?: number;
+};
+
+export type Beehives = Record<string, Beehive>;
+
 export type GameState = {
   id?: number;
   bumpkin?: {
@@ -165,6 +190,7 @@ export type GameState = {
   fruitPatches?: Record<string, FruitPatch>;
   greenhouse?: Greenhouse;
   flowers?: FlowersState;
+  beehives?: Beehives;
   farmActivity?: Record<string, number>;
   island?: { type?: string };
   season?: { season?: string };
