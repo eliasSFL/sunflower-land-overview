@@ -1,0 +1,20 @@
+{
+  "name": "Sunflower Land Overview",
+  "short_name": "SFL Overview",
+  "description": "Live timers for your Sunflower Land farm — crops, animals, cooking, composters, deliveries and more.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#181425",
+  "theme_color": "#181425",
+  "icons": [
+    {
+      "src": "/icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "utilities"]
+}

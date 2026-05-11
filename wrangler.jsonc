@@ -12,4 +12,36 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
   },
+  // Web Push pipeline — see worker/push.ts, worker/routes.ts,
+  // worker/scheduler.ts.
+  //
+  // Setup (one-time):
+  //   1. Create a KV namespace and paste its id below:
+  //        npx wrangler kv namespace create PUSH_SUBS
+  //   2. Generate VAPID keys (one-time, keep the private one safe):
+  //        node -e "
+  //          (async()=>{
+  //            const k=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+  //            const pub=await crypto.subtle.exportKey('raw',k.publicKey);
+  //            const jwk=await crypto.subtle.exportKey('jwk',k.privateKey);
+  //            const b=b=>Buffer.from(b).toString('base64url');
+  //            console.log('PUBLIC: ',b(pub));
+  //            console.log('PRIVATE:',jwk.d);
+  //          })()"
+  //   3. Store as secrets:
+  //        npx wrangler secret put VAPID_PUBLIC
+  //        npx wrangler secret put VAPID_PRIVATE
+  //   4. Set VAPID_SUBJECT (a mailto: or https: URL, see RFC 8292) below.
+  "kv_namespaces": [
+    {
+      "binding": "PUSH_SUBS",
+      "id": "REPLACE_WITH_KV_NAMESPACE_ID",
+    },
+  ],
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+  "vars": {
+    "VAPID_SUBJECT": "mailto:noreply@example.com",
+  },
 }
