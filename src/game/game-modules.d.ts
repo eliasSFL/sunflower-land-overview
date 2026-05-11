@@ -1,12 +1,10 @@
-// Bare-specifier modules from the sunflower-land submodule are not part of
-// the overview's TS project graph. We resolve them via Vite aliases at
-// build time and treat them as ambient `any` to TypeScript. src/game/ is
-// the only directory allowed to import these — every other module imports
-// from src/game/* with proper types.
+// Bare-specifier modules from the sunflower-land submodule now resolve
+// via tsconfig `paths` (declared in tsconfig.app.json) into the
+// referenced `tsconfig.sunflower-land.json` project, which emits `.d.ts`
+// declarations with real types. Only the still-stubbed transitive deps
+// need ambient any declarations here.
 
-declare module "features/*";
-declare module "lib/*";
-declare module "components/*";
-declare module "metadata/*";
-declare module "assets/*";
+// src/* is too generic to put in tsconfig paths (would collide with
+// "src/" being our own root prefix in various tools), so keep it as
+// ambient. It's only used by a handful of submodule type files.
 declare module "src/*";

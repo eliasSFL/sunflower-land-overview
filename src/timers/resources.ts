@@ -1,4 +1,11 @@
 import {
+  CRIMSTONE_RECOVERY_TIME,
+  GOLD_RECOVERY_TIME,
+  IRON_RECOVERY_TIME,
+  OIL_RESERVE_RECOVERY_TIME,
+  STONE_RECOVERY_TIME,
+  SUNSTONE_RECOVERY_TIME,
+  TREE_RECOVERY_TIME,
   getCrimstoneYield,
   getGoldYield,
   getIronYield,
@@ -12,11 +19,28 @@ import {
   type Rock,
   type Tree,
 } from "../game/index.ts";
-import {
-  RESOURCE_RECOVERY_SECONDS,
-  type ResourceKind,
-} from "../lib/durations.ts";
 import type { Timer, TimerContext } from "./types.ts";
+
+// App-local kind label for the Resources panel — maps to upstream
+// recovery constants below.
+type ResourceKind =
+  | "Wood"
+  | "Stone"
+  | "Iron"
+  | "Gold"
+  | "Crimstone"
+  | "Sunstone"
+  | "Oil";
+
+const RECOVERY_SECONDS: Record<ResourceKind, number> = {
+  Wood: TREE_RECOVERY_TIME,
+  Stone: STONE_RECOVERY_TIME,
+  Iron: IRON_RECOVERY_TIME,
+  Gold: GOLD_RECOVERY_TIME,
+  Crimstone: CRIMSTONE_RECOVERY_TIME,
+  Sunstone: SUNSTONE_RECOVERY_TIME,
+  Oil: OIL_RESERVE_RECOVERY_TIME,
+};
 
 // One card per resource type (Wood / Stone / Iron / Gold / Crimstone /
 // Sunstone / Oil). Each node contributes one Timer with
@@ -25,7 +49,7 @@ import type { Timer, TimerContext } from "./types.ts";
 // `readyAt`. The card headline reads `<total> <kind>`.
 //
 // Ready check mirrors upstream:
-//   `now > lastActionAt + RESOURCE_RECOVERY_SECONDS * 1000`
+//   `now > lastActionAt + RECOVERY_SECONDS * 1000`
 // (chop.ts:60, stoneMine.ts canMine, etc.)
 //
 // Active-node check uses `x === undefined && y === undefined` —
@@ -73,7 +97,7 @@ export function extractResourceTimers(
   const farmId = ctx.farmId;
 
   // Wood
-  const treeRecoveryMs = RESOURCE_RECOVERY_SECONDS.Wood * 1000;
+  const treeRecoveryMs = RECOVERY_SECONDS.Wood * 1000;
   for (const [nodeId, tree] of Object.entries(state.trees ?? {})) {
     if (!isPlaced(tree)) continue;
     const readyAt = tree.wood.choppedAt + treeRecoveryMs;
@@ -147,7 +171,7 @@ export function extractResourceTimers(
     },
   ];
   for (const { kind, map, yieldFn } of rockKinds) {
-    const recoveryMs = RESOURCE_RECOVERY_SECONDS[kind] * 1000;
+    const recoveryMs = RECOVERY_SECONDS[kind] * 1000;
     for (const [nodeId, rock] of Object.entries(map ?? {})) {
       if (!isPlaced(rock)) continue;
       const readyAt = rock.stone.minedAt + recoveryMs;
@@ -157,7 +181,7 @@ export function extractResourceTimers(
   }
 
   // Crimstone — FiniteResource, exhausted when minesLeft hits 0
-  const crimstoneRecoveryMs = RESOURCE_RECOVERY_SECONDS.Crimstone * 1000;
+  const crimstoneRecoveryMs = RECOVERY_SECONDS.Crimstone * 1000;
   for (const [nodeId, rock] of Object.entries(state.crimstones ?? {})) {
     if (!isPlaced(rock)) continue;
     if (rock.minesLeft <= 0) continue;
@@ -175,7 +199,7 @@ export function extractResourceTimers(
 
   // Sunstone — always 1, no upstream predictor (mineSunstone.ts:59).
   // Still skip exhausted nodes.
-  const sunstoneRecoveryMs = RESOURCE_RECOVERY_SECONDS.Sunstone * 1000;
+  const sunstoneRecoveryMs = RECOVERY_SECONDS.Sunstone * 1000;
   for (const [nodeId, rock] of Object.entries(state.sunstones ?? {})) {
     if (!isPlaced(rock)) continue;
     if (rock.minesLeft <= 0) continue;
@@ -184,7 +208,7 @@ export function extractResourceTimers(
   }
 
   // Oil
-  const oilRecoveryMs = RESOURCE_RECOVERY_SECONDS.Oil * 1000;
+  const oilRecoveryMs = RECOVERY_SECONDS.Oil * 1000;
   for (const [nodeId, reserve] of Object.entries(state.oilReserves ?? {})) {
     if (!isPlaced(reserve)) continue;
     const readyAt = reserve.oil.drilledAt + oilRecoveryMs;

@@ -1,6 +1,9 @@
-import { getGreenhouseYield, getItemIcon } from "../game/index.ts";
-import type { GameState } from "../game/index.ts";
-import { GREENHOUSE_SECONDS } from "../lib/durations.ts";
+import {
+  GREENHOUSE_CROP_TIME_SECONDS,
+  getGreenhouseYield,
+  getItemIcon,
+  type GameState,
+} from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 export function extractGreenhouseTimers(
@@ -14,7 +17,7 @@ export function extractGreenhouseTimers(
     const plant = pot.plant;
     if (!plant) continue;
 
-    const grow = GREENHOUSE_SECONDS[plant.name] ?? 0;
+    const grow = GREENHOUSE_CROP_TIME_SECONDS[plant.name] ?? 0;
     const readyAt = plant.plantedAt + grow * 1000;
 
     const counter = ctx.counter.next();

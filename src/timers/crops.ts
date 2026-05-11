@@ -1,6 +1,9 @@
-import { getItemIcon, getCropYieldAmount } from "../game/index.ts";
-import type { GameState } from "../game/index.ts";
-import { CROP_SECONDS } from "../lib/durations.ts";
+import {
+  CROPS,
+  getItemIcon,
+  getCropYieldAmount,
+  type GameState,
+} from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 export function extractCropTimers(
@@ -20,7 +23,7 @@ export function extractCropTimers(
     // sunflower-land/src/features/game/events/landExpansion/harvest.ts:112).
     // crop.boostedTime is the *amount of time saved* in ms, kept for
     // analytics — it must NOT be subtracted again here.
-    const grow = CROP_SECONDS[crop.name] ?? 0;
+    const grow = CROPS[crop.name]?.harvestSeconds ?? 0;
     const readyAt = crop.plantedAt + grow * 1000;
 
     const counter = ctx.counter.next();

@@ -101,3 +101,8 @@ export const isIOS = false;
 // react-hot-toast
 export const toast = stub;
 export const Toaster = stub;
+// xstate
+export const createMachine = stub;
+export const assign = stub;
+export const Interpreter = stub;
+export const State = stub;

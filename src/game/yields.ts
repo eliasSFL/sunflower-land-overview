@@ -54,7 +54,10 @@ export type PatchFruitYieldArgs = {
 export function getPatchFruitYield(
   args: PatchFruitYieldArgs,
 ): CropYieldResult {
-  const result = upstreamGetFruitYield(args);
+  // `fertiliser` is a literal union upstream (FruitCompostName) — at our
+  // boundary we accept any string and let upstream tolerate unknown
+  // values rather than threading the union through every caller.
+  const result = upstreamGetFruitYield(args as Parameters<typeof upstreamGetFruitYield>[0]);
   return { amount: Number(result?.amount ?? 0) };
 }
 
@@ -69,7 +72,9 @@ export type GreenhouseYieldArgs = {
 export function getGreenhouseYield(
   args: GreenhouseYieldArgs,
 ): CropYieldResult {
-  const result = upstreamGetGreenhouseYield(args);
+  const result = upstreamGetGreenhouseYield(
+    args as Parameters<typeof upstreamGetGreenhouseYield>[0],
+  );
   return { amount: Number(result?.amount ?? 0) };
 }
 

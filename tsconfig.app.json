@@ -18,8 +18,16 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "features/*": ["./sunflower-land/src/features/*"],
+      "lib/*": ["./sunflower-land/src/lib/*"],
+      "components/*": ["./sunflower-land/src/components/*"],
+      "metadata/*": ["./sunflower-land/metadata/*"],
+      "assets/*": ["./sunflower-land/src/assets/*"]
+    }
   },
   "include": ["src"],
-  "exclude": ["src/**/__tests__/**"]
+  "exclude": ["src/**/__tests__/**"],
+  "references": [{ "path": "./tsconfig.sunflower-land.json" }]
 }

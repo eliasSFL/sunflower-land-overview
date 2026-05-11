@@ -1,251 +1,62 @@
-// Narrowed shape of the game state covering only what the overview reads.
-// Authoritative shape lives in sunflower-land/src/features/game/types/game.ts;
-// drift will surface when src/game/yields.ts can't satisfy the signatures
-// it imports.
+// All types come from the sunflower-land submodule's real definitions.
+// `tsconfig.sunflower-land.json` builds .d.ts files for those modules
+// (with `noCheck` to skip its laxer-than-ours strictness), and our
+// `tsconfig.app.json` references that project + maps `features/*` etc.
+// via `paths`. So when something changes upstream, our compile breaks
+// here first.
 
-export type CropName =
-  | "Sunflower"
-  | "Potato"
-  | "Pumpkin"
-  | "Carrot"
-  | "Cabbage"
-  | "Soybean"
-  | "Beetroot"
-  | "Cauliflower"
-  | "Parsnip"
-  | "Eggplant"
-  | "Corn"
-  | "Radish"
-  | "Wheat"
-  | "Kale"
-  | "Barley"
-  | "Rhubarb"
-  | "Zucchini"
-  | "Yam"
-  | "Broccoli"
-  | "Pepper"
-  | "Onion"
-  | "Turnip"
-  | "Artichoke";
+export type { CropName } from "features/game/types/crops";
+export type {
+  PatchFruitName,
+  GreenHouseFruitName,
+} from "features/game/types/fruits";
+export type { FlowerName } from "features/game/types/flowers";
+export type { GreenHouseCropName } from "features/game/types/crops";
 
-export type CropPlot = {
-  x: number;
-  y: number;
-  crop?: {
-    id?: string;
-    name: CropName;
-    plantedAt: number;
-    amount?: number;
-    boostedTime?: number;
-    fertiliser?: { name: string; fertilisedAt: number };
-  };
-  fertiliser?: { name: string; fertilisedAt: number };
-  beeSwarm?: unknown;
-  createdAt: number;
-};
+export type {
+  // Crops
+  CropPlot,
+  PlantedCrop,
+  // Patch fruit
+  PlantedFruit,
+  FruitPatch,
+  // Greenhouse
+  GreenhousePlant,
+  GreenhousePot,
+  // Crop machine
+  CropMachineQueueItem,
+  CropMachineBuilding,
+  // Flowers
+  FlowerBed,
+  FlowerBeds,
+  AttachedFlower,
+  // Beehives
+  Beehive,
+  Beehives,
+  // Resources
+  Wood,
+  Tree,
+  Stone,
+  Rock,
+  FiniteResource,
+  Oil,
+  OilReserve,
+  // Root
+  GameState,
+} from "features/game/types/game";
 
-export type PatchFruitName =
-  | "Apple"
-  | "Blueberry"
-  | "Orange"
-  | "Banana"
-  | "Tomato"
-  | "Lemon"
-  | "Celestine"
-  | "Lunara"
-  | "Duskberry";
+// Unions / aliases we use locally that aren't a single upstream type.
+import type { GreenHouseCropName } from "features/game/types/crops";
+import type { GreenHouseFruitName } from "features/game/types/fruits";
+import type { GameState } from "features/game/types/game";
 
-export type PlantedFruit = {
-  name: PatchFruitName;
-  plantedAt: number;
-  // 0 once the patch is fully exhausted and needs re-seeding.
-  harvestsLeft: number;
-  // 0 before the first harvest, then the timestamp of the most recent
-  // harvest. Readiness restarts from this when set (see
-  // sunflower-land/src/features/game/events/landExpansion/fruitPatchReadiness.ts).
-  harvestedAt: number;
-  amount?: number;
-  fertiliser?: { name: string; fertilisedAt: number };
-};
+export type GreenhousePlantName = GreenHouseCropName | GreenHouseFruitName;
 
-export type FruitPatch = {
-  fruit?: PlantedFruit;
-  fertiliser?: { name: string; fertilisedAt: number };
-  createdAt?: number;
-  x?: number;
-  y?: number;
-};
+// GameState slices we used to type locally. The shape comes from the
+// real GameState — exposing them as named types keeps callsites tidy.
+export type Greenhouse = GameState["greenhouse"];
+export type FlowersState = GameState["flowers"];
 
-export type GreenhousePlantName = "Rice" | "Olive" | "Grape";
-
-export type GreenhousePlant = {
-  name: GreenhousePlantName;
-  plantedAt: number;
-  amount?: number;
-};
-
-export type GreenhousePot = {
-  plant?: GreenhousePlant;
-  fertiliser?: { name: string; fertilisedAt: number };
-};
-
-export type Greenhouse = {
-  oil: number;
-  pots: Record<string, GreenhousePot>;
-};
-
-export type CropMachineQueueItem = {
-  crop: CropName;
-  seeds: number;
-  growTimeRemaining: number;
-  totalGrowTime: number;
-  startTime?: number;
-  // Set when the pack has finished growing and pre-computed yield is
-  // stored. Use directly when present.
-  amount?: number;
-  // The deadline at which oil runs out mid-grow; only present when the
-  // pack will pause unless more oil is added.
-  growsUntil?: number;
-  // The wall-clock time the pack will be ready; unset before the pack
-  // starts processing.
-  readyAt?: number;
-};
-
-export type CropMachineBuilding = {
-  id?: string;
-  createdAt: number;
-  readyAt?: number;
-  queue?: CropMachineQueueItem[];
-  unallocatedOilTime?: number;
-};
-
-// FlowerName from the submodule is a long union of every variant ("Red
-// Pansy", "Yellow Carnation", etc.). Keeping it as `string` here avoids
-// duplicating that ~80-entry union; the runtime invariant is that
-// `state.flowers.flowerBeds[*].flower.name` is always a valid key in the
-// submodule's FLOWERS table, which getFlowerGrowSeconds relies on.
-export type FlowerName = string;
-
-export type PlantedFlower = {
-  name: FlowerName;
-  plantedAt: number;
-  amount?: number;
-  // Map of boost-name → whether the random crit succeeded at plant
-  // time. Determines which collectible/skill boosts actually fire when
-  // this specific flower is harvested. See harvestFlower.ts:getFlowerAmount.
-  criticalHit?: Record<string, number>;
-};
-
-export type FlowerBed = {
-  flower?: PlantedFlower;
-  createdAt: number;
-  removedAt?: number;
-  x?: number;
-  y?: number;
-};
-
-export type FlowersState = {
-  flowerBeds: Record<string, FlowerBed>;
-  discovered?: Record<string, string[]>;
-};
-
-// Mirrors sunflower-land/src/features/game/types/game.ts:Beehive. Honey
-// progresses deterministically from `honey.produced` at `honey.updatedAt`,
-// and each attached flower contributes `(end - start) * rate` honey while
-// the flower's [attachedAt, attachedUntil] window is active.
-export type AttachedFlower = {
-  id: string;
-  attachedAt: number;
-  attachedUntil: number;
-  rate?: number;
-};
-
-export type Beehive = {
-  swarm: boolean;
-  honey: {
-    updatedAt: number;
-    produced: number;
-  };
-  flowers: AttachedFlower[];
-  removedAt?: number;
-  x?: number;
-  y?: number;
-};
-
-export type Beehives = Record<string, Beehive>;
-
-// Resource nodes. Each "ready" check is `now > lastActionAt + RECOVERY *
-// 1000`. Wood/Stone/Oil wrap their last-action timestamp under different
-// inner field names — see RESOURCE_RECOVERY_SECONDS in src/lib/durations.ts.
-
-export type Wood = {
-  choppedAt: number;
-};
-
-export type Tree = {
-  wood: Wood;
-  removedAt?: number;
-  x?: number;
-  y?: number;
-};
-
-export type Stone = {
-  minedAt: number;
-};
-
-export type Rock = {
-  stone: Stone;
-  removedAt?: number;
-  x?: number;
-  y?: number;
-};
-
-// Crimstone / sunstone use a Rock with a finite mine count — when
-// `minesLeft` hits 0 the node needs re-seeding rather than re-mining.
-export type FiniteResource = Rock & {
-  minesLeft: number;
-};
-
-export type Oil = {
-  drilledAt: number;
-};
-
-export type OilReserve = {
-  oil: Oil;
-  drilled: number;
-  removedAt?: number;
-  x?: number;
-  y?: number;
-};
-
-export type GameState = {
-  id?: number;
-  bumpkin?: {
-    skills?: Record<string, number>;
-    equipped?: Record<string, string>;
-    achievements?: Record<string, number>;
-    activity?: Record<string, number>;
-  };
-  inventory?: Record<string, string | number | undefined>;
-  collectibles?: Record<string, Array<{ id?: string; createdAt: number }>>;
-  home?: { collectibles?: Record<string, Array<{ id?: string; createdAt: number }>> };
-  buildings?: Record<string, Array<{ id?: string; createdAt: number; readyAt?: number }>>;
-  crops?: Record<string, CropPlot>;
-  fruitPatches?: Record<string, FruitPatch>;
-  greenhouse?: Greenhouse;
-  flowers?: FlowersState;
-  beehives?: Beehives;
-  trees?: Record<string, Tree>;
-  stones?: Record<string, Rock>;
-  iron?: Record<string, Rock>;
-  gold?: Record<string, Rock>;
-  crimstones?: Record<string, FiniteResource>;
-  sunstones?: Record<string, FiniteResource>;
-  oilReserves?: Record<string, OilReserve>;
-  farmActivity?: Record<string, number>;
-  island?: { type?: string };
-  season?: { season?: string };
-  // The full GameState has many more fields (animals, beehives, deliveries,
-  // bounties, etc.). Each timer category extends this type with the slice
-  // it consumes — see src/game/types.ts grow alongside src/timers/.
-};
+// PlantedFruit was historically exposed as a top-level type; mirror the
+// submodule's shape for that key too.
+export type { PlantedFlower } from "features/game/types/game";

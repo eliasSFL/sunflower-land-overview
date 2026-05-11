@@ -36,9 +36,11 @@ export function extractBeehiveTimers(
     return [];
   }
 
-  // Refresh once with a deterministic `createdAt` so subsequent reads
-  // (`getCurrentHoneyProduced`, `getCurrentSpeed`) see the same now.
-  const refreshed = refreshBeehives(state, ctx.now);
+  // Refresh once so subsequent reads see freshly-attached flowers.
+  // Upstream `getCurrentHoneyProduced` / `getCurrentSpeed` use
+  // `Date.now()` internally (we picked up the actual upstream helpers
+  // post-cleanup); 1s skew vs ctx.now is invisible to the UI.
+  const refreshed = refreshBeehives({ game: state, createdAt: ctx.now });
 
   const multiplier = getHoneyMultiplier(state);
   const out: Timer[] = [];
@@ -48,13 +50,13 @@ export function extractBeehiveTimers(
     // both x and y stripped.
     if (hive.x === undefined && hive.y === undefined) continue;
 
-    const produced = getCurrentHoneyProduced(hive, ctx.now);
+    const produced = getCurrentHoneyProduced(hive);
     let readyAt: number;
 
     if (produced >= DEFAULT_HONEY_PRODUCTION_TIME) {
       readyAt = ctx.now;
     } else {
-      const speed = getCurrentSpeed(hive, ctx.now);
+      const speed = getCurrentSpeed(hive);
       if (speed <= 0) {
         // No flower currently producing AND not full yet → skip; the
         // in-game UI also shows no countdown in this state.

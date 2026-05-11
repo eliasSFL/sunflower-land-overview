@@ -1,6 +1,10 @@
-import { getItemIcon, getPatchFruitYield } from "../game/index.ts";
-import type { GameState } from "../game/index.ts";
-import { PATCH_FRUIT_SECONDS } from "../lib/durations.ts";
+import {
+  PATCH_FRUIT,
+  PATCH_FRUIT_SEEDS,
+  getItemIcon,
+  getPatchFruitYield,
+  type GameState,
+} from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 export function extractFruitTimers(
@@ -16,10 +20,11 @@ export function extractFruitTimers(
     // Fully-exhausted bushes need re-seeding; nothing to time.
     if (fruit.harvestsLeft <= 0) continue;
 
-    // Fail closed on unknown fruit names (e.g. submodule added a new fruit
-    // before our duration table was updated). Falling back to 0 would
-    // make the patch render as "Ready" forever.
-    const grow = PATCH_FRUIT_SECONDS[fruit.name];
+    // Fail closed on unknown fruit names. PATCH_FRUIT[name].seed →
+    // PATCH_FRUIT_SEEDS[seed].plantSeconds — same lookup the harvest
+    // readiness check does upstream (fruitPatchReadiness.ts:13).
+    const seedName = PATCH_FRUIT[fruit.name]?.seed;
+    const grow = seedName ? PATCH_FRUIT_SEEDS[seedName]?.plantSeconds : undefined;
     if (grow === undefined) {
       console.warn(
         `[fruits] unknown duration for "${fruit.name}" — skipping patch`,
@@ -38,7 +43,7 @@ export function extractFruitTimers(
       const result = getPatchFruitYield({
         name: fruit.name,
         game: state,
-        fertiliser: patch.fertiliser?.name ?? fruit.fertiliser?.name,
+        fertiliser: patch.fertiliser?.name,
         prngArgs: { farmId: ctx.farmId, counter },
       });
       amount = result.amount;

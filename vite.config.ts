@@ -51,6 +51,7 @@ export default defineConfig({
       },
       { find: "web3-utils", replacement: EXTERNAL_STUB },
       { find: "@xstate/react", replacement: EXTERNAL_STUB },
+      { find: /^xstate$/, replacement: EXTERNAL_STUB },
       { find: "@react-spring/web", replacement: EXTERNAL_STUB },
       { find: "react-spring", replacement: EXTERNAL_STUB },
       { find: "@headlessui/react", replacement: EXTERNAL_STUB },
