@@ -32,7 +32,10 @@ export function TimerCard({ timer, now }: Props) {
     headline += ` · ${Math.floor(timer.progressPercent)}%`;
   }
 
-  return (
+  const boosts = timer.boosts ?? [];
+  const hasBoosts = boosts.length > 0;
+
+  const row = (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 min-w-0">
         {timer.icon ? (
@@ -44,8 +47,43 @@ export function TimerCard({ timer, now }: Props) {
           />
         ) : null}
         <span className="text-sm truncate">{headline}</span>
+        {hasBoosts ? (
+          <span
+            className="text-xs opacity-60 shrink-0"
+            aria-hidden
+            title="Click to see boosts"
+          >
+            ⓘ
+          </span>
+        ) : null}
       </div>
       <Label type={STATUS_LABEL[status]}>{remaining}</Label>
     </div>
+  );
+
+  if (!hasBoosts) return row;
+
+  return (
+    <details className="group">
+      <summary className="list-none cursor-pointer marker:hidden">
+        {row}
+      </summary>
+      <ul className="mt-1 ml-10 space-y-0.5 text-xs opacity-80">
+        {boosts.map((b, i) => (
+          <li
+            key={`${b.name}:${b.value}:${i}`}
+            className="flex items-center justify-between gap-2"
+          >
+            <span className="truncate">{b.name}</span>
+            <span className="shrink-0 tabular-nums">
+              {b.value}
+              {b.count > 1 ? (
+                <span className="opacity-60"> ×{b.count}</span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

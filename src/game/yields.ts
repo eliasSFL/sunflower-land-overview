@@ -35,13 +35,33 @@ export type CropYieldArgs = {
   prngArgs?: { farmId: number; counter: number };
 };
 
+export type YieldBoost = { name: string; value: string };
+
 export type CropYieldResult = {
   amount: number;
+  boosts: YieldBoost[];
 };
+
+function normBoosts(raw: unknown): YieldBoost[] {
+  if (!Array.isArray(raw)) return [];
+  const out: YieldBoost[] = [];
+  for (const b of raw) {
+    if (b && typeof b === "object" && "name" in b && "value" in b) {
+      out.push({
+        name: String((b as { name: unknown }).name),
+        value: String((b as { value: unknown }).value),
+      });
+    }
+  }
+  return out;
+}
 
 export function getCropYieldAmount(args: CropYieldArgs): CropYieldResult {
   const result = upstreamGetCropYieldAmount(args);
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type PatchFruitYieldArgs = {
@@ -58,7 +78,10 @@ export function getPatchFruitYield(
   // boundary we accept any string and let upstream tolerate unknown
   // values rather than threading the union through every caller.
   const result = upstreamGetFruitYield(args as Parameters<typeof upstreamGetFruitYield>[0]);
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type GreenhouseYieldArgs = {
@@ -75,7 +98,10 @@ export function getGreenhouseYield(
   const result = upstreamGetGreenhouseYield(
     args as Parameters<typeof upstreamGetGreenhouseYield>[0],
   );
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type CropMachinePackYieldArgs = {
@@ -93,7 +119,10 @@ export function getCropMachinePackYield(
   args: CropMachinePackYieldArgs,
 ): CropYieldResult {
   const result = upstreamGetPackYieldAmount(args);
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 // --- Resource yields ---
@@ -102,9 +131,18 @@ export function getCropMachinePackYield(
 // don't have to thread it. Sunstone doesn't have an upstream predictor
 // — its yield is always 1 (see mineSunstone.ts:59).
 
+// `nodeName` becomes both the `KNOWN_IDS` lookup key (controls
+// `itemId` for prngChance) AND the `farmActivity` key suffix used to
+// seed `counter` upstream. Defaults mirror the upstream branches:
+//   tree → "Tree" (chop.ts:403, but counter key uses "Basic Tree Chopped")
+//   stone → "Stone Rock"  iron → "Iron Rock"  gold → "Gold Rock"
+const lookupId = (name: string): number =>
+  (KNOWN_IDS as Record<string, number>)[name] ?? 0;
+
 export type WoodYieldArgs = {
   game: GameState;
   tree: Tree;
+  treeName: string;
   farmId: number;
   counter: number;
 };
@@ -113,16 +151,20 @@ export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
   const result = upstreamGetWoodDropAmount({
     game: args.game,
     farmId: args.farmId,
-    itemId: (KNOWN_IDS as Record<string, number>).Wood ?? 0,
+    itemId: lookupId(args.treeName),
     counter: args.counter,
     tree: args.tree,
   });
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type StoneYieldArgs = {
   game: GameState;
   rock: Rock;
+  rockName: string;
   id: string;
   createdAt: number;
   farmId: number;
@@ -137,14 +179,18 @@ export function getStoneYield(args: StoneYieldArgs): CropYieldResult {
     id: args.id,
     farmId: args.farmId,
     counter: args.counter,
-    itemId: (KNOWN_IDS as Record<string, number>).Stone ?? 0,
+    itemId: lookupId(args.rockName),
   });
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type IronYieldArgs = {
   game: GameState;
   rock: Rock;
+  rockName: string;
   createdAt: number;
   farmId: number;
   counter: number;
@@ -157,14 +203,18 @@ export function getIronYield(args: IronYieldArgs): CropYieldResult {
     createdAt: args.createdAt,
     farmId: args.farmId,
     counter: args.counter,
-    itemId: (KNOWN_IDS as Record<string, number>).Iron ?? 0,
+    itemId: lookupId(args.rockName),
   });
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type GoldYieldArgs = {
   game: GameState;
   rock: Rock;
+  rockName: string;
   createdAt: number;
   farmId: number;
   counter: number;
@@ -177,9 +227,12 @@ export function getGoldYield(args: GoldYieldArgs): CropYieldResult {
     createdAt: args.createdAt,
     farmId: args.farmId,
     counter: args.counter,
-    itemId: (KNOWN_IDS as Record<string, number>).Gold ?? 0,
+    itemId: lookupId(args.rockName),
   });
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type CrimstoneYieldArgs = {
@@ -194,7 +247,10 @@ export function getCrimstoneYield(
     game: args.game,
     rock: args.rock,
   });
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }
 
 export type OilYieldArgs = {
@@ -204,5 +260,8 @@ export type OilYieldArgs = {
 
 export function getOilYield(args: OilYieldArgs): CropYieldResult {
   const result = upstreamGetOilDropAmount(args.game, args.reserve);
-  return { amount: Number(result?.amount ?? 0) };
+  return {
+    amount: Number(result?.amount ?? 0),
+    boosts: normBoosts(result?.boostsUsed),
+  };
 }

@@ -6,23 +6,30 @@ import {
   STONE_RECOVERY_TIME,
   SUNSTONE_RECOVERY_TIME,
   TREE_RECOVERY_TIME,
-  getCrimstoneYield,
-  getGoldYield,
-  getIronYield,
+  batchCrimstoneYields,
+  batchGoldYields,
+  batchIronYields,
+  batchOilYields,
+  batchStoneYields,
+  batchSunstoneYields,
+  batchWoodYields,
   getItemIcon,
-  getOilYield,
-  getStoneYield,
-  getWoodYield,
   type FiniteResource,
   type GameState,
   type OilReserve,
   type Rock,
   type Tree,
 } from "../game/index.ts";
-import type { Timer, TimerContext } from "./types.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
 
-// App-local kind label for the Resources panel — maps to upstream
-// recovery constants below.
+// One card per resource type. Each resource's batch yield helper threads
+// AOE + counter the same way `bulkHarvest` / `bulkChop` would on harvest
+// — see src/game/batch-yields.ts.
+//
+// Active-node check: `x !== undefined || y !== undefined` — landscaped
+// away nodes have coords stripped (matches upstream `getActiveResources`
+// pattern).
+
 type ResourceKind =
   | "Wood"
   | "Stone"
@@ -42,29 +49,13 @@ const RECOVERY_SECONDS: Record<ResourceKind, number> = {
   Oil: OIL_RESERVE_RECOVERY_TIME,
 };
 
-// One card per resource type (Wood / Stone / Iron / Gold / Crimstone /
-// Sunstone / Oil). Each node contributes one Timer with
-// `aggregationKey: "Resources|<kind>"`, so the downstream aggregator
-// sums `predictedYield.amount` across the group and takes the earliest
-// `readyAt`. The card headline reads `<total> <kind>`.
-//
-// Ready check mirrors upstream:
-//   `now > lastActionAt + RECOVERY_SECONDS * 1000`
-// (chop.ts:60, stoneMine.ts canMine, etc.)
-//
-// Active-node check uses `x === undefined && y === undefined` —
-// landscaped-away nodes have coords stripped. `removedAt` is unreliable
-// (re-placed nodes carry stale timestamps).
-//
-// Sunstone has no upstream `getDropAmount`; mineSunstone.ts always
-// awards 1 per mine, so the predictor here returns 1 too.
-
 function pushResourceTimer(
   out: Timer[],
   kind: ResourceKind,
   nodeId: string,
   readyAt: number,
   yieldAmount: number,
+  boosts?: Boost[],
 ): void {
   out.push({
     id: `resource:${kind}:${nodeId}`,
@@ -73,20 +64,13 @@ function pushResourceTimer(
     icon: getItemIcon(kind),
     readyAt,
     predictedYield: { amount: yieldAmount, item: kind },
+    boosts,
     aggregationKey: `Resources|${kind}`,
   });
 }
 
 function isPlaced(node: { x?: number; y?: number }): boolean {
   return node.x !== undefined || node.y !== undefined;
-}
-
-function safeYield<T>(fn: () => T, fallback: T): T {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
 }
 
 export function extractResourceTimers(
@@ -96,128 +80,185 @@ export function extractResourceTimers(
   const out: Timer[] = [];
   const farmId = ctx.farmId;
 
-  // Wood
-  const treeRecoveryMs = RECOVERY_SECONDS.Wood * 1000;
+  // --- Trees / Wood ---
+  // Group by tree.name (or "Tree" default) so each variant's counter +
+  // AOE thread independently.
+  const treesByName = new Map<
+    string,
+    Array<{ nodeId: string; tree: Tree; readyAt: number }>
+  >();
   for (const [nodeId, tree] of Object.entries(state.trees ?? {})) {
     if (!isPlaced(tree)) continue;
-    const readyAt = tree.wood.choppedAt + treeRecoveryMs;
-    const amount = safeYield(
-      () =>
-        getWoodYield({
-          game: state,
-          tree: tree as Tree,
-          farmId,
-          counter: ctx.counter.next(),
-        }).amount,
-      1,
-    );
-    pushResourceTimer(out, "Wood", nodeId, readyAt, amount);
+    const t = tree as Tree;
+    const treeName = t.name ?? "Tree";
+    const readyAt = t.wood.choppedAt + RECOVERY_SECONDS.Wood * 1000;
+    const list = treesByName.get(treeName) ?? [];
+    list.push({ nodeId, tree: t, readyAt });
+    treesByName.set(treeName, list);
   }
-
-  // Stone / Iron / Gold (uniform Rock shape)
-  const rockKinds: Array<{
-    kind: ResourceKind;
-    map: Record<string, Rock> | undefined;
-    yieldFn: (rock: Rock, id: string, createdAt: number) => number;
-  }> = [
-    {
-      kind: "Stone",
-      map: state.stones,
-      yieldFn: (rock, id, createdAt) =>
-        safeYield(
-          () =>
-            getStoneYield({
-              game: state,
-              rock,
-              id,
-              createdAt,
-              farmId,
-              counter: ctx.counter.next(),
-            }).amount,
-          1,
-        ),
-    },
-    {
-      kind: "Iron",
-      map: state.iron,
-      yieldFn: (rock, _id, createdAt) =>
-        safeYield(
-          () =>
-            getIronYield({
-              game: state,
-              rock,
-              createdAt,
-              farmId,
-              counter: ctx.counter.next(),
-            }).amount,
-          1,
-        ),
-    },
-    {
-      kind: "Gold",
-      map: state.gold,
-      yieldFn: (rock, _id, createdAt) =>
-        safeYield(
-          () =>
-            getGoldYield({
-              game: state,
-              rock,
-              createdAt,
-              farmId,
-              counter: ctx.counter.next(),
-            }).amount,
-          1,
-        ),
-    },
-  ];
-  for (const { kind, map, yieldFn } of rockKinds) {
-    const recoveryMs = RECOVERY_SECONDS[kind] * 1000;
-    for (const [nodeId, rock] of Object.entries(map ?? {})) {
-      if (!isPlaced(rock)) continue;
-      const readyAt = rock.stone.minedAt + recoveryMs;
-      const amount = yieldFn(rock, nodeId, Math.max(ctx.now, readyAt));
-      pushResourceTimer(out, kind, nodeId, readyAt, amount);
+  for (const [treeName, group] of treesByName) {
+    group.sort((a, b) => a.readyAt - b.readyAt);
+    const yields = batchWoodYields({
+      game: state,
+      treeName,
+      trees: group.map(({ nodeId, tree }) => ({ nodeId, tree })),
+      farmId,
+    });
+    for (const { nodeId, readyAt } of group) {
+      const entry = yields.get(nodeId);
+      pushResourceTimer(
+        out,
+        "Wood",
+        nodeId,
+        readyAt,
+        entry?.amount ?? 1,
+        entry?.boosts,
+      );
     }
   }
 
-  // Crimstone — FiniteResource, exhausted when minesLeft hits 0
+  // --- Rocks (Stone / Iron / Gold) ---
+  const rockConfigs: Array<{
+    kind: ResourceKind;
+    map: Record<string, Rock> | undefined;
+    defaultName: string;
+    batch:
+      | typeof batchStoneYields
+      | typeof batchIronYields
+      | typeof batchGoldYields;
+  }> = [
+    { kind: "Stone", map: state.stones, defaultName: "Stone Rock", batch: batchStoneYields },
+    { kind: "Iron", map: state.iron, defaultName: "Iron Rock", batch: batchIronYields },
+    { kind: "Gold", map: state.gold, defaultName: "Gold Rock", batch: batchGoldYields },
+  ];
+  for (const { kind, map, defaultName, batch } of rockConfigs) {
+    const recoveryMs = RECOVERY_SECONDS[kind] * 1000;
+    const byName = new Map<
+      string,
+      Array<{ nodeId: string; rock: Rock; readyAt: number }>
+    >();
+    for (const [nodeId, rock] of Object.entries(map ?? {})) {
+      if (!isPlaced(rock)) continue;
+      const r = rock as Rock;
+      const rockName = r.name ?? defaultName;
+      const readyAt = r.stone.minedAt + recoveryMs;
+      const list = byName.get(rockName) ?? [];
+      list.push({ nodeId, rock: r, readyAt });
+      byName.set(rockName, list);
+    }
+    for (const [rockName, group] of byName) {
+      group.sort((a, b) => a.readyAt - b.readyAt);
+      const yields = batch({
+        game: state,
+        rockName,
+        rocks: group.map(({ nodeId, rock, readyAt }) => ({
+          nodeId,
+          rock,
+          createdAt: Math.max(ctx.now, readyAt),
+        })),
+        farmId,
+      });
+      for (const { nodeId, readyAt } of group) {
+        const entry = yields.get(nodeId);
+        pushResourceTimer(
+          out,
+          kind,
+          nodeId,
+          readyAt,
+          entry?.amount ?? 1,
+          entry?.boosts,
+        );
+      }
+    }
+  }
+
+  // --- Crimstone (FiniteResource; no PRNG counter advance) ---
   const crimstoneRecoveryMs = RECOVERY_SECONDS.Crimstone * 1000;
+  const crimstones: Array<{
+    nodeId: string;
+    rock: FiniteResource;
+    readyAt: number;
+  }> = [];
   for (const [nodeId, rock] of Object.entries(state.crimstones ?? {})) {
     if (!isPlaced(rock)) continue;
     if (rock.minesLeft <= 0) continue;
-    const readyAt = rock.stone.minedAt + crimstoneRecoveryMs;
-    const amount = safeYield(
-      () =>
-        getCrimstoneYield({
-          game: state,
-          rock: rock as FiniteResource,
-        }).amount,
-      1,
+    crimstones.push({
+      nodeId,
+      rock: rock as FiniteResource,
+      readyAt: rock.stone.minedAt + crimstoneRecoveryMs,
+    });
+  }
+  const crimstoneYields = batchCrimstoneYields({
+    game: state,
+    rocks: crimstones.map(({ nodeId, rock }) => ({ nodeId, rock })),
+  });
+  for (const { nodeId, readyAt } of crimstones) {
+    const entry = crimstoneYields.get(nodeId);
+    pushResourceTimer(
+      out,
+      "Crimstone",
+      nodeId,
+      readyAt,
+      entry?.amount ?? 1,
+      entry?.boosts,
     );
-    pushResourceTimer(out, "Crimstone", nodeId, readyAt, amount);
   }
 
-  // Sunstone — always 1, no upstream predictor (mineSunstone.ts:59).
-  // Still skip exhausted nodes.
+  // --- Sunstone (always 1) ---
   const sunstoneRecoveryMs = RECOVERY_SECONDS.Sunstone * 1000;
+  const sunstones: Array<{ nodeId: string; readyAt: number }> = [];
   for (const [nodeId, rock] of Object.entries(state.sunstones ?? {})) {
     if (!isPlaced(rock)) continue;
     if (rock.minesLeft <= 0) continue;
-    const readyAt = rock.stone.minedAt + sunstoneRecoveryMs;
-    pushResourceTimer(out, "Sunstone", nodeId, readyAt, 1);
+    sunstones.push({
+      nodeId,
+      readyAt: rock.stone.minedAt + sunstoneRecoveryMs,
+    });
+  }
+  const sunstoneYields = batchSunstoneYields({
+    rocks: sunstones.map(({ nodeId }) => ({ nodeId })),
+  });
+  for (const { nodeId, readyAt } of sunstones) {
+    const entry = sunstoneYields.get(nodeId);
+    pushResourceTimer(
+      out,
+      "Sunstone",
+      nodeId,
+      readyAt,
+      entry?.amount ?? 1,
+      entry?.boosts,
+    );
   }
 
-  // Oil
+  // --- Oil ---
   const oilRecoveryMs = RECOVERY_SECONDS.Oil * 1000;
+  const oilEntries: Array<{
+    nodeId: string;
+    reserve: OilReserve;
+    readyAt: number;
+  }> = [];
   for (const [nodeId, reserve] of Object.entries(state.oilReserves ?? {})) {
     if (!isPlaced(reserve)) continue;
-    const readyAt = reserve.oil.drilledAt + oilRecoveryMs;
-    const amount = safeYield(
-      () =>
-        getOilYield({ game: state, reserve: reserve as OilReserve }).amount,
-      1,
+    oilEntries.push({
+      nodeId,
+      reserve: reserve as OilReserve,
+      readyAt: reserve.oil.drilledAt + oilRecoveryMs,
+    });
+  }
+  const oilYields = batchOilYields({
+    game: state,
+    reserves: oilEntries.map(({ nodeId, reserve }) => ({ nodeId, reserve })),
+  });
+  for (const { nodeId, readyAt } of oilEntries) {
+    const entry = oilYields.get(nodeId);
+    pushResourceTimer(
+      out,
+      "Oil",
+      nodeId,
+      readyAt,
+      entry?.amount ?? 1,
+      entry?.boosts,
     );
-    pushResourceTimer(out, "Oil", nodeId, readyAt, amount);
   }
 
   return out;

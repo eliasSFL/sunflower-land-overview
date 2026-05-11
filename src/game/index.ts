@@ -25,6 +25,18 @@ export {
   type CrimstoneYieldArgs,
   type OilYieldArgs,
 } from "./yields.ts";
+export {
+  batchCropYields,
+  batchPatchFruitYields,
+  batchGreenhouseYields,
+  batchWoodYields,
+  batchStoneYields,
+  batchIronYields,
+  batchGoldYields,
+  batchCrimstoneYields,
+  batchSunstoneYields,
+  batchOilYields,
+} from "./batch-yields.ts";
 export { getItemIcon, getBannerUrl } from "./icons.ts";
 
 // Pure passthroughs from the submodule. Re-exporting keeps timer files

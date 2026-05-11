@@ -6,7 +6,7 @@ import {
   type GameState,
   type PlantedFlower,
 } from "../game/index.ts";
-import type { Timer, TimerContext } from "./types.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // readyAt mirrors harvestFlower.ts: speed boosts are baked into
 // `plantedAt` at plant time (see plantFlower.ts:getPlantedAt), so the
@@ -17,14 +17,24 @@ import type { Timer, TimerContext } from "./types.ts";
 // harvest. The lottery rolls in `flower.criticalHit` are populated
 // server-side, so the prediction matches the harvest outcome.
 
-function predictAmount(game: GameState, flower: PlantedFlower): number {
-  if (flower.amount !== undefined) return flower.amount;
+function predictAmount(
+  game: GameState,
+  flower: PlantedFlower,
+): { amount: number; boosts: Boost[] } {
+  if (flower.amount !== undefined)
+    return { amount: flower.amount, boosts: [] };
   const criticalHit = (flower.criticalHit ?? {}) as Record<string, number>;
   const result = getFlowerAmount({
     game,
     criticalDrop: (name: string) => Boolean(criticalHit[name] ?? 0),
-  });
-  return Number(result?.amount ?? 1);
+  }) as { amount?: number; boostsUsed?: Array<{ name: string; value: string }> };
+  const boosts: Boost[] = Array.isArray(result?.boostsUsed)
+    ? result.boostsUsed.map((b) => ({
+        name: String(b.name),
+        value: String(b.value),
+      }))
+    : [];
+  return { amount: Number(result?.amount ?? 1), boosts };
 }
 
 export function extractFlowerTimers(
@@ -55,8 +65,11 @@ export function extractFlowerTimers(
     ctx.counter.next();
 
     let amount = 1;
+    let boosts: Boost[] = [];
     try {
-      amount = predictAmount(state, flower);
+      const result = predictAmount(state, flower);
+      amount = result.amount;
+      boosts = result.boosts;
     } catch {
       // Retain the initial `amount = 1` on upstream throw.
     }
@@ -69,6 +82,7 @@ export function extractFlowerTimers(
       icon: getItemIcon(flower.name),
       readyAt,
       predictedYield: { amount, item: flower.name },
+      boosts,
       aggregationKey: `Flowers|${flower.name}`,
     });
   }

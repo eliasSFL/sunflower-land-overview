@@ -5,7 +5,7 @@ import {
   type CropName,
   type GameState,
 } from "../game/index.ts";
-import type { Timer, TimerContext } from "./types.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // One Timer per pack (queue slot). Yield prediction threads a per-crop
 // counter across packs so two consecutive Sunflower packs predict in the
@@ -65,6 +65,7 @@ export function extractCropMachineTimers(
       0;
 
     let amount = pack.amount ?? 0;
+    let boosts: Boost[] = [];
     if (amount === 0) {
       try {
         const result = getCropMachinePackYield({
@@ -74,6 +75,7 @@ export function extractCropMachineTimers(
           prngArgs: { farmId: ctx.farmId, initialCounter: baseCounter },
         });
         amount = result.amount;
+        boosts = result.boosts;
       } catch {
         // Fall back to seed count (1× per seed) if upstream throws.
         amount = pack.seeds;
@@ -89,6 +91,7 @@ export function extractCropMachineTimers(
       icon: getItemIcon(pack.crop),
       readyAt,
       predictedYield: { amount, item: pack.crop },
+      boosts,
       // Unique per-slot key keeps each pack as its own card; the queue
       // matters here, unlike crops/fruits where plots all merge.
       aggregationKey: `Crop Machine|${machineId}|${packIndex}`,

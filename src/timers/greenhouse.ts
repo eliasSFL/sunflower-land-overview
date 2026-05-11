@@ -1,49 +1,75 @@
 import {
   GREENHOUSE_CROP_TIME_SECONDS,
-  getGreenhouseYield,
+  batchGreenhouseYields,
   getItemIcon,
   type GameState,
+  type GreenhousePlantName,
+  type GreenhousePot,
 } from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
+
+// Batched yield prediction — see src/game/batch-yields.ts.
 
 export function extractGreenhouseTimers(
   state: GameState,
   ctx: TimerContext,
 ): Timer[] {
   const pots = state.greenhouse?.pots ?? {};
-  const out: Timer[] = [];
 
+  type Row = {
+    potId: string;
+    pot: GreenhousePot;
+    plantName: GreenhousePlantName;
+    readyAt: number;
+  };
+  const rows: Row[] = [];
   for (const [potId, pot] of Object.entries(pots)) {
-    const plant = pot.plant;
-    if (!plant) continue;
-
-    const grow = GREENHOUSE_CROP_TIME_SECONDS[plant.name] ?? 0;
-    const readyAt = plant.plantedAt + grow * 1000;
-
-    const counter = ctx.counter.next();
-    let amount = 1;
-    try {
-      const result = getGreenhouseYield({
-        crop: plant.name,
-        game: state,
-        createdAt: Math.max(ctx.now, readyAt),
-        fertiliser: pot.fertiliser?.name,
-        prngArgs: { farmId: ctx.farmId, counter },
-      });
-      amount = result.amount;
-    } catch {
-      // Retain the initial `amount = 1` on upstream throw.
-    }
-
-    out.push({
-      id: `greenhouse:${potId}`,
-      category: "Greenhouse",
-      label: plant.name,
-      icon: getItemIcon(plant.name),
-      readyAt,
-      predictedYield: { amount, item: plant.name },
-      aggregationKey: `Greenhouse|${plant.name}`,
+    if (!pot.plant) continue;
+    const grow = GREENHOUSE_CROP_TIME_SECONDS[pot.plant.name] ?? 0;
+    rows.push({
+      potId,
+      pot,
+      plantName: pot.plant.name,
+      readyAt: pot.plant.plantedAt + grow * 1000,
     });
+  }
+
+  const byName = new Map<GreenhousePlantName, Row[]>();
+  for (const row of rows) {
+    const list = byName.get(row.plantName) ?? [];
+    list.push(row);
+    byName.set(row.plantName, list);
+  }
+  for (const list of byName.values()) {
+    list.sort((a, b) => a.readyAt - b.readyAt);
+  }
+
+  const out: Timer[] = [];
+  for (const [plantName, group] of byName) {
+    const yields = batchGreenhouseYields({
+      game: state,
+      plantName,
+      pots: group.map(({ potId, pot, readyAt }) => ({
+        potId,
+        pot,
+        createdAt: Math.max(ctx.now, readyAt),
+      })),
+      farmId: ctx.farmId,
+    });
+    for (const { potId, readyAt } of group) {
+      const entry = yields.get(potId);
+      const amount = entry?.amount ?? 1;
+      out.push({
+        id: `greenhouse:${potId}`,
+        category: "Greenhouse",
+        label: plantName,
+        icon: getItemIcon(plantName),
+        readyAt,
+        predictedYield: { amount, item: plantName },
+        boosts: entry?.boosts,
+        aggregationKey: `Greenhouse|${plantName}`,
+      });
+    }
   }
 
   return out;

@@ -17,6 +17,17 @@ export const CATEGORY_ORDER: Category[] = [
   "Resources",
 ];
 
+// One boost as returned by upstream yield functions. `name` is a
+// BoostName from the submodule; `value` is the formatted contribution
+// (e.g. "+0.2", "x1.2"). We keep this as plain strings so callers don't
+// need to import BoostName.
+export type Boost = { name: string; value: string };
+
+// Aggregated boost: same name+value seen on `count` plots in the merged
+// group. AOE-gated boosts (Scary Mike, Sir Goldensnout) typically have
+// count: 1; flat-rate boosts (Scarecrow, Kuebiko) match every plot.
+export type AggregatedBoost = Boost & { count: number };
+
 export type Timer = {
   id: string;
   category: Category;
@@ -33,11 +44,17 @@ export type Timer = {
   // into one card. Yields are summed; readyAt becomes the earliest of the
   // group; count tracks the number of merged plots.
   aggregationKey?: string;
+  // Boosts that contributed to predictedYield.amount. Surfaced in the
+  // TimerCard tooltip so players can see WHY a yield is what it is.
+  // Sourced from the upstream `boostsUsed` arrays — see
+  // sunflower-land/src/features/game/events/landExpansion/harvest.ts.
+  boosts?: Boost[];
   metadata?: Record<string, string>;
 };
 
-export type AggregatedTimer = Timer & {
+export type AggregatedTimer = Omit<Timer, "boosts"> & {
   count: number;
+  boosts?: AggregatedBoost[];
 };
 
 export type TimerContext = {
