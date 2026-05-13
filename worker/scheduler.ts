@@ -33,7 +33,7 @@ function buildPayload(entry: ScheduleEntry): Uint8Array<ArrayBuffer> {
   const payload = {
     title: `${entry.category}: ${entry.label} ready`,
     body: "Open Sunflower Land Overview to harvest.",
-    icon: entry.icon ?? "/icons/sfl_overview-192.webp",
+    icon: entry.icon ?? "/icons/app-icon.svg",
     tag: entry.key,
     url: "/",
   };
