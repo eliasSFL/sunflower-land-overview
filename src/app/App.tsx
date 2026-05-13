@@ -120,7 +120,7 @@ export function App() {
             lg+  : Farm ID 3/12 (25%)  + right 9/12 (75%),  3 timer cols
             Right-side uses CSS multi-column flow (see below). */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-          <InnerPanel className="flex flex-col gap-3 sm:col-span-5 md:col-span-4 lg:col-span-3">
+          <InnerPanel className="flex flex-col gap-3 self-start sm:col-span-5 md:col-span-4 lg:col-span-3">
             <p className="text-sm">
               In the game:{" "}
               <strong>{"Settings > Advanced > Developer Options > API Key"}</strong> to
@@ -165,26 +165,14 @@ export function App() {
             // Adding more timer panels just makes existing columns
             // taller — no breakpoint maintenance needed.
             <div className="columns-1 gap-2 sm:col-span-7 md:col-span-8 md:columns-2 lg:col-span-9 lg:columns-3">
-              {timers.length === 0 ? (
-                <InnerPanel>
-                  <p className="text-sm">
-                    No active timers right now. Plant some crops!
-                  </p>
-                </InnerPanel>
-              ) : (
-                CATEGORY_ORDER.map((cat) => {
-                  const list = byCategory.get(cat);
-                  if (!list || list.length === 0) return null;
-                  return (
-                    <TimerSection
-                      key={cat}
-                      category={cat}
-                      timers={list}
-                      now={now}
-                    />
-                  );
-                })
-              )}
+              {CATEGORY_ORDER.map((cat) => (
+                <TimerSection
+                  key={cat}
+                  category={cat}
+                  timers={byCategory.get(cat) ?? []}
+                  now={now}
+                />
+              ))}
             </div>
           ) : null}
         </div>

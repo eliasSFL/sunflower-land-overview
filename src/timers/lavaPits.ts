@@ -1,0 +1,87 @@
+import {
+  getBoostIcon,
+  getItemIcon,
+  getLavaPitTime,
+  getObsidianYield,
+  type GameState,
+  type LavaPit,
+} from "../game/index.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
+
+// One Timer per lava pit — each pit progresses independently (started
+// at different times) and obsidian yield is per-collection. Active =
+// `startedAt` set AND `collectedAt` undefined (post-collection upstream
+// clears `startedAt` and stamps `collectedAt`).
+//
+// `readyAt` is persisted by upstream `startLavaPit` as
+// `startedAt + getLavaPitTime(game).time`. Boost re-application after
+// start does NOT retroactively change it, so we always trust the
+// stored value. Fallback computes it from the current game state for
+// the rare case where `startedAt` is set but `readyAt` is missing
+// (older save shapes).
+//
+// Active-pit check mirrors upstream — `x === undefined && y === undefined`
+// means landscaped away.
+
+function toBoosts(
+  raw: ReadonlyArray<{ name: string; value: string }>,
+  state: GameState,
+): Boost[] | undefined {
+  if (raw.length === 0) return undefined;
+  return raw.map(({ name, value }) => ({
+    name,
+    value,
+    icon: getBoostIcon(name, state),
+  }));
+}
+
+export function extractLavaPitTimers(
+  state: GameState,
+  _ctx: TimerContext,
+): Timer[] {
+  const lavaPits = state.lavaPits;
+  if (!lavaPits || Object.keys(lavaPits).length === 0) return [];
+
+  const icon = getItemIcon("Obsidian");
+  const { amount: yieldAmount, boostsUsed: yieldBoostsUsed } = getObsidianYield(
+    { game: state },
+  );
+  const yieldBoosts = toBoosts(yieldBoostsUsed, state);
+
+  // Computed lazily — only needed if a pit is missing `readyAt`.
+  let cachedTime: number | undefined;
+  const getTime = (): number => {
+    if (cachedTime === undefined) {
+      cachedTime = getLavaPitTime({ game: state }).time;
+    }
+    return cachedTime;
+  };
+
+  const out: Timer[] = [];
+
+  for (const [pitId, pit] of Object.entries(lavaPits)) {
+    const p = pit as LavaPit;
+
+    // Landscaped away.
+    if (p.x === undefined && p.y === undefined) continue;
+    // Not started, or already collected.
+    if (p.startedAt === undefined) continue;
+    if (p.collectedAt !== undefined) continue;
+
+    const readyAt = p.readyAt ?? p.startedAt + getTime();
+
+    out.push({
+      id: `lavaPit:${pitId}`,
+      category: "Lava Pits",
+      label: "Obsidian",
+      icon,
+      readyAt,
+      predictedYield: { amount: yieldAmount, item: "Obsidian" },
+      boosts: yieldBoosts,
+      // Each pit = own card.
+      aggregationKey: `Lava Pits|${pitId}`,
+    });
+  }
+
+  return out;
+}

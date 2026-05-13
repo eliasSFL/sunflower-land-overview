@@ -41,6 +41,8 @@ export type {
   FiniteResource,
   Oil,
   OilReserve,
+  // Lava pits
+  LavaPit,
   // Root
   GameState,
 } from "features/game/types/game";

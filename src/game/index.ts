@@ -55,6 +55,14 @@ export {
   SUNSTONE_RECOVERY_TIME,
 } from "features/game/lib/constants";
 export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/drillOilReserve";
+// Lava pits — `getLavaPitTime` returns the boost-scaled production time
+// (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
+// collection obsidian amount plus the boosts that contributed to it.
+export {
+  LAVA_PIT_TIME,
+  getLavaPitTime,
+} from "features/game/events/landExpansion/startLavaPit";
+export { getObsidianYield } from "features/game/events/landExpansion/collectLavaPit";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
@@ -105,4 +113,5 @@ export type {
   SaltNodes,
   SaltFarm,
   Salt,
+  LavaPit,
 } from "./types.ts";
