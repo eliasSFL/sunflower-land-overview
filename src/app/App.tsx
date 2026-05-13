@@ -113,14 +113,15 @@ export function App() {
           </div>
         </header>
 
-        {/* Layout proportions across breakpoints (12-col grid):
-            <sm  : 1 col (mobile, full-width stack)
-            sm   : Farm ID 5/12 (~40%) + right 7/12 (~60%), 1 timer col
-            md   : Farm ID 4/12 (~33%) + right 8/12 (~67%), 2 timer cols
-            lg+  : Farm ID 3/12 (25%)  + right 9/12 (75%),  3 timer cols
+        {/* Layout proportions across breakpoints (12-col grid). "Total
+            cols" counts the Farm ID column too:
+            <sm   : 1 col total  (mobile, full-width stack)
+            sm    : 2 cols total — Farm ID 5/12 + right 7/12, 1 timer col
+            lg    : 3 cols total — Farm ID 4/12 + right 8/12, 2 timer cols
+            2xl+  : 4 cols total — Farm ID 3/12 + right 9/12, 3 timer cols
             Right-side uses CSS multi-column flow (see below). */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-          <InnerPanel className="flex flex-col gap-3 self-start sm:col-span-5 md:col-span-4 lg:col-span-3">
+          <InnerPanel className="flex flex-col gap-3 self-start sm:col-span-5 lg:col-span-4 2xl:col-span-3">
             <p className="text-sm">
               In the game:{" "}
               <strong>
@@ -159,15 +160,15 @@ export function App() {
           {data ? (
             // CSS multi-column layout (not grid) so a short panel under a
             // tall one stacks immediately in the same column instead of
-            // leaving an empty grid-row gap. Column *count* is fixed by
-            // breakpoint so the panel width stays proportional with the
-            // Farm ID column (1/4 of viewport on lg+, 1/3 on md):
-            //   <md   : 1 col  (mobile, full-width stack)
-            //   md-lg : 2 cols (Farm ID + 2 timer panels = 3 total)
-            //   lg+   : 3 cols (Farm ID + 3 timer panels = 4 total)
+            // leaving an empty grid-row gap. Timer-column count is fixed
+            // by breakpoint so panel width stays proportional with the
+            // Farm ID column:
+            //   <lg     : 1 timer col (mobile, full-width stack)
+            //   lg-2xl  : 2 timer cols (Farm + 2 = 3 total)
+            //   2xl+    : 3 timer cols (Farm + 3 = 4 total)
             // Adding more timer panels just makes existing columns
             // taller — no breakpoint maintenance needed.
-            <div className="columns-1 gap-2 sm:col-span-7 md:col-span-8 md:columns-2 lg:col-span-9 lg:columns-3">
+            <div className="columns-1 gap-2 sm:col-span-7 lg:col-span-8 lg:columns-2 2xl:col-span-9 2xl:columns-3">
               {CATEGORY_ORDER.map((cat) => (
                 <TimerSection
                   key={cat}
