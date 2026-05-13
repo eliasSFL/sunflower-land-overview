@@ -26,7 +26,13 @@ const EMPTY_MESSAGES: Record<Category, string> = {
 };
 
 export function TimerSection({ category, timers, now }: Props) {
-  const sorted = [...timers].sort((a, b) => a.readyAt - b.readyAt);
+  // Idle entries (placed-but-not-producing sources like an empty
+  // Kitchen) sort to the bottom regardless of `readyAt`.
+  const sorted = [...timers].sort((a, b) => {
+    const idleDiff = Number(!!a.idle) - Number(!!b.idle);
+    if (idleDiff !== 0) return idleDiff;
+    return a.readyAt - b.readyAt;
+  });
   const totalCount = sorted.reduce((acc, t) => acc + t.count, 0);
   const isEmpty = sorted.length === 0;
 

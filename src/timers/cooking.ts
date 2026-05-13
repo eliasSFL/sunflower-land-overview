@@ -51,16 +51,41 @@ type Predicted = {
   boosts?: Boost[];
 };
 
-function collectRawSlots(state: GameState): RawSlot[] {
-  const out: RawSlot[] = [];
+type IdleBuilding = {
+  building: BuildingName;
+  instanceKey: string;
+};
+
+function collectRawSlots(state: GameState): {
+  slots: RawSlot[];
+  idle: IdleBuilding[];
+} {
+  const slots: RawSlot[] = [];
+  const idle: IdleBuilding[] = [];
+
+  const pushIdle = (
+    building: BuildingName,
+    inst: PlacedItem,
+    idx: number,
+  ): void => {
+    // `coordinates` undefined would mean the building exists in the
+    // buildings array but isn't placed on the land (e.g. mid-move).
+    // Skip those so the card list doesn't show off-board buildings.
+    if (!inst.coordinates) return;
+    idle.push({ building, instanceKey: inst.id ?? `${idx}` });
+  };
 
   for (const name of COOKING_BUILDINGS) {
     const instances = (state.buildings?.[name] ?? []) as PlacedItem[];
     instances.forEach((inst, idx) => {
       const queue = inst.crafting ?? [];
       const instanceKey = inst.id ?? `${idx}`;
+      if (queue.length === 0) {
+        pushIdle(name, inst, idx);
+        return;
+      }
       queue.forEach((recipe, slotIdx) => {
-        out.push({
+        slots.push({
           building: name,
           instanceKey,
           slotIdx,
@@ -76,8 +101,12 @@ function collectRawSlots(state: GameState): RawSlot[] {
   fishMarkets.forEach((inst, idx) => {
     const queue = inst.processing ?? [];
     const instanceKey = inst.id ?? `${idx}`;
+    if (queue.length === 0) {
+      pushIdle(PROCESSING_BUILDING, inst, idx);
+      return;
+    }
     queue.forEach((recipe, slotIdx) => {
-      out.push({
+      slots.push({
         building: PROCESSING_BUILDING,
         instanceKey,
         slotIdx,
@@ -87,7 +116,7 @@ function collectRawSlots(state: GameState): RawSlot[] {
     });
   });
 
-  return out;
+  return { slots, idle };
 }
 
 function toBoosts(
@@ -106,8 +135,8 @@ export function extractCookingTimers(
   state: GameState,
   ctx: TimerContext,
 ): Timer[] {
-  const rawSlots = collectRawSlots(state);
-  if (rawSlots.length === 0) return [];
+  const { slots: rawSlots, idle: idleBuildings } = collectRawSlots(state);
+  if (rawSlots.length === 0 && idleBuildings.length === 0) return [];
 
   // Sort by readyAt so per-recipe PRNG counters advance in claim order
   // before we group by building. Within a single building's queue this
@@ -146,7 +175,7 @@ export function extractCookingTimers(
           game: state,
         });
       } catch {
-        amount = 1;
+        // Fall back to the initial amount=1 set above.
       }
       cookCounter[recipeName] = base + 1;
     } else {
@@ -159,7 +188,7 @@ export function extractCookingTimers(
         amount = result.amount.toNumber();
         boosts = toBoosts(result.boostsUsed, state);
       } catch {
-        amount = 1;
+        // Fall back to the initial amount=1 set above.
       }
       const base =
         processedCounter[recipeName] ??
@@ -223,6 +252,22 @@ export function extractCookingTimers(
       slots: slotEntries,
       boosts: aggregatedBoosts.length > 0 ? aggregatedBoosts : undefined,
       // Each building instance is its own card — no merging.
+      aggregationKey: `Cooking|${building}|${instanceKey}`,
+    });
+  }
+
+  // Placed-but-empty buildings — one card per instance, no slots, marked
+  // idle so TimerCard hides the countdown and TimerSection sorts them
+  // below the active ones.
+  for (const { building, instanceKey } of idleBuildings) {
+    out.push({
+      id: `cooking:${building}:${instanceKey}`,
+      category: "Cooking",
+      label: building,
+      icon: getItemIcon(building),
+      readyAt: 0,
+      idle: true,
+      idleText: "Not cooking",
       aggregationKey: `Cooking|${building}|${instanceKey}`,
     });
   }

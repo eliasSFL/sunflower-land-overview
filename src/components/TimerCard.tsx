@@ -71,12 +71,20 @@ export function TimerCard({ timer, now }: Props) {
         </div>
       </div>
       <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <Label type={STATUS_LABEL[status]}>{remaining}</Label>
-        {status !== "ready" ? (
+        {timer.idle ? (
           <span className="text-xs opacity-60 whitespace-nowrap">
-            {formatReadyAt(timer.readyAt, now)}
+            {timer.idleText ?? "Idle"}
           </span>
-        ) : null}
+        ) : (
+          <>
+            <Label type={STATUS_LABEL[status]}>{remaining}</Label>
+            {status !== "ready" ? (
+              <span className="text-xs opacity-60 whitespace-nowrap">
+                {formatReadyAt(timer.readyAt, now)}
+              </span>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

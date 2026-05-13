@@ -5,11 +5,11 @@ export type Category =
   | "Crop Machine"
   | "Flowers"
   | "Beehives"
-  | "Animals"
-  | "Cooking"
   | "Resources"
   | "Salt"
-  | "Lava Pits";
+  | "Lava Pits"
+  | "Animals"
+  | "Cooking";
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -18,11 +18,11 @@ export const CATEGORY_ORDER: Category[] = [
   "Crop Machine",
   "Flowers",
   "Beehives",
-  "Animals",
-  "Cooking",
   "Resources",
   "Salt",
   "Lava Pits",
+  "Animals",
+  "Cooking",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
@@ -69,6 +69,12 @@ export type Timer = {
   // instead of a single yield headline. Used by cooking buildings where
   // one building card holds multiple queued recipes.
   slots?: TimerSlot[];
+  // The source exists but isn't producing right now (e.g. a placed
+  // Kitchen with an empty queue). TimerCard hides the countdown label
+  // and shows `idleText` instead; TimerSection sorts idle cards to the
+  // bottom of the section regardless of `readyAt`.
+  idle?: boolean;
+  idleText?: string;
   // 0-100. When set, the card's headline appends "· N%". Useful for
   // sources that produce continuously (e.g. beehives) where the yield
   // amount tracks fraction-of-full and the percentage is the more
