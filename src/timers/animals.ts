@@ -95,6 +95,11 @@ export function extractAnimalTimers(
         readyAt: animal.awakeAt,
         predictedYield: { amount, item: resource },
         boosts: toBoosts(boostsUsed, state),
+        // Every animal stacked into this card shares the same type
+        // (aggregationKey scopes by type), so the species reads as the
+        // subtext — same role as the composter / cooking-building names
+        // on those cards.
+        subtext: type,
         aggregationKey: animalKey(type, resource),
       });
     }

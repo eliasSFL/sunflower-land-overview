@@ -51,6 +51,8 @@ export type {
   // Cooking / processing buildings
   BuildingProduct,
   PlacedItem,
+  // Composters
+  CompostBuilding,
   // Root
   GameState,
 } from "features/game/types/game";
@@ -63,6 +65,7 @@ export type {
 } from "features/game/types/buildings";
 export type { CookableName } from "features/game/types/consumables";
 export type { ProcessedResource } from "features/game/types/processedFood";
+export type { ComposterName } from "features/game/types/composters";
 
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";

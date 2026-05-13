@@ -20,9 +20,9 @@ const EMPTY_MESSAGES: Record<Category, string> = {
   Beehives: "No active beehives",
   Animals: "No animals",
   Cooking: "Nothing cooking",
+  Composters: "No composters placed",
   Resources: "No resources placed",
   Salt: "No salt nodes placed",
-  "Lava Pits": "No active lava pits",
 };
 
 export function TimerSection({ category, timers, now }: Props) {

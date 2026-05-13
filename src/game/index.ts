@@ -84,6 +84,16 @@ export {
 // already itemised.
 export { getCookingAmount } from "features/game/events/landExpansion/collectRecipe";
 export { getProcessedResourceAmount } from "features/game/events/landExpansion/collectProcessedResource";
+// Composters — `rollWormAmount` deterministically predicts the
+// worm yield at collect time (same PRNG seed the server uses), and
+// `composterDetails` maps each composter to its worm type
+// (Earthworm / Grub / Red Wiggler).
+export { rollWormAmount } from "features/game/events/landExpansion/composterBait";
+export {
+  getCompostAmount,
+  getReadyAt as getComposterReadyAt,
+} from "features/game/events/landExpansion/startComposter";
+export { composterDetails } from "features/game/types/composters";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
@@ -144,6 +154,8 @@ export type {
   BuildingProduct,
   CookableName,
   CookingBuildingName,
+  CompostBuilding,
+  ComposterName,
   PlacedItem,
   ProcessedResource,
   ProcessingBuildingName,

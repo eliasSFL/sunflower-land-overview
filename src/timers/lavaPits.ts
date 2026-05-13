@@ -8,10 +8,13 @@ import {
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
-// One Timer per lava pit — each pit progresses independently (started
-// at different times) and obsidian yield is per-collection. Active =
-// `startedAt` set AND `collectedAt` undefined (post-collection upstream
-// clears `startedAt` and stamps `collectedAt`).
+// One Timer per active lava pit, all stacked into a single "Obsidian"
+// row inside the Resources section — same pattern as Wood / Stone /
+// Iron / Gold. The aggregator sums yields and uses the earliest
+// `readyAt`.
+//
+// Active = `startedAt` set AND `collectedAt` undefined (post-collection
+// upstream clears `startedAt` and stamps `collectedAt`).
 //
 // `readyAt` is persisted by upstream `startLavaPit` as
 // `startedAt + getLavaPitTime(game).time`. Boost re-application after
@@ -71,15 +74,16 @@ export function extractLavaPitTimers(
     const readyAt = p.readyAt ?? p.startedAt + getTime();
 
     out.push({
-      id: `lavaPit:${pitId}`,
-      category: "Lava Pits",
+      id: `resource:Obsidian:${pitId}`,
+      category: "Resources",
       label: "Obsidian",
       icon,
       readyAt,
       predictedYield: { amount: yieldAmount, item: "Obsidian" },
       boosts: yieldBoosts,
-      // Each pit = own card.
-      aggregationKey: `Lava Pits|${pitId}`,
+      // All pits collapse into a single Obsidian card; matches the
+      // Resources panel pattern used for Wood, Stone, Iron, etc.
+      aggregationKey: `Resources|Obsidian`,
     });
   }
 
