@@ -71,25 +71,48 @@ export function BumpkinSummaryPanel({ data }: Props) {
         </span>
       </header>
 
-      {/* XP progress bar — visual cue for "how close to the next level".
-          At max we render a full bar with the cycle progress text so the
-          row stays the same height as non-max bumpkins. */}
-      <div>
-        <div className="h-1.5 w-full overflow-hidden rounded-sm bg-black/30">
+      {/* XP progress bar — mirrors the in-game HUD style.
+          - level_up icon + pixel-art bordered bar (progress_bar_border)
+          - Fill colour and dark-green track match upstream's
+            PROGRESS_COLORS.progress (#63c74d on #193c3e).
+          - Border widths from upstream's progressBarBorderStyle:
+            2/2/2/3 game px × PIXEL_SCALE 2.625 = 5.25 / 5.25 / 5.25 / 7.875
+            CSS px. borderImageSlice keeps the chrome from stretching. */}
+      <div className="flex items-center gap-1">
+        <img
+          src={CHROME_ICONS.level_up}
+          alt=""
+          aria-hidden
+          className="h-5 w-5 shrink-0 object-contain"
+          style={{ imageRendering: "pixelated" }}
+        />
+        <div
+          className="relative h-4.5 flex-1"
+          style={{
+            borderStyle: "solid",
+            borderImage: `url(${CHROME_ICONS.progress_bar_border}) 20% 20% 30%`,
+            borderLeftWidth: "5.25px",
+            borderRightWidth: "5.25px",
+            borderTopWidth: "5.25px",
+            borderBottomWidth: "7.875px",
+            backgroundColor: "#193c3e",
+            imageRendering: "pixelated",
+          }}
+        >
           <div
-            className="h-full bg-yellow-300"
-            style={{ width: `${pct}%` }}
+            className="h-full"
+            style={{ width: `${pct}%`, backgroundColor: "#63c74d" }}
             aria-hidden
           />
         </div>
-        <p className="mt-0.5 text-xs opacity-70">
-          {atMax
-            ? `${formatInt(currentExperienceProgress)} XP this cycle`
-            : `${formatInt(currentExperienceProgress)} / ${formatInt(
-                experienceToNextLevel,
-              )} XP${level < MAX_BUMPKIN_LEVEL ? ` to level ${level + 1}` : ""}`}
-        </p>
       </div>
+      <p className="text-xs opacity-70">
+        {atMax
+          ? `${formatInt(currentExperienceProgress)} XP this cycle`
+          : `${formatInt(currentExperienceProgress)} / ${formatInt(
+              experienceToNextLevel,
+            )} XP${level < MAX_BUMPKIN_LEVEL ? ` to level ${level + 1}` : ""}`}
+      </p>
 
       {/* Currency rows — coins / FLOWER / Gem / Love Charm. Order
           mirrors the in-game top bar. Each row is icon + amount, kept

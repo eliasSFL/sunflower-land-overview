@@ -36,6 +36,12 @@ export const CHROME_ICONS = {
   chevron_right: `${CDN}/icons/chevron_right.png`,
   lightning: `${CDN}/icons/lightning.png`,
   player: `${CDN}/icons/player.png`,
+  // In-game XP / progress bar chrome — used by the BumpkinSummaryPanel
+  // to mirror the HUD's level bar style. `level_up.png` isn't on the
+  // CDN; we bundle it from the submodule. `progress_bar_border.png`
+  // IS on the CDN.
+  level_up: submoduleAsset("icons/level_up.png"),
+  progress_bar_border: `${CDN}/ui/progress/progress_bar_border.png`,
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.
   coins: submoduleAsset("icons/coins.webp"),
