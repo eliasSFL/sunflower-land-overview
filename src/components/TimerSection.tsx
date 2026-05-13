@@ -18,6 +18,7 @@ const EMPTY_MESSAGES: Record<Category, string> = {
   "Crop Machine": "Crop machine idle",
   Flowers: "No flowers planted",
   Beehives: "No active beehives",
+  Animals: "No animals",
   Resources: "No resources placed",
   Salt: "No salt nodes placed",
   "Lava Pits": "No active lava pits",

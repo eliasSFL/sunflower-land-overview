@@ -1,4 +1,4 @@
-import type { GameState } from "../game/index.ts";
+import { makeGame, type GameState } from "../game/index.ts";
 
 export type FarmResponse = {
   farm: GameState;
@@ -65,5 +65,9 @@ export async function fetchFarm(
     );
   }
 
-  return parsed as FarmResponse;
+  // Hydrate the inventory / balance / stock fields into Decimal
+  // instances. Upstream helpers (animal boost gates, etc.) call `.gt(0)`
+  // / `.add()` on these — they'd crash on the raw JSON numbers.
+  const raw = parsed as FarmResponse;
+  return { ...raw, farm: makeGame(raw.farm) };
 }

@@ -38,6 +38,11 @@ export {
   batchOilYields,
 } from "./batch-yields.ts";
 export { getItemIcon, getBoostIcon, getBoostLabel } from "./icons.ts";
+// Hydrates the raw API payload into a GameState — wraps inventory /
+// balance / stock fields in Decimal so upstream helpers that call
+// `.gt(0)` (e.g. animal boost gates on "Barn Manager") work. The API
+// response itself ships plain numbers.
+export { makeGame } from "features/game/lib/transforms";
 
 // Pure passthroughs from the submodule. Re-exporting keeps timer files
 // inside the boundary rule (only src/game/** may import from features/*).
@@ -63,6 +68,15 @@ export {
   getLavaPitTime,
 } from "features/game/events/landExpansion/startLavaPit";
 export { getObsidianYield } from "features/game/events/landExpansion/collectLavaPit";
+// Animals — `getAnimalLevel` maps experience → level, `ANIMAL_RESOURCE_DROP`
+// is the per-level base drop table, and `getResourceDropAmount` threads
+// all boosts (collectibles, wearables, skills, Buds) onto a single
+// resource for a given animal.
+export { ANIMAL_RESOURCE_DROP } from "features/game/types/animals";
+export {
+  getAnimalLevel,
+  getResourceDropAmount,
+} from "features/game/lib/animals";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
@@ -114,4 +128,9 @@ export type {
   SaltFarm,
   Salt,
   LavaPit,
+  Animal,
+  AnimalBuilding,
+  AnimalResource,
+  AnimalState,
+  AnimalType,
 } from "./types.ts";

@@ -5,6 +5,7 @@ export type Category =
   | "Crop Machine"
   | "Flowers"
   | "Beehives"
+  | "Animals"
   | "Resources"
   | "Salt"
   | "Lava Pits";
@@ -16,6 +17,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Crop Machine",
   "Flowers",
   "Beehives",
+  "Animals",
   "Resources",
   "Salt",
   "Lava Pits",

@@ -43,9 +43,16 @@ export type {
   OilReserve,
   // Lava pits
   LavaPit,
+  // Animals
+  Animal,
+  AnimalBuilding,
+  AnimalResource,
+  AnimalState,
   // Root
   GameState,
 } from "features/game/types/game";
+
+export type { AnimalType } from "features/game/types/animals";
 
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";
