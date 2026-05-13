@@ -126,8 +126,10 @@ export function App() {
           {/* Build hash + stale-version nag, top right. The hash links
               to its commit on GitHub; the "Refresh" prompt shows when
               the polled /version.json no longer matches the bundle's
-              own VITE_COMMIT_SHA. */}
-          <div className="z-10 flex flex-col items-end gap-1 pr-3 sm:pr-4">
+              own VITE_COMMIT_SHA. `text-right` keeps the version /
+              nag text flush to the right edge when the pixel-art font
+              (text-xs ≈ 24px here) wraps onto a second line. */}
+          <div className="z-10 flex flex-col items-end gap-1 pr-3 text-right sm:pr-4">
             {shortSha ? (
               <span className="text-xs text-white text-shadow">
                 Version:{" "}
@@ -153,7 +155,7 @@ export function App() {
                     window.location.reload();
                   }
                 }}
-                className="cursor-pointer text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
+                className="cursor-pointer whitespace-nowrap text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
                 title="A newer build is deployed — click to reload"
               >
                 New version available · click to refresh
