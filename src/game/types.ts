@@ -48,11 +48,21 @@ export type {
   AnimalBuilding,
   AnimalResource,
   AnimalState,
+  // Cooking / processing buildings
+  BuildingProduct,
+  PlacedItem,
   // Root
   GameState,
 } from "features/game/types/game";
 
 export type { AnimalType } from "features/game/types/animals";
+export type {
+  CookingBuildingName,
+  ProcessingBuildingName,
+  BuildingName,
+} from "features/game/types/buildings";
+export type { CookableName } from "features/game/types/consumables";
+export type { ProcessedResource } from "features/game/types/processedFood";
 
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";
@@ -71,4 +81,9 @@ export type FlowersState = GameState["flowers"];
 export type { PlantedFlower } from "features/game/types/game";
 
 // Salt farm.
-export type { SaltNode, SaltNodes, SaltFarm, Salt } from "features/game/types/salt";
+export type {
+  SaltNode,
+  SaltNodes,
+  SaltFarm,
+  Salt,
+} from "features/game/types/salt";

@@ -6,6 +6,7 @@ export type Category =
   | "Flowers"
   | "Beehives"
   | "Animals"
+  | "Cooking"
   | "Resources"
   | "Salt"
   | "Lava Pits";
@@ -18,6 +19,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Flowers",
   "Beehives",
   "Animals",
+  "Cooking",
   "Resources",
   "Salt",
   "Lava Pits",
@@ -46,6 +48,16 @@ export type Boost = {
 // count: 1; flat-rate boosts (Scarecrow, Kuebiko) match every plot.
 export type AggregatedBoost = Boost & { count: number };
 
+// Per-slot row inside a multi-slot card (e.g. cooking buildings). Each
+// slot has its own item / amount / readyAt rendered as a list inside
+// the card; the card-level readyAt is the earliest slot.
+export type TimerSlot = {
+  item: string;
+  icon?: string;
+  amount: number;
+  readyAt: number;
+};
+
 export type Timer = {
   id: string;
   category: Category;
@@ -53,6 +65,10 @@ export type Timer = {
   icon?: string;
   readyAt: number;
   predictedYield?: { amount: number; item: string };
+  // When present, the card renders the slot list (one row per slot)
+  // instead of a single yield headline. Used by cooking buildings where
+  // one building card holds multiple queued recipes.
+  slots?: TimerSlot[];
   // 0-100. When set, the card's headline appends "· N%". Useful for
   // sources that produce continuously (e.g. beehives) where the yield
   // amount tracks fraction-of-full and the percentage is the more

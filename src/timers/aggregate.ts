@@ -1,4 +1,9 @@
-import type { AggregatedBoost, AggregatedTimer, Boost, Timer } from "./types.ts";
+import type {
+  AggregatedBoost,
+  AggregatedTimer,
+  Boost,
+  Timer,
+} from "./types.ts";
 
 // Group timers by `aggregationKey` (or `${category}|${label}` when absent).
 // Each group becomes one AggregatedTimer:

@@ -127,9 +127,24 @@ export function extractResourceTimers(
       | typeof batchIronYields
       | typeof batchGoldYields;
   }> = [
-    { kind: "Stone", map: state.stones, defaultName: "Stone Rock", batch: batchStoneYields },
-    { kind: "Iron", map: state.iron, defaultName: "Iron Rock", batch: batchIronYields },
-    { kind: "Gold", map: state.gold, defaultName: "Gold Rock", batch: batchGoldYields },
+    {
+      kind: "Stone",
+      map: state.stones,
+      defaultName: "Stone Rock",
+      batch: batchStoneYields,
+    },
+    {
+      kind: "Iron",
+      map: state.iron,
+      defaultName: "Iron Rock",
+      batch: batchIronYields,
+    },
+    {
+      kind: "Gold",
+      map: state.gold,
+      defaultName: "Gold Rock",
+      batch: batchGoldYields,
+    },
   ];
   for (const { kind, map, defaultName, batch } of rockConfigs) {
     const recoveryMs = RECOVERY_SECONDS[kind] * 1000;

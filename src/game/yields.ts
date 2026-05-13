@@ -80,13 +80,13 @@ export type PatchFruitYieldArgs = {
   prngArgs?: { farmId: number; counter: number };
 };
 
-export function getPatchFruitYield(
-  args: PatchFruitYieldArgs,
-): CropYieldResult {
+export function getPatchFruitYield(args: PatchFruitYieldArgs): CropYieldResult {
   // `fertiliser` is a literal union upstream (FruitCompostName) — at our
   // boundary we accept any string and let upstream tolerate unknown
   // values rather than threading the union through every caller.
-  const result = upstreamGetFruitYield(args as Parameters<typeof upstreamGetFruitYield>[0]);
+  const result = upstreamGetFruitYield(
+    args as Parameters<typeof upstreamGetFruitYield>[0],
+  );
   return {
     amount: Number(result?.amount ?? 0),
     boosts: normBoosts(result?.boostsUsed, args.game),
@@ -101,9 +101,7 @@ export type GreenhouseYieldArgs = {
   fertiliser?: string;
 };
 
-export function getGreenhouseYield(
-  args: GreenhouseYieldArgs,
-): CropYieldResult {
+export function getGreenhouseYield(args: GreenhouseYieldArgs): CropYieldResult {
   const result = upstreamGetGreenhouseYield(
     args as Parameters<typeof upstreamGetGreenhouseYield>[0],
   );
@@ -249,9 +247,7 @@ export type CrimstoneYieldArgs = {
   rock: FiniteResource;
 };
 
-export function getCrimstoneYield(
-  args: CrimstoneYieldArgs,
-): CropYieldResult {
+export function getCrimstoneYield(args: CrimstoneYieldArgs): CropYieldResult {
   const result = upstreamGetCrimstoneDropAmount({
     game: args.game,
     rock: args.rock,

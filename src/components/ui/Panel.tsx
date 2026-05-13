@@ -27,7 +27,9 @@ export function InnerPanel({
   className,
   style,
   ...divProps
-}: PropsWithChildren<HTMLAttributes<HTMLDivElement> & { style?: CSSProperties }>) {
+}: PropsWithChildren<
+  HTMLAttributes<HTMLDivElement> & { style?: CSSProperties }
+>) {
   return (
     <div
       className={className}

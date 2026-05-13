@@ -23,13 +23,15 @@ function predictAmount(
   game: GameState,
   flower: PlantedFlower,
 ): { amount: number; boosts: Boost[] } {
-  if (flower.amount !== undefined)
-    return { amount: flower.amount, boosts: [] };
+  if (flower.amount !== undefined) return { amount: flower.amount, boosts: [] };
   const criticalHit = (flower.criticalHit ?? {}) as Record<string, number>;
   const result = getFlowerAmount({
     game,
     criticalDrop: (name: string) => Boolean(criticalHit[name] ?? 0),
-  }) as { amount?: number; boostsUsed?: Array<{ name: string; value: string }> };
+  }) as {
+    amount?: number;
+    boostsUsed?: Array<{ name: string; value: string }>;
+  };
   const boosts: Boost[] = Array.isArray(result?.boostsUsed)
     ? result.boostsUsed.map((b) => {
         const name = String(b.name);

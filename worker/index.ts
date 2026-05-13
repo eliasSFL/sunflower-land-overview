@@ -27,10 +27,7 @@ export default {
     if (match && request.method === "GET") {
       const id = match[1];
       if (!/^\d+$/.test(id)) {
-        return Response.json(
-          { error: "Invalid farm id" },
-          { status: 400 },
-        );
+        return Response.json({ error: "Invalid farm id" }, { status: 400 });
       }
 
       const apiKey = request.headers.get("x-api-key") ?? "";

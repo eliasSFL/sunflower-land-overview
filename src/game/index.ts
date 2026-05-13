@@ -77,6 +77,13 @@ export {
   getAnimalLevel,
   getResourceDropAmount,
 } from "features/game/lib/animals";
+// Cooking + processing yield prediction. `getCookingAmount` takes an
+// explicit counter so we can thread per-recipe PRNG sequences across
+// the queue (Fiery Jackpot, Master Chef's Cleaver). Fish Market reads
+// its counter straight from `farmActivity` and returns the boost list
+// already itemised.
+export { getCookingAmount } from "features/game/events/landExpansion/collectRecipe";
+export { getProcessedResourceAmount } from "features/game/events/landExpansion/collectProcessedResource";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
@@ -133,4 +140,11 @@ export type {
   AnimalResource,
   AnimalState,
   AnimalType,
+  BuildingName,
+  BuildingProduct,
+  CookableName,
+  CookingBuildingName,
+  PlacedItem,
+  ProcessedResource,
+  ProcessingBuildingName,
 } from "./types.ts";

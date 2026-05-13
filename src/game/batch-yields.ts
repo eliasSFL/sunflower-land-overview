@@ -70,9 +70,7 @@ export type YieldMap = Map<string, YieldEntry>;
 const lookupId = (name: string): number =>
   (KNOWN_IDS as Record<string, number>)[name] ?? 0;
 
-const farmActivity = (
-  state: GameState,
-): Record<string, number | undefined> =>
+const farmActivity = (state: GameState): Record<string, number | undefined> =>
   (state.farmActivity ?? {}) as Record<string, number | undefined>;
 
 // Normalize upstream `boostsUsed` (might be missing/non-array on
