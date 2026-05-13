@@ -23,10 +23,14 @@ import type { Boost, Timer, TimerContext, TimerSlot } from "./types.ts";
 // per-recipe counter advances in claim order. A Kitchen and a Fire Pit
 // both queueing the same recipe will see correctly-shifted PRNG rolls.
 //
-// Boost surfacing: only Fish Market exposes a `boostsUsed` array
-// upstream today. Cooking buildings recompute boosts inline inside
-// `getCookingAmount`, so we surface the amount but not the per-boost
-// breakdown for those slots.
+// Boost surfacing: only Fish Market currently exposes a boost list
+// (via upstream's `getProcessedResourceAmount`). Cooking buildings
+// route through upstream's `getCookingAmount`, which only returns the
+// post-boost amount — no per-boost breakdown. We deliberately don't
+// re-derive that list locally; replicating the boost conditions here
+// would silently drift the moment upstream adds a new cooking boost.
+// If upstream is extended to return its own boostsUsed array we'll
+// just thread it through here.
 
 const COOKING_BUILDINGS: readonly BuildingName[] = [
   "Fire Pit",
@@ -179,23 +183,24 @@ export function extractCookingTimers(
       }
       cookCounter[recipeName] = base + 1;
     } else {
-      try {
-        const result = getProcessedResourceAmount({
-          game: state,
-          resource: recipeName as ProcessedResource,
-          farmId: ctx.farmId,
-        });
-        amount = result.amount.toNumber();
-        boosts = toBoosts(result.boostsUsed, state);
-      } catch {
-        // Fall back to the initial amount=1 set above.
-      }
       const base =
         processedCounter[recipeName] ??
         (farmActivity as Record<string, number | undefined>)[
           `${recipeName} Processed`
         ] ??
         0;
+      try {
+        const result = getProcessedResourceAmount({
+          game: state,
+          resource: recipeName as ProcessedResource,
+          farmId: ctx.farmId,
+          counter: base,
+        });
+        amount = result.amount.toNumber();
+        boosts = toBoosts(result.boostsUsed, state);
+      } catch {
+        // Fall back to the initial amount=1 set above.
+      }
       processedCounter[recipeName] = base + 1;
     }
 

@@ -1,0 +1,40 @@
+# Project rules
+
+## Never replicate functions from the submodule
+
+When wiring upstream game logic into a timer extractor (or any other
+overview-side code), **always call the function in the submodule
+directly** — don't copy its body into our codebase, even partially.
+
+Replicated logic silently rots: the moment upstream adds a new boost,
+gate, or PRNG roll, the local copy falls out of sync and the dashboard
+starts lying about yields without any compile error.
+
+### Allowed
+
+- Re-exports from `src/game/index.ts` / `src/game/types.ts`.
+- Thin wrappers that **only narrow types** (see `src/game/beehives.ts`
+  `refreshBeehives`, or any function in `src/game/yields.ts`).
+- Loops that call an upstream per-item helper across a batch and thread
+  a counter / mutated state through (see `src/game/batch-yields.ts`).
+
+### Not allowed
+
+- Re-implementing `if (skill X) amount += N` style conditions to add
+  boost names to a list. If upstream doesn't already return the boost
+  list, surface the amount only.
+- Copying upstream's math into a new function so the timer can compute
+  yields without calling upstream.
+
+### When in doubt
+
+If a feature seems to require boost details / counter-threading /
+internal state that upstream doesn't expose, **stop and ask**. Options
+to discuss:
+
+1. Drop the feature (show only what upstream returns).
+2. Submit an upstream PR exposing the data we need.
+3. Use a black-box probe (e.g. call upstream multiple times with state
+   variants and diff the results) — only if the user agrees.
+
+Replicating is never the answer.
