@@ -107,9 +107,7 @@ export function TimerCard({ timer, now }: Props) {
             </span>
             <span className="shrink-0 tabular-nums">
               {b.value}
-              {b.count > 1 ? (
-                <span className="opacity-60"> ×{b.count}</span>
-              ) : null}
+              <span className="opacity-60"> ×{b.count}</span>
             </span>
           </li>
         ))}
