@@ -119,6 +119,14 @@ export {
   getCurrentSpeed,
   getHoneyMultiplier,
 } from "./beehives.ts";
+// Bumpkin level helpers — wrappers around the canonical
+// LEVEL_EXPERIENCE table upstream.
+export {
+  getBumpkinLevel,
+  getExperienceToNextLevel,
+  isMaxLevel,
+  MAX_BUMPKIN_LEVEL,
+} from "features/game/lib/level";
 export type {
   GameState,
   CropName,
@@ -172,4 +180,5 @@ export type {
   FermentationRecipeName,
   SpiceRackRecipeName,
   FishName,
+  CraftingQueueItem,
 } from "./types.ts";

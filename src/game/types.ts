@@ -53,6 +53,8 @@ export type {
   PlacedItem,
   // Composters
   CompostBuilding,
+  // Crafting box
+  CraftingQueueItem,
   // Root
   GameState,
 } from "features/game/types/game";

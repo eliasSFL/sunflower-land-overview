@@ -10,7 +10,8 @@ export type Category =
   | "Animals"
   | "Cooking"
   | "Composters"
-  | "Aging Shed";
+  | "Aging Shed"
+  | "Crafting Box";
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -25,6 +26,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Cooking",
   "Composters",
   "Aging Shed",
+  "Crafting Box",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a

@@ -22,6 +22,7 @@ const EMPTY_MESSAGES: Record<Category, string> = {
   Cooking: "Nothing cooking",
   Composters: "No composters placed",
   "Aging Shed": "No aging shed placed",
+  "Crafting Box": "Nothing crafting",
   Resources: "No resources placed",
   Salt: "No salt nodes placed",
 };

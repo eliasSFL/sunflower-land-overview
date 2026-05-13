@@ -40,8 +40,17 @@ const WEARABLE_BY_ID: Record<number, string> = (() => {
 })();
 
 export function getItemIcon(name: string): string {
+  // ITEM_DETAILS covers collectibles + everything inventory-shaped.
   const detail = (ITEM_DETAILS as Record<string, { image?: string }>)[name];
-  return detail?.image ?? "";
+  if (detail?.image) return detail.image;
+  // Bumpkin-wardrobe items live in ITEM_IDS instead — useful for the
+  // Crafting Box, which queues wearables alongside collectibles.
+  const wearableId = (ITEM_IDS as Record<string, number | undefined>)[name];
+  if (wearableId !== undefined) {
+    const url = WEARABLE_BY_ID[wearableId];
+    if (url) return url;
+  }
+  return "";
 }
 
 // Boost name → icon URL. Mirrors what BoostsDisplay.tsx shows in-game,

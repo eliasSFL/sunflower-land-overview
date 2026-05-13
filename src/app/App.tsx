@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 
+import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
@@ -214,6 +215,7 @@ export function App() {
               ) : null}
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
             </InnerPanel>
+            {data ? <BumpkinSummaryPanel data={data} /> : null}
             {data ? <NextUpPanel timers={timers} now={now} /> : null}
           </div>
 
