@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
+import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
 import { fetchFarm, ApiError, type FarmResponse } from "../api/fetchFarm.ts";
@@ -121,41 +122,50 @@ export function App() {
             2xl+  : 4 cols total — Farm ID 3/12 + right 9/12, 3 timer cols
             Right-side uses CSS multi-column flow (see below). */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-          <InnerPanel className="flex flex-col gap-3 self-start sm:col-span-5 lg:col-span-4 2xl:col-span-3">
-            <p className="text-sm">
-              In the game:{" "}
-              <strong>
-                {"Settings > Advanced > Developer Options > API Key"}
-              </strong>{" "}
-              to generate your key. Both fields are stored locally on your
-              device.
-            </p>
-            <FarmIdForm
-              initialFarmId={farmId}
-              initialApiKey={apiKey}
-              onSubmit={load}
-              loading={loading}
-              lastLoaded={data ? { farmId, apiKey } : undefined}
-              cooldownLeftMs={cooldownLeft}
-            />
-            {data ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Label type="default">Farm #{data.id}</Label>
-                {data.nft_id || data.nftId ? (
-                  <Label type="info">NFT {data.nft_id ?? data.nftId}</Label>
-                ) : null}
-                {data.isBlacklisted ? (
-                  <Label type="danger">blacklisted</Label>
-                ) : null}
-              </div>
-            ) : null}
-            {data && lastFetchedAt ? (
-              <span className="text-xs">
-                last refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
-              </span>
-            ) : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
-          </InnerPanel>
+          {/* Left column — Farm ID form + Next Up widget stacked. The
+              wrapping div carries the col-span / self-start so both
+              panels share the column width and the stack collapses to
+              its content height instead of stretching to the timer
+              column on the right. */}
+          <div className="flex flex-col gap-2 self-start sm:col-span-5 lg:col-span-4 2xl:col-span-3">
+            <InnerPanel className="flex flex-col gap-3">
+              <p className="text-sm">
+                In the game:{" "}
+                <strong>
+                  {"Settings > Advanced > Developer Options > API Key"}
+                </strong>{" "}
+                to generate your key. Both fields are stored locally on your
+                device.
+              </p>
+              <FarmIdForm
+                initialFarmId={farmId}
+                initialApiKey={apiKey}
+                onSubmit={load}
+                loading={loading}
+                lastLoaded={data ? { farmId, apiKey } : undefined}
+                cooldownLeftMs={cooldownLeft}
+              />
+              {data ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label type="default">Farm #{data.id}</Label>
+                  {data.nft_id || data.nftId ? (
+                    <Label type="info">NFT {data.nft_id ?? data.nftId}</Label>
+                  ) : null}
+                  {data.isBlacklisted ? (
+                    <Label type="danger">blacklisted</Label>
+                  ) : null}
+                </div>
+              ) : null}
+              {data && lastFetchedAt ? (
+                <span className="text-xs">
+                  last refreshed{" "}
+                  {new Date(lastFetchedAt).toLocaleTimeString()}
+                </span>
+              ) : null}
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            </InnerPanel>
+            {data ? <NextUpPanel timers={timers} now={now} /> : null}
+          </div>
 
           {data ? (
             // CSS multi-column layout (not grid) so a short panel under a
