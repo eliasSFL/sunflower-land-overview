@@ -66,6 +66,15 @@ export type {
 export type { CookableName } from "features/game/types/consumables";
 export type { ProcessedResource } from "features/game/types/processedFood";
 export type { ComposterName } from "features/game/types/composters";
+export type {
+  AgingShed,
+  AgingRackSlot,
+  FermentationJob,
+  SpiceRackJob,
+} from "features/game/lib/agingShed";
+export type { FermentationRecipeName } from "features/game/types/fermentation";
+export type { SpiceRackRecipeName } from "features/game/types/spiceRack";
+export type { FishName } from "features/game/types/fishing";
 
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";

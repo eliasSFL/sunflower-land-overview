@@ -6,6 +6,7 @@ import { extractCropMachineTimers } from "./cropMachine.ts";
 import { extractFlowerTimers } from "./flowers.ts";
 import { extractFruitTimers } from "./fruits.ts";
 import { extractGreenhouseTimers } from "./greenhouse.ts";
+import { extractAgingShedTimers } from "./agingShed.ts";
 import { extractAnimalTimers } from "./animals.ts";
 import { extractComposterTimers } from "./composters.ts";
 import { extractCookingTimers } from "./cooking.ts";
@@ -46,6 +47,7 @@ export function extractAllTimers(
     ...extractAnimalTimers(state, ctx),
     ...extractCookingTimers(state, ctx),
     ...extractComposterTimers(state, ctx),
+    ...extractAgingShedTimers(state, ctx),
     ...extractResourceTimers(state, ctx),
     ...extractSaltTimers(state, ctx),
     ...extractLavaPitTimers(state, ctx),

@@ -94,6 +94,12 @@ export {
   getReadyAt as getComposterReadyAt,
 } from "features/game/events/landExpansion/startComposter";
 export { composterDetails } from "features/game/types/composters";
+// Aging shed — three sub-racks (aging / fermentation / spice). Recipe
+// lookups give us the output item + duration for each job. Aged-fish
+// jobs derive their output via the `Aged ${fishName}` template; we
+// don't currently predict the Prime Aged PRNG flip.
+export { getFermentationRecipe } from "features/game/types/fermentation";
+export { getSpiceRackRecipe } from "features/game/types/spiceRack";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
@@ -159,4 +165,11 @@ export type {
   PlacedItem,
   ProcessedResource,
   ProcessingBuildingName,
+  AgingShed,
+  AgingRackSlot,
+  FermentationJob,
+  SpiceRackJob,
+  FermentationRecipeName,
+  SpiceRackRecipeName,
+  FishName,
 } from "./types.ts";
