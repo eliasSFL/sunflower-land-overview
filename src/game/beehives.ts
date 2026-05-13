@@ -1,16 +1,12 @@
 // Beehive bridge — re-exports the upstream helpers we use plus one
-// narrowed wrapper for the harvest multiplier.
-//
-// The pure math (`getCurrentHoneyProduced`, `getCurrentSpeed`) lives in
-// `features/.../beehiveMachine.ts` alongside an xstate machine; the
-// import pulls in xstate at module top, but our Vite alias stubs that
-// to a no-op Proxy so the unused `createMachine(...)` call is harmless.
-// Type-time, the project-reference's emitted .d.ts gives us real types.
+// narrowed wrapper for the harvest multiplier. The pure honey math lives
+// in `features/game/lib/beehiveProduction` (no xstate at module top), so
+// we import it from there directly.
 
 export {
   getCurrentHoneyProduced,
   getCurrentSpeed,
-} from "features/game/expansion/components/resources/beehive/beehiveMachine";
+} from "features/game/lib/beehiveProduction";
 export { DEFAULT_HONEY_PRODUCTION_TIME } from "features/game/lib/updateBeehives";
 
 import { updateBeehives as upstreamUpdateBeehives } from "features/game/lib/updateBeehives";
