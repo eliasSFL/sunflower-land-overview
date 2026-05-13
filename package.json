@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "git submodule update --init --recursive",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
