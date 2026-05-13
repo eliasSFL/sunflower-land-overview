@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
+import { MobileNav } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
@@ -242,7 +243,11 @@ export function App() {
             </div>
           ) : null}
         </div>
+        {/* Extra bottom padding on `<lg` so the fixed MobileNav strip
+            doesn't cover the last section. */}
+        <div className="h-16 lg:hidden" aria-hidden />
       </OuterPanel>
+      {data ? <MobileNav visibleCategories={CATEGORY_ORDER} /> : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { AggregatedTimer, Category } from "../timers/index.ts";
+import { sectionId } from "./sectionId.ts";
 import { TimerCard } from "./TimerCard.tsx";
 import { InnerPanel, Label } from "./ui/index.ts";
 
@@ -39,7 +40,12 @@ export function TimerSection({ category, timers, now }: Props) {
   const isEmpty = sorted.length === 0;
 
   return (
-    <InnerPanel className="mb-2 flex w-full break-inside-avoid flex-col gap-2">
+    <InnerPanel
+      id={sectionId(category)}
+      // `scroll-mt-*` offsets the anchored scroll target so the mobile
+      // nav strip doesn't cover the section header when we jump to it.
+      className="mb-2 flex w-full scroll-mt-4 break-inside-avoid flex-col gap-2"
+    >
       <header>
         <Label type="default">
           {category}
