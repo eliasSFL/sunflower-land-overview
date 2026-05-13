@@ -1,4 +1,7 @@
 node_modules
 dist
 package-lock.json
-sunflower-land
+sunflower-land/public/erc1155/*.json
+sunflower-land/public/erc1155/images/.manifest.json
+sunflower-land/public/wearables/*.json
+sunflower-land/dist

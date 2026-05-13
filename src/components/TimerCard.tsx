@@ -90,17 +90,17 @@ export function TimerCard({ timer, now }: Props) {
   );
 
   // Cooking-style cards: one row per queue slot, each with its own
-  // item + amount + ready time. The header row above still shows the
-  // building name and the earliest readyAt.
+  // item + amount + ready time. Slots that have their own boost list
+  // wrap in a nested <details> so the player can drill into a
+  // specific slot's boosts without losing the rest of the queue.
   const slotList = hasSlots ? (
     <ul className="mt-1 ml-10 flex flex-col gap-0.5 text-xs">
       {slots.map((slot, i) => {
         const slotStatus = statusOf(slot.readyAt, now);
-        return (
-          <li
-            key={`${slot.item}:${i}`}
-            className="flex items-center justify-between gap-2"
-          >
+        const slotBoosts = slot.boosts ?? [];
+        const slotHasBoosts = slotBoosts.length > 0;
+        const slotRow = (
+          <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1 min-w-0">
               {slot.icon ? (
                 <img
@@ -113,10 +113,59 @@ export function TimerCard({ timer, now }: Props) {
               <span className="truncate">
                 {formatYield(slot.amount)} {slot.item}
               </span>
+              {slotHasBoosts ? (
+                <img
+                  src={CHEVRON_DOWN}
+                  alt=""
+                  aria-hidden
+                  title="Click to see boosts"
+                  className="h-auto w-4 shrink-0 transition-transform group-open:rotate-180"
+                  style={{ imageRendering: "pixelated" }}
+                />
+              ) : null}
             </span>
             <Label type={STATUS_LABEL[slotStatus]}>
               {formatRemaining(slot.readyAt - now)}
             </Label>
+          </div>
+        );
+
+        if (!slotHasBoosts) {
+          return (
+            <li key={`${slot.item}:${i}`}>
+              {slotRow}
+            </li>
+          );
+        }
+
+        return (
+          <li key={`${slot.item}:${i}`}>
+            <details className="group">
+              <summary className="list-none cursor-pointer marker:hidden">
+                {slotRow}
+              </summary>
+              <ul className="mt-0.5 ml-5 space-y-0.5 opacity-80">
+                {slotBoosts.map((b, j) => (
+                  <li
+                    key={`${b.name}:${b.value}:${j}`}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="flex items-center gap-1 min-w-0">
+                      {b.icon ? (
+                        <img
+                          src={b.icon}
+                          alt=""
+                          className="h-4 w-4 shrink-0 object-contain"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <span className="truncate">{b.label ?? b.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums">{b.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </li>
         );
       })}

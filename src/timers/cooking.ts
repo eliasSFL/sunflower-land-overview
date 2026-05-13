@@ -23,14 +23,11 @@ import type { Boost, Timer, TimerContext, TimerSlot } from "./types.ts";
 // per-recipe counter advances in claim order. A Kitchen and a Fire Pit
 // both queueing the same recipe will see correctly-shifted PRNG rolls.
 //
-// Boost surfacing: only Fish Market currently exposes a boost list
-// (via upstream's `getProcessedResourceAmount`). Cooking buildings
-// route through upstream's `getCookingAmount`, which only returns the
-// post-boost amount — no per-boost breakdown. We deliberately don't
-// re-derive that list locally; replicating the boost conditions here
-// would silently drift the moment upstream adds a new cooking boost.
-// If upstream is extended to return its own boostsUsed array we'll
-// just thread it through here.
+// Boost surfacing: both upstream helpers now return a `boostsUsed`
+// array — `getCookingAmount` lists Double Nom / Fiery Jackpot /
+// Master Chef's Cleaver, `getProcessedResourceAmount` lists Bubble
+// Aura. We thread them straight onto each slot so the card can
+// render a per-slot boost dropdown.
 
 const COOKING_BUILDINGS: readonly BuildingName[] = [
   "Fire Pit",
@@ -171,13 +168,15 @@ export function extractCookingTimers(
         ] ??
         0;
       try {
-        amount = getCookingAmount({
+        const result = getCookingAmount({
           building: slot.building,
           recipe: slot.recipe,
           farmId: ctx.farmId,
           counter: base,
           game: state,
         });
+        amount = result.amount;
+        boosts = toBoosts(result.boostsUsed, state);
       } catch {
         // Fall back to the initial amount=1 set above.
       }
@@ -232,7 +231,6 @@ export function extractCookingTimers(
     rawList.sort((a, b) => a.slotIdx - b.slotIdx);
 
     const slotEntries: TimerSlot[] = [];
-    const aggregatedBoosts: Boost[] = [];
     let earliestReady = Number.POSITIVE_INFINITY;
 
     for (const slot of rawList) {
@@ -243,9 +241,9 @@ export function extractCookingTimers(
         icon: getItemIcon(slot.recipe.name),
         amount,
         readyAt: slot.recipe.readyAt,
+        boosts: p?.boosts,
       });
       earliestReady = Math.min(earliestReady, slot.recipe.readyAt);
-      if (p?.boosts) aggregatedBoosts.push(...p.boosts);
     }
 
     out.push({
@@ -255,7 +253,8 @@ export function extractCookingTimers(
       icon: getItemIcon(building),
       readyAt: earliestReady,
       slots: slotEntries,
-      boosts: aggregatedBoosts.length > 0 ? aggregatedBoosts : undefined,
+      // Boosts now live per slot; the card-level dropdown stays off
+      // when we're rendering slot rows.
       // Each building instance is its own card — no merging.
       aggregationKey: `Cooking|${building}|${instanceKey}`,
     });

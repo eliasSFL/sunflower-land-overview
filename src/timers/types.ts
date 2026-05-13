@@ -54,12 +54,16 @@ export type AggregatedBoost = Boost & { count: number };
 
 // Per-slot row inside a multi-slot card (e.g. cooking buildings). Each
 // slot has its own item / amount / readyAt rendered as a list inside
-// the card; the card-level readyAt is the earliest slot.
+// the card; the card-level readyAt is the earliest slot. `boosts`,
+// when present, lets the row render its own collapsible boost list
+// — TimerCard mirrors the chevron pattern it uses for card-level
+// boosts.
 export type TimerSlot = {
   item: string;
   icon?: string;
   amount: number;
   readyAt: number;
+  boosts?: Boost[];
 };
 
 export type Timer = {
