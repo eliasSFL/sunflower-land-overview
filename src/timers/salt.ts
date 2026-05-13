@@ -1,11 +1,25 @@
 import {
+  getBoostIcon,
   getItemIcon,
   getMaxStoredSaltCharges,
   getSaltChargeGenerationTime,
+  getSaltYieldPerRake,
   materializeSaltRegen,
   type GameState,
 } from "../game/index.ts";
-import type { Timer, TimerContext } from "./types.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
+
+function toBoosts(
+  raw: ReadonlyArray<{ name: string; value: string }>,
+  state: GameState,
+): Boost[] | undefined {
+  if (raw.length === 0) return undefined;
+  return raw.map(({ name, value }) => ({
+    name,
+    value,
+    icon: getBoostIcon(name, state),
+  }));
+}
 
 // One Timer per salt node. We DO NOT read `salt.storedCharges` /
 // `salt.nextChargeAt` straight off the game state — the server stores
@@ -20,10 +34,13 @@ import type { Timer, TimerContext } from "./types.ts";
 //   - charges == max → readyAt = now (no more charges accrue; the
 //     player should rake one off so accrual restarts).
 //
-// We intentionally don't surface charge-regen boosts (Salty Seas skill,
-// Salt Sculpture level) on these cards for now. The regen interval is
-// still pulled from `getSaltChargeGenerationTime` so the countdown is
-// correct; only the per-card boost list is suppressed.
+// Yield: `getSaltYieldPerRake` gives the boost-resolved salt-per-rake
+// (base 10, plus Wide Rakes, Deep Sea Salt Cave Background, Salt
+// Awakening VIP). The headline shows per-rake yield regardless of
+// stored charges so the boost list always has context — the subtext
+// tracks how many of those rakes are actually available right now.
+// Charge-regen boosts (Salty Seas, Salt Sculpture level) only affect
+// interval timing and stay off the boost list.
 
 export function extractSaltTimers(
   state: GameState,
@@ -41,6 +58,11 @@ export function extractSaltTimers(
   const maxCharges = getMaxStoredSaltCharges(
     state.sculptures?.["Salt Sculpture"]?.level ?? 0,
   );
+  const { saltYield, boostsUsed: yieldBoostsUsed } = getSaltYieldPerRake(
+    state,
+    ctx.now,
+  );
+  const yieldBoosts = toBoosts(yieldBoostsUsed, state);
 
   const icon = getItemIcon("Salt");
   const out: Timer[] = [];
@@ -55,17 +77,25 @@ export function extractSaltTimers(
     const { storedCharges, nextChargeAt } = materialized;
     const atMax = storedCharges >= maxCharges;
     const readyAt = atMax ? ctx.now : nextChargeAt;
+    const expectedYield = saltYield * storedCharges;
+    const hasCharges = storedCharges > 0;
 
     out.push({
       id: `salt:${nodeId}`,
       category: "Salt",
-      label: "Salt",
+      // When charges are present we lean on the standard yield headline
+      // ("N Salt Charged"). At 0 the label takes over so the card reads
+      // "0 Salt Charged" instead of falling back to the bare item name.
+      label: hasCharges ? "Salt" : "0 Salt Charged",
       icon,
       readyAt,
-      // No predictedYield — each charge is worth 10+ salt when raked
-      // (not 1), so "2 Salt" would misrepresent the count. The headline
-      // falls back to `label` ("Salt") and the stored charges go in
-      // `subtext` as small text under the headline.
+      // Total salt currently claimable from this node — per-rake yield
+      // × stored charges. Per-rake boosts (Wide Rakes, etc.) are listed
+      // in the dropdown so the multiplier is auditable.
+      predictedYield: hasCharges
+        ? { amount: expectedYield, item: "Salt Charged" }
+        : undefined,
+      boosts: yieldBoosts,
       subtext: `${storedCharges}/${maxCharges} charges`,
       // Each node = own card; matches the beehive pattern.
       aggregationKey: `Salt|${nodeId}`,

@@ -109,8 +109,10 @@ export {
   getSaltChargeGenerationTime,
   getMaxStoredSaltCharges,
   getNextSaltChargeInSeconds,
+  getSaltYieldPerRake,
   SALT_CHARGE_GENERATION_TIME,
   MAX_STORED_SALT_CHARGES_PER_NODE,
+  BASE_SALT_YIELD,
 } from "features/game/types/salt";
 export {
   DEFAULT_HONEY_PRODUCTION_TIME,

@@ -60,7 +60,7 @@ export function TimerCard({ timer, now }: Props) {
                 alt=""
                 aria-hidden
                 title="Click to see boosts"
-                className="h-auto w-[24px] shrink-0 transition-transform group-open:rotate-180"
+                className="h-auto w-6 shrink-0 transition-transform group-open:rotate-180"
                 style={{ imageRendering: "pixelated" }}
               />
             ) : null}
