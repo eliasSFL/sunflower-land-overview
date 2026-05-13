@@ -2,18 +2,18 @@ import { useMemo, useRef, useState } from "react";
 
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
-import { Label, OuterPanel, InnerPanel } from "../components/sfl-ui/index.ts";
+import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
 import { fetchFarm, ApiError, type FarmResponse } from "../api/fetchFarm.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { extractAndAggregate, CATEGORY_ORDER } from "../timers/index.ts";
-import { getBannerUrl } from "../game/index.ts";
+import { BANNER_URLS } from "../lib/assets.ts";
 import * as storage from "../lib/storage.ts";
 
 const FARM_ID_KEY = "sfl-overview:farm-id";
 const API_KEY_KEY = "sfl-overview:api-key";
 const REFRESH_COOLDOWN_MS = 60_000;
 
-const BANNER_URL = getBannerUrl("marketplace");
+const BANNER_URL = BANNER_URLS.marketplace;
 
 export function App() {
   const [farmId, setFarmId] = useState<string>(

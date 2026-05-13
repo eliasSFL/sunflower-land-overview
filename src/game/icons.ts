@@ -5,12 +5,17 @@
 // fruits, resources, decorations, NFTs.
 
 import { ITEM_DETAILS } from "features/game/types/images";
-import { SUNNYSIDE as UPSTREAM_SUNNYSIDE } from "assets/sunnyside";
 import { KNOWN_IDS } from "features/game/types";
 import { ITEM_IDS } from "features/game/types/bumpkin";
 import { BUMPKIN_REVAMP_SKILL_TREE } from "features/game/types/bumpkinSkills";
 import { CALENDAR_EVENT_ICONS } from "features/game/types/calendar";
-import { getBudImage } from "lib/buds/types";
+
+import { CHROME_ICONS } from "../lib/assets.ts";
+
+const BUD_DOMAIN =
+  import.meta.env.VITE_NETWORK === "mainnet" ? "buds" : "testnet-buds";
+const getBudImage = (budId: number): string =>
+  `https://${BUD_DOMAIN}.sunflower-land.com/images/${budId}.webp`;
 
 // Upstream `getWearableImage` uses
 //   new URL(`/src/assets/wearables/<id>.webp`, import.meta.url).href
@@ -37,26 +42,6 @@ const WEARABLE_BY_ID: Record<number, string> = (() => {
 export function getItemIcon(name: string): string {
   const detail = (ITEM_DETAILS as Record<string, { image?: string }>)[name];
   return detail?.image ?? "";
-}
-
-// CDN announcement / banner backgrounds. We expose a narrow accessor so
-// callers don't accidentally import `SUNNYSIDE` directly from the
-// submodule and bypass the boundary.
-export function getBannerUrl(
-  key: "marketplace" | "marketplaceLight" | "flowerBanner" | "summer",
-): string {
-  const banners = (UPSTREAM_SUNNYSIDE as { announcement?: Record<string, string> })
-    .announcement;
-  return banners?.[key] ?? "";
-}
-
-// Common chrome icons (chevrons, arrows). Narrow accessor — callers
-// avoid importing SUNNYSIDE directly to keep the boundary clean.
-export function getChromeIcon(
-  key: "chevron_down" | "chevron_up" | "chevron_right",
-): string {
-  const icons = (UPSTREAM_SUNNYSIDE as { icons?: Record<string, string> }).icons;
-  return icons?.[key] ?? "";
 }
 
 // Boost name → icon URL. Mirrors what BoostsDisplay.tsx shows in-game,
@@ -87,10 +72,7 @@ const CALENDAR_ICONS = CALENDAR_EVENT_ICONS as Record<
   string | undefined
 >;
 
-const LIGHTNING_FALLBACK = (() => {
-  const icons = (UPSTREAM_SUNNYSIDE as { icons?: Record<string, string> }).icons;
-  return icons?.lightning ?? "";
-})();
+const LIGHTNING_FALLBACK = CHROME_ICONS.lightning;
 
 export function getBoostIcon(name: string, _state: unknown): string {
   if (!name) return LIGHTNING_FALLBACK;

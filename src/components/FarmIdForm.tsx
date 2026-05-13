@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button } from "./sfl-ui/index.ts";
+import { Button } from "./ui/index.ts";
 
 type Props = {
   initialFarmId?: string;

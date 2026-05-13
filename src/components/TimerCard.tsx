@@ -1,10 +1,10 @@
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
-import { getChromeIcon } from "../game/index.ts";
+import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatReadyAt, formatRemaining, formatYield } from "../lib/format.ts";
-import { Label } from "./sfl-ui/index.ts";
+import { Label } from "./ui/index.ts";
 
-const CHEVRON_DOWN = getChromeIcon("chevron_down");
+const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
 
 type Props = {
   timer: AggregatedTimer;

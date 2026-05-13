@@ -1,6 +1,6 @@
 import type { AggregatedTimer, Category } from "../timers/index.ts";
 import { TimerCard } from "./TimerCard.tsx";
-import { InnerPanel, Label } from "./sfl-ui/index.ts";
+import { InnerPanel, Label } from "./ui/index.ts";
 
 type Props = {
   category: Category;
