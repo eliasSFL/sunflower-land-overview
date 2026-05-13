@@ -6,9 +6,14 @@ import { TimerSection } from "../components/TimerSection.tsx";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
 import { fetchFarm, ApiError, type FarmResponse } from "../api/fetchFarm.ts";
 import { useNow } from "../hooks/useNow.ts";
+import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import { extractAndAggregate, CATEGORY_ORDER } from "../timers/index.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import * as storage from "../lib/storage.ts";
+
+const GITHUB_REPO =
+  (import.meta.env.VITE_GITHUB_REPO as string | undefined) ??
+  "eliasSFL/sunflower-land-overview";
 
 const FARM_ID_KEY = "sfl-overview:farm-id";
 const API_KEY_KEY = "sfl-overview:api-key";
@@ -90,13 +95,19 @@ export function App() {
       ? Math.max(0, REFRESH_COOLDOWN_MS - (now - lastFetchedAt))
       : 0;
 
+  const { bundleSha, isStale } = useVersionCheck();
+  const shortSha = bundleSha.slice(0, 7);
+  const commitUrl = bundleSha
+    ? `https://github.com/${GITHUB_REPO}/commit/${bundleSha}`
+    : `https://github.com/${GITHUB_REPO}`;
+
   return (
     <div className="min-h-dvh bg-[#181425]">
       <OuterPanel className="min-h-dvh">
         {/* Banner header — repeating pixel-art grass tile, mirrors the
             in-game Marketplace / Flower Dashboard chrome. */}
         <header
-          className="relative mb-2 flex h-[70px] items-center rounded-sm"
+          className="relative mb-2 flex h-[70px] items-center justify-between rounded-sm"
           style={{
             backgroundImage: `url(${BANNER_URL})`,
             backgroundRepeat: "repeat",
@@ -111,6 +122,43 @@ export function App() {
             <p className="text-xs text-white text-shadow">
               Live timers for your farm
             </p>
+          </div>
+          {/* Build hash + stale-version nag, top right. The hash links
+              to its commit on GitHub; the "Refresh" prompt shows when
+              the polled /version.json no longer matches the bundle's
+              own VITE_COMMIT_SHA. */}
+          <div className="z-10 flex flex-col items-end gap-1 pr-3 sm:pr-4">
+            {shortSha ? (
+              <span className="text-xs text-white text-shadow">
+                Version:{" "}
+                <a
+                  href={commitUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="underline decoration-dotted underline-offset-2 hover:opacity-80"
+                  title="View this commit on GitHub"
+                >
+                  {shortSha}
+                </a>
+              </span>
+            ) : null}
+            {isStale ? (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => window.location.reload()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    window.location.reload();
+                  }
+                }}
+                className="cursor-pointer text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
+                title="A newer build is deployed — click to reload"
+              >
+                New version available · click to refresh
+              </span>
+            ) : null}
           </div>
         </header>
 

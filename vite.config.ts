@@ -1,7 +1,22 @@
 import { defineConfig, loadEnv } from "vite";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+
+// Build-time git metadata. Falls back to an empty string if `git`
+// fails (e.g. running outside a repo) so the UI can hide the link
+// gracefully.
+const gitCommit = (() => {
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+})();
+const GITHUB_REPO = "eliasSFL/sunflower-land-overview";
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -27,8 +42,34 @@ export default defineConfig(({ mode }) => {
     define: {
       "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(SFL_ASSET_CDN),
       "import.meta.env.VITE_NETWORK": JSON.stringify(SFL_NETWORK),
+      "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
+      "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
     },
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      // Emits /version.json so the running client can poll the
+      // deployed hash and prompt to refresh when it drifts from the
+      // bundle's own VITE_COMMIT_SHA. In dev we serve the same payload
+      // from middleware so the prompt logic exercises end-to-end.
+      {
+        name: "sfl-overview:version-json",
+        configureServer(server) {
+          server.middlewares.use("/version.json", (_req, res) => {
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Cache-Control", "no-store");
+            res.end(JSON.stringify({ commit: gitCommit }));
+          });
+        },
+        generateBundle() {
+          this.emitFile({
+            type: "asset",
+            fileName: "version.json",
+            source: JSON.stringify({ commit: gitCommit }),
+          });
+        },
+      },
+    ],
     resolve: {
       // Order matters: more-specific patterns first.
       //
