@@ -3,6 +3,8 @@ import Decimal from "decimal.js-light";
 
 import {
   generateDeliveryTickets,
+  getBoostIcon,
+  getBoostLabel,
   getChapterTicket,
   getItemIcon,
   getOrderSellPrice,
@@ -14,6 +16,7 @@ import {
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
+import { getActiveDeliveryGroups } from "./deliveryGroups.ts";
 import {
   DELIVERIES_COINS_SECTION_ID,
   DELIVERIES_FLOWER_SECTION_ID,
@@ -25,29 +28,6 @@ type Props = {
   state: GameState;
   now: number;
 };
-
-export type DeliveryBucket = "coins" | "sfl" | "tickets";
-
-// Same filter+sort as `features/island/delivery/components/Orders.tsx`
-// — claimable orders only, oldest-created first — bucketed by reward
-// currency. Exported so App.tsx can introspect non-empty buckets when
-// building the mobile nav, without re-implementing the bucketing rule.
-export function getActiveDeliveryGroups(
-  state: GameState,
-  now: number,
-): Record<DeliveryBucket, Order[]> {
-  const all = (state.delivery?.orders ?? []) as Order[];
-  const active = all
-    .filter((o) => !o.completedAt && now >= o.readyAt)
-    .sort((a, b) => a.createdAt - b.createdAt);
-  const out: Record<DeliveryBucket, Order[]> = {
-    coins: [],
-    sfl: [],
-    tickets: [],
-  };
-  for (const order of active) out[bucketFor(order)].push(order);
-  return out;
-}
 
 // Split the active-orders list into one panel per reward currency.
 // Each panel is a collapsible <details> so the player can fold the
@@ -92,16 +72,6 @@ export function DeliveriesPanel({ state, now }: Props) {
       />
     </>
   );
-}
-
-// Coin / SFL is decided by the stored reward; tickets are inferred from
-// the NPC since the reward isn't on the order. Anything else (e.g. a
-// special-event NPC paying raw items) falls back to the ticket bucket
-// so it still surfaces rather than getting dropped.
-function bucketFor(order: Order): DeliveryBucket {
-  if (order.reward.coins) return "coins";
-  if (order.reward.sfl) return "sfl";
-  return "tickets";
 }
 
 type GroupProps = {
@@ -156,27 +126,61 @@ function DeliveryRow({ order, state, now }: RowProps) {
   // `items` is a sparse record — typically a single key for one
   // required item, but the upstream type allows multiple.
   const itemEntries = Object.entries(order.items) as [string, number][];
+  const isCompleted = !!order.completedAt;
+  // Order ingredients can be regular inventory items (Crimstone, Sunflower)
+  // or one of two currency keys ("coins", "sfl") that live on top-level
+  // GameState fields with their own icons.
+  const ingredients = itemEntries.map(([name, required]) => {
+    let have: number;
+    let icon: string;
+    if (name === "coins") {
+      have = state.coins;
+      icon = CHROME_ICONS.coins;
+    } else if (name === "sfl") {
+      have = state.balance.toNumber();
+      icon = CHROME_ICONS.flower_token;
+    } else {
+      have =
+        state.inventory[name as keyof typeof state.inventory]?.toNumber() ?? 0;
+      icon = getItemIcon(name);
+    }
+    return { name, required, have, icon, met: have >= required };
+  });
+  const allMet = ingredients.every((i) => i.met);
 
   return (
     <li className="flex items-start justify-between gap-3">
       <div className="flex items-start gap-2 min-w-0">
         <NPCIcon npc={order.from as NPCName} />
-        <div className="flex flex-col min-w-0">
-          <span className="text-sm truncate capitalize">{order.from}</span>
-          {itemEntries.map(([name, amount]) => (
+        <div className="flex flex-col min-w-0 gap-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm capitalize">{order.from}</span>
+            {isCompleted ? (
+              <Label type="success">Completed</Label>
+            ) : allMet ? (
+              <Label type="success">Ready</Label>
+            ) : null}
+          </div>
+          {ingredients.map(({ name, required, have, icon, met }) => (
             <span
               key={name}
-              className="flex items-center gap-1 text-xs opacity-80 min-w-0"
+              className="flex items-center gap-1 text-xs min-w-0"
+              style={{
+                color: isCompleted || met ? undefined : "#e43b44",
+                opacity: isCompleted ? 0.6 : 0.9,
+              }}
             >
               <img
-                src={getItemIcon(name)}
+                src={icon}
                 alt=""
                 aria-hidden
                 className="h-4 w-4 shrink-0 object-contain"
                 style={{ imageRendering: "pixelated" }}
               />
               <span className="truncate">
-                {formatYield(amount)} {name}
+                {isCompleted
+                  ? `${formatYield(required)} ${name}`
+                  : `${formatYield(have)}/${formatYield(required)} ${name}`}
               </span>
             </span>
           ))}
@@ -200,18 +204,31 @@ function DeliveryReward({ order, state, now }: RowProps) {
 
   let coinAmount: number | undefined;
   let sflAmount: number | undefined;
+  let boostsUsed: { name: string; value: string }[] = [];
   if (order.reward.coins) {
-    const { reward } = getOrderSellPrice<number>(state, order, new Date(now));
+    const { reward, boostsUsed: bu } = getOrderSellPrice<number>(
+      state,
+      order,
+      new Date(now),
+    );
     coinAmount = reward;
+    boostsUsed = bu;
   } else if (order.reward.sfl) {
-    const { reward } = getOrderSellPrice<Decimal>(state, order, new Date(now));
+    const { reward, boostsUsed: bu } = getOrderSellPrice<Decimal>(
+      state,
+      order,
+      new Date(now),
+    );
     sflAmount = reward.toNumber();
+    boostsUsed = bu;
   }
 
   const npc = order.from as NPCName;
-  const ticketAmount = isTicketNPC(npc)
+  const ticketResult = isTicketNPC(npc)
     ? generateDeliveryTickets({ game: state, npc, now })
-    : 0;
+    : { amount: 0, boostsUsed: [] };
+  const ticketAmount = ticketResult.amount;
+  if (ticketAmount > 0) boostsUsed = boostsUsed.concat(ticketResult.boostsUsed);
   const ticketName = ticketAmount > 0 ? getChapterTicket(now) : undefined;
 
   return (
@@ -266,6 +283,28 @@ function DeliveryReward({ order, state, now }: RowProps) {
           />
           {formatYield(ticketAmount)}
         </span>
+      ) : null}
+      {boostsUsed.length > 0 ? (
+        <ul className="mt-0.5 flex flex-col items-end gap-0.5 opacity-80">
+          {boostsUsed.map((b, i) => (
+            <li
+              key={`${b.name}:${i}`}
+              className="flex items-center gap-1 whitespace-nowrap"
+            >
+              <img
+                src={getBoostIcon(b.name, state)}
+                alt=""
+                aria-hidden
+                className="h-4 w-4 shrink-0 object-contain"
+                style={{ imageRendering: "pixelated" }}
+              />
+              <span className="truncate max-w-30" title={getBoostLabel(b.name)}>
+                {getBoostLabel(b.name)}
+              </span>
+              <span className="shrink-0 tabular-nums">{b.value}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

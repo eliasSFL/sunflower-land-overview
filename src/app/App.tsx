@@ -1,10 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
-import {
-  DeliveriesPanel,
-  getActiveDeliveryGroups,
-} from "../components/DeliveriesPanel.tsx";
+import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
+import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
