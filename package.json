@@ -6,9 +6,7 @@
   "scripts": {
     "postinstall": "git submodule update --init --recursive",
     "dev": "vite --host",
-    "build": "npm run build:client && npm run build:worker",
-    "build:client": "tsc -b && vite build",
-    "build:worker": "vite build --config vite.worker.config.ts",
+    "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "lint": "eslint .",
