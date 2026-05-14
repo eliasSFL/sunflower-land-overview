@@ -106,3 +106,5 @@ export const createMachine = stub;
 export const assign = stub;
 export const Interpreter = stub;
 export const State = stub;
+// gameanalytics
+export const GameAnalytics = stub;

@@ -118,6 +118,7 @@ export default defineConfig(({ mode }) => {
         { find: "react-i18next", replacement: EXTERNAL_STUB },
         { find: "i18next", replacement: EXTERNAL_STUB },
         { find: "lodash", replacement: EXTERNAL_STUB },
+        { find: "gameanalytics", replacement: EXTERNAL_STUB },
         {
           find: /^features\/(.*)$/,
           replacement: r("./sunflower-land/src/features/$1"),
