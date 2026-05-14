@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
 import { formatRemaining, formatYield } from "../lib/format.ts";
+import { NEXT_UP_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 
 // Compact "next ready" feed shown under the Farm ID panel. Fills the
@@ -126,7 +127,10 @@ export function NextUpPanel({ timers, now }: Props) {
   if (rows.length === 0) return null;
 
   return (
-    <InnerPanel className="flex flex-col gap-2">
+    <InnerPanel
+      id={NEXT_UP_SECTION_ID}
+      className="flex scroll-mt-4 flex-col gap-2"
+    >
       <header>
         <Label type="default">Next up</Label>
       </header>

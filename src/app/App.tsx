@@ -1,12 +1,26 @@
 import { useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
-import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
+import {
+  DeliveriesPanel,
+  getActiveDeliveryGroups,
+} from "../components/DeliveriesPanel.tsx";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
-import { MobileNav } from "../components/MobileNav.tsx";
+import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
+import { getCategoryIcon } from "../components/categoryIcon.ts";
+import {
+  BUMPKIN_SECTION_ID,
+  DELIVERIES_COINS_SECTION_ID,
+  DELIVERIES_FLOWER_SECTION_ID,
+  DELIVERIES_TICKETS_SECTION_ID,
+  NEXT_UP_SECTION_ID,
+  sectionId,
+} from "../components/sectionId.ts";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
+import { getChapterTicket, getItemIcon } from "../game/index.ts";
+import { CHROME_ICONS } from "../lib/assets.ts";
 import {
   fetchFarm,
   loadCachedFarm,
@@ -129,6 +143,57 @@ export function App() {
       }),
     [byCategory],
   );
+
+  // Build the MobileNav strip declaratively. Order mirrors the
+  // on-page render order (left column top→bottom, then timer
+  // sections). Each entry is `{ id, label, icon }`; a new panel just
+  // needs its section id stamped on the panel root and a push here.
+  const navSections = useMemo<NavSection[]>(() => {
+    if (!data) return [];
+    const out: NavSection[] = [
+      {
+        id: BUMPKIN_SECTION_ID,
+        label: "Bumpkin",
+        icon: CHROME_ICONS.level_up,
+      },
+    ];
+    out.push({
+      id: NEXT_UP_SECTION_ID,
+      label: "Next up",
+      icon: CHROME_ICONS.timer,
+    });
+    const groups = getActiveDeliveryGroups(data.farm, now);
+    if (groups.coins.length > 0) {
+      out.push({
+        id: DELIVERIES_COINS_SECTION_ID,
+        label: "Coin Deliveries",
+        icon: CHROME_ICONS.coins,
+      });
+    }
+    if (groups.sfl.length > 0) {
+      out.push({
+        id: DELIVERIES_FLOWER_SECTION_ID,
+        label: "FLOWER Deliveries",
+        icon: CHROME_ICONS.flower_token,
+      });
+    }
+    if (groups.tickets.length > 0) {
+      const ticketName = getChapterTicket(now);
+      out.push({
+        id: DELIVERIES_TICKETS_SECTION_ID,
+        label: `${ticketName} Deliveries`,
+        icon: getItemIcon(ticketName),
+      });
+    }
+    for (const cat of visibleCategories) {
+      out.push({
+        id: sectionId(cat),
+        label: cat,
+        icon: getCategoryIcon(cat),
+      });
+    }
+    return out;
+  }, [data, now, visibleCategories]);
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -285,7 +350,7 @@ export function App() {
             doesn't cover the last section. */}
         <div className="h-16 lg:hidden" aria-hidden />
       </OuterPanel>
-      {data ? <MobileNav visibleCategories={visibleCategories} /> : null}
+      {data ? <MobileNav sections={navSections} /> : null}
     </div>
   );
 }

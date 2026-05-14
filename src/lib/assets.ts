@@ -42,6 +42,8 @@ export const CHROME_ICONS = {
   // IS on the CDN.
   level_up: submoduleAsset("icons/level_up.png"),
   progress_bar_border: `${CDN}/ui/progress/progress_bar_border.png`,
+  // Next-Up panel chip on the mobile nav.
+  timer: submoduleAsset("icons/timer.gif"),
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.
   coins: submoduleAsset("icons/coins.webp"),

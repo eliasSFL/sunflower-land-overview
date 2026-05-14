@@ -6,3 +6,13 @@ import type { Category } from "../timers/index.ts";
 export function sectionId(category: Category): string {
   return `section-${category.toLowerCase().replace(/\s+/g, "-")}`;
 }
+
+// Fixed ids for the non-category panels on the left column. Used as
+// scroll anchors for the matching MobileNav chips. Keeping them in
+// one place makes it easy to add a new panel — declare the id here,
+// stamp it on the panel root, and include it in App's nav list.
+export const BUMPKIN_SECTION_ID = "section-bumpkin";
+export const NEXT_UP_SECTION_ID = "section-next-up";
+export const DELIVERIES_COINS_SECTION_ID = "section-deliveries-coins";
+export const DELIVERIES_FLOWER_SECTION_ID = "section-deliveries-flower";
+export const DELIVERIES_TICKETS_SECTION_ID = "section-deliveries-tickets";

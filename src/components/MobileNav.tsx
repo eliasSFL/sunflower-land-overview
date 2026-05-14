@@ -1,6 +1,3 @@
-import { CATEGORY_ORDER, type Category } from "../timers/index.ts";
-import { getCategoryIcon } from "./categoryIcon.ts";
-import { sectionId } from "./sectionId.ts";
 import { pixelDarkBorderStyle } from "./ui/borderStyles.ts";
 import { InnerPanel } from "./ui/index.ts";
 
@@ -8,28 +5,30 @@ import { InnerPanel } from "./ui/index.ts";
 // small viewports only — at `lg+` the layout already sits in a
 // scannable multi-column grid, so the strip would just be noise.
 //
-// Each chip renders an item icon as a recognisable representative for
-// the category (the icon mapping is shared with the section Label
-// headers — see `categoryIcon.ts`).
+// `sections` is fully declarative — each entry just needs a DOM id,
+// a label and an icon URL. Categories, the Bumpkin summary, delivery
+// buckets, Next up, and any future left-column panel slot in
+// uniformly. The caller (App) decides ordering and visibility; if a
+// panel isn't rendered, drop it from this list.
 
-type Props = {
-  // Pass through which categories should be linkable. We keep it
-  // declarative so the caller (App) doesn't need to know about hidden
-  // sections — if a section isn't rendered, it isn't in this list.
-  visibleCategories: readonly Category[];
+export type NavSection = {
+  id: string;
+  label: string;
+  icon: string;
 };
 
-export function MobileNav({ visibleCategories }: Props) {
-  if (visibleCategories.length === 0) return null;
+type Props = {
+  sections: readonly NavSection[];
+};
 
-  const handleJump = (category: Category) => {
-    const el = document.getElementById(sectionId(category));
+export function MobileNav({ sections }: Props) {
+  if (sections.length === 0) return null;
+
+  const handleJump = (id: string) => {
+    const el = document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-
-  // Render in CATEGORY_ORDER so the strip mirrors the on-page order.
-  const ordered = CATEGORY_ORDER.filter((c) => visibleCategories.includes(c));
 
   return (
     <nav
@@ -43,11 +42,11 @@ export function MobileNav({ visibleCategories }: Props) {
     >
       <InnerPanel className="p-1!">
         <ul className="flex gap-1 overflow-x-auto">
-          {ordered.map((category) => (
-            <li key={category} className="shrink-0">
+          {sections.map((section) => (
+            <li key={section.id} className="shrink-0">
               <button
                 type="button"
-                onClick={() => handleJump(category)}
+                onClick={() => handleJump(section.id)}
                 className="flex items-center gap-1 whitespace-nowrap text-xs"
                 style={{
                   ...pixelDarkBorderStyle,
@@ -56,13 +55,13 @@ export function MobileNav({ visibleCategories }: Props) {
                 }}
               >
                 <img
-                  src={getCategoryIcon(category)}
+                  src={section.icon}
                   alt=""
                   aria-hidden
                   className="h-4 w-4 shrink-0 object-contain"
                   style={{ imageRendering: "pixelated" }}
                 />
-                <span>{category}</span>
+                <span>{section.label}</span>
               </button>
             </li>
           ))}

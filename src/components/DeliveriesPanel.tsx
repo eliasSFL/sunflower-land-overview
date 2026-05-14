@@ -14,6 +14,11 @@ import {
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
+import {
+  DELIVERIES_COINS_SECTION_ID,
+  DELIVERIES_FLOWER_SECTION_ID,
+  DELIVERIES_TICKETS_SECTION_ID,
+} from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 
 type Props = {
@@ -21,42 +26,56 @@ type Props = {
   now: number;
 };
 
-type Bucket = "coins" | "sfl" | "tickets";
+export type DeliveryBucket = "coins" | "sfl" | "tickets";
+
+// Same filter+sort as `features/island/delivery/components/Orders.tsx`
+// — claimable orders only, oldest-created first — bucketed by reward
+// currency. Exported so App.tsx can introspect non-empty buckets when
+// building the mobile nav, without re-implementing the bucketing rule.
+export function getActiveDeliveryGroups(
+  state: GameState,
+  now: number,
+): Record<DeliveryBucket, Order[]> {
+  const all = (state.delivery?.orders ?? []) as Order[];
+  const active = all
+    .filter((o) => !o.completedAt && now >= o.readyAt)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const out: Record<DeliveryBucket, Order[]> = {
+    coins: [],
+    sfl: [],
+    tickets: [],
+  };
+  for (const order of active) out[bucketFor(order)].push(order);
+  return out;
+}
 
 // Split the active-orders list into one panel per reward currency.
 // Each panel is a collapsible <details> so the player can fold the
 // noisier groups (tickets tends to have the most entries on a mature
 // farm) while keeping the headline counts visible.
 export function DeliveriesPanel({ state, now }: Props) {
-  const orders = useMemo(() => {
-    const all = (state.delivery?.orders ?? []) as Order[];
-    return all
-      .filter((o) => !o.completedAt && now >= o.readyAt)
-      .sort((a, b) => a.createdAt - b.createdAt);
-  }, [state, now]);
-
-  const grouped = useMemo(() => {
-    const out: Record<Bucket, Order[]> = { coins: [], sfl: [], tickets: [] };
-    for (const order of orders) {
-      out[bucketFor(order)].push(order);
-    }
-    return out;
-  }, [orders]);
-
-  if (orders.length === 0) return null;
+  const grouped = useMemo(
+    () => getActiveDeliveryGroups(state, now),
+    [state, now],
+  );
+  const total =
+    grouped.coins.length + grouped.sfl.length + grouped.tickets.length;
+  if (total === 0) return null;
 
   const ticketIcon = getItemIcon(getChapterTicket(now));
 
   return (
     <>
       <DeliveryGroupPanel
-        title="Coins"
+        id={DELIVERIES_COINS_SECTION_ID}
+        title="Coin"
         icon={CHROME_ICONS.coins}
         orders={grouped.coins}
         state={state}
         now={now}
       />
       <DeliveryGroupPanel
+        id={DELIVERIES_FLOWER_SECTION_ID}
         title="FLOWER"
         icon={CHROME_ICONS.flower_token}
         orders={grouped.sfl}
@@ -64,7 +83,8 @@ export function DeliveriesPanel({ state, now }: Props) {
         now={now}
       />
       <DeliveryGroupPanel
-        title="Tickets"
+        id={DELIVERIES_TICKETS_SECTION_ID}
+        title={getChapterTicket(now)}
         icon={ticketIcon}
         orders={grouped.tickets}
         state={state}
@@ -78,13 +98,14 @@ export function DeliveriesPanel({ state, now }: Props) {
 // the NPC since the reward isn't on the order. Anything else (e.g. a
 // special-event NPC paying raw items) falls back to the ticket bucket
 // so it still surfaces rather than getting dropped.
-function bucketFor(order: Order): Bucket {
+function bucketFor(order: Order): DeliveryBucket {
   if (order.reward.coins) return "coins";
   if (order.reward.sfl) return "sfl";
   return "tickets";
 }
 
 type GroupProps = {
+  id: string;
   title: string;
   icon: string;
   orders: Order[];
@@ -92,15 +113,22 @@ type GroupProps = {
   now: number;
 };
 
-function DeliveryGroupPanel({ title, icon, orders, state, now }: GroupProps) {
+function DeliveryGroupPanel({
+  id,
+  title,
+  icon,
+  orders,
+  state,
+  now,
+}: GroupProps) {
   if (orders.length === 0) return null;
   return (
-    <InnerPanel>
+    <InnerPanel id={id} className="scroll-mt-4">
       <details open className="group flex flex-col gap-2">
         <summary className="list-none cursor-pointer marker:hidden">
           <div className="flex items-center justify-between gap-2">
             <Label type="default" icon={icon}>
-              {title} · {orders.length}
+              {title} Deliveries · {orders.length}
             </Label>
             <img
               src={CHROME_ICONS.chevron_down}

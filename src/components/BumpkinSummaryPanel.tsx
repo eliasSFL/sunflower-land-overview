@@ -7,6 +7,7 @@ import {
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
+import { BUMPKIN_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 
 // Compact "who am I" summary shown above the Next Up panel. Reads
@@ -62,7 +63,10 @@ export function BumpkinSummaryPanel({ data }: Props) {
   const loveCharms = getInventoryAmount(farm.inventory, "Love Charm");
 
   return (
-    <InnerPanel className="flex flex-col gap-2">
+    <InnerPanel
+      id={BUMPKIN_SECTION_ID}
+      className="flex scroll-mt-4 flex-col gap-2"
+    >
       <header className="flex items-center justify-between gap-2">
         <Label type="default">Bumpkin</Label>
         <span className="text-xs">
