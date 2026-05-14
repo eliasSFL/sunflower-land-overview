@@ -6,7 +6,12 @@ import { MobileNav } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
-import { fetchFarm, ApiError, type FarmResponse } from "../api/fetchFarm.ts";
+import {
+  fetchFarm,
+  loadCachedFarm,
+  ApiError,
+  type FarmResponse,
+} from "../api/fetchFarm.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import { extractAndAggregate, CATEGORY_ORDER } from "../timers/index.ts";
@@ -30,10 +35,23 @@ export function App() {
   const [apiKey, setApiKey] = useState<string>(
     () => storage.load<string>(API_KEY_KEY) ?? "",
   );
-  const [data, setData] = useState<FarmResponse | undefined>();
+  // Seed from the localStorage cache so a reload paints the farm
+  // immediately. The `fetchedAt` stamp keeps the "last refreshed" label
+  // truthful across sessions and respects the refresh cooldown.
+  const initialCache = useMemo(() => {
+    const id = storage.load<string>(FARM_ID_KEY);
+    return id ? loadCachedFarm(id) : undefined;
+    // Run once on mount — deps left empty intentionally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [data, setData] = useState<FarmResponse | undefined>(
+    () => initialCache?.data,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>();
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>(
+    () => initialCache?.fetchedAt,
+  );
 
   const inFlightRef = useRef<Promise<void> | undefined>(undefined);
 

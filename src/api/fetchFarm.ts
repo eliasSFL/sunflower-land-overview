@@ -18,6 +18,45 @@ export class ApiError extends Error {
   }
 }
 
+const FARM_CACHE_PREFIX = "sfl-overview:farm:";
+
+const farmCacheKey = (farmId: string | number) =>
+  `${FARM_CACHE_PREFIX}${String(farmId).trim()}`;
+
+// Cache the *raw* server payload — `farm` here is plain JSON numbers,
+// not the Decimal-hydrated form returned to callers. Hydrating in
+// `loadCachedFarm` keeps `JSON.stringify` simple (Decimal instances
+// don't round-trip).
+function saveCachedFarm(farmId: string | number, raw: FarmResponse): void {
+  try {
+    localStorage.setItem(
+      farmCacheKey(farmId),
+      JSON.stringify({ v: raw, at: Date.now() }),
+    );
+  } catch {
+    // Quota exceeded or storage disabled — ignore.
+  }
+}
+
+export type CachedFarm = { data: FarmResponse; fetchedAt: number };
+
+export function loadCachedFarm(
+  farmId: string | number,
+): CachedFarm | undefined {
+  try {
+    const raw = localStorage.getItem(farmCacheKey(farmId));
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { v: FarmResponse; at: number };
+    if (!parsed?.v?.farm) return undefined;
+    return {
+      data: { ...parsed.v, farm: makeGame(parsed.v.farm) },
+      fetchedAt: parsed.at,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export async function fetchFarm(
   farmId: string,
   apiKey: string,
@@ -69,5 +108,6 @@ export async function fetchFarm(
   // instances. Upstream helpers (animal boost gates, etc.) call `.gt(0)`
   // / `.add()` on these — they'd crash on the raw JSON numbers.
   const raw = parsed as FarmResponse;
+  saveCachedFarm(trimmedId, raw);
   return { ...raw, farm: makeGame(raw.farm) };
 }
