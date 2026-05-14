@@ -6,6 +6,7 @@ import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
+import { NotificationSettings } from "../components/NotificationSettings.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import {
@@ -317,6 +318,11 @@ export function App() {
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
           </InnerPanel>
           {data ? <BumpkinSummaryPanel data={data} /> : null}
+          {data ? (
+            <NotificationSettings
+              farmId={data.id ?? (Number(farmId) || undefined)}
+            />
+          ) : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
           {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
           {data
