@@ -129,6 +129,27 @@ export {
   isMaxLevel,
   MAX_BUMPKIN_LEVEL,
 } from "features/game/lib/level";
+// Deliveries — `getOrderSellPrice` handles boost-adjusted coin / SFL
+// rewards, `generateDeliveryTickets` handles seasonal-ticket rewards
+// (those aren't stored on the order; upstream computes them at claim
+// time from the NPC + VIP + chapter boost items + Double Delivery
+// calendar event). `getChapterTicket` tells us which token icon to
+// render for the current season.
+export {
+  getOrderSellPrice,
+  generateDeliveryTickets,
+} from "features/game/events/landExpansion/deliver";
+export { isTicketNPC } from "features/island/delivery/lib/delivery";
+export { getChapterTicket } from "features/game/types/chapters";
+export type { Order, Delivery } from "features/game/types/game";
+// NPC avatar pieces. `NPC_WEARABLES` is the canonical equipped-parts
+// map upstream uses everywhere it renders an NPC; `getAnimatedWebpUrl`
+// builds the CDN URL the in-game `NPCIcon` component points at. Pair
+// them to render the same "idle-small" bumpkin animation our overview
+// shows for each delivery row.
+export { NPC_WEARABLES } from "lib/npcs";
+export type { NPCName } from "lib/npcs";
+export { getAnimatedWebpUrl } from "features/world/lib/animations";
 export type {
   GameState,
   CropName,

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
+import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav } from "../components/MobileNav.tsx";
 import { NextUpPanel } from "../components/NextUpPanel.tsx";
@@ -46,7 +47,6 @@ export function App() {
     const id = storage.load<string>(FARM_ID_KEY);
     return id ? loadCachedFarm(id) : undefined;
     // Run once on mount — deps left empty intentionally.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [data, setData] = useState<FarmResponse | undefined>(
     () => initialCache?.data,
@@ -248,14 +248,14 @@ export function App() {
               ) : null}
               {data && lastFetchedAt ? (
                 <span className="text-xs">
-                  last refreshed{" "}
-                  {new Date(lastFetchedAt).toLocaleTimeString()}
+                  last refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
                 </span>
               ) : null}
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
             </InnerPanel>
             {data ? <BumpkinSummaryPanel data={data} /> : null}
             {data ? <NextUpPanel timers={timers} now={now} /> : null}
+            {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
           </div>
 
           {data ? (

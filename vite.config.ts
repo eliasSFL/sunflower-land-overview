@@ -32,16 +32,21 @@ const EXTERNAL_STUB = r("./src/game/stubs/external-stub.ts");
 // upstream's `.github/workflows/mainnet.yml`.
 const DEFAULT_ASSET_CDN = "https://sunflower-land.com/game-assets";
 const DEFAULT_NETWORK = "mainnet";
+// Bumpkin animation CDN — drives `getAnimatedWebpUrl` for NPC avatars.
+// Mainnet value matches upstream's `.github/workflows/mainnet.yml`.
+const DEFAULT_ANIMATION_URL = "https://animations.sunflower-land.com";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const SFL_ASSET_CDN = env.VITE_PRIVATE_IMAGE_URL || DEFAULT_ASSET_CDN;
   const SFL_NETWORK = env.VITE_NETWORK || DEFAULT_NETWORK;
+  const SFL_ANIMATION_URL = env.VITE_ANIMATION_URL || DEFAULT_ANIMATION_URL;
 
   return {
     define: {
       "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(SFL_ASSET_CDN),
       "import.meta.env.VITE_NETWORK": JSON.stringify(SFL_NETWORK),
+      "import.meta.env.VITE_ANIMATION_URL": JSON.stringify(SFL_ANIMATION_URL),
       "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
       "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
     },
