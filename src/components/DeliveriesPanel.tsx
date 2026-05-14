@@ -164,8 +164,20 @@ function DeliveryRow({ order, state, now }: RowProps) {
         <div className="flex flex-col min-w-0">
           <span className="text-sm truncate capitalize">{order.from}</span>
           {itemEntries.map(([name, amount]) => (
-            <span key={name} className="text-xs opacity-80 truncate">
-              {formatYield(amount)} {name}
+            <span
+              key={name}
+              className="flex items-center gap-1 text-xs opacity-80 min-w-0"
+            >
+              <img
+                src={getItemIcon(name)}
+                alt=""
+                aria-hidden
+                className="h-4 w-4 shrink-0 object-contain"
+                style={{ imageRendering: "pixelated" }}
+              />
+              <span className="truncate">
+                {formatYield(amount)} {name}
+              </span>
             </span>
           ))}
         </div>
