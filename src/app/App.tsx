@@ -267,86 +267,72 @@ export function App() {
           </div>
         </header>
 
-        {/* Layout proportions across breakpoints (12-col grid). "Total
-            cols" counts the Farm ID column too:
-            <sm   : 1 col total  (mobile, full-width stack)
-            sm    : 2 cols total — Farm ID 5/12 + right 7/12, 1 timer col
-            lg    : 3 cols total — Farm ID 4/12 + right 8/12, 2 timer cols
-            2xl+  : 4 cols total — Farm ID 3/12 + right 9/12, 3 timer cols
-            Right-side uses CSS multi-column flow (see below). */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-          {/* Left column — Farm ID form + Next Up widget stacked. The
-              wrapping div carries the col-span / self-start so both
-              panels share the column width and the stack collapses to
-              its content height instead of stretching to the timer
-              column on the right. */}
-          <div className="flex flex-col gap-2 self-start sm:col-span-5 lg:col-span-4 2xl:col-span-3">
-            <InnerPanel className="flex flex-col gap-3">
-              <p className="text-sm">
-                In the game:{" "}
-                <strong>
-                  {"Settings > Advanced > Developer Options > API Key"}
-                </strong>{" "}
-                to generate your key. Both fields are stored locally on your
-                device.
-              </p>
-              <FarmIdForm
-                initialFarmId={farmId}
-                initialApiKey={apiKey}
-                onSubmit={load}
-                loading={loading}
-                lastLoaded={data ? { farmId, apiKey } : undefined}
-                cooldownLeftMs={cooldownLeft}
-              />
-              {data ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label type="default">Farm #{data.id}</Label>
-                  {data.nft_id || data.nftId ? (
-                    <Label type="info">NFT {data.nft_id ?? data.nftId}</Label>
-                  ) : null}
-                  {data.isBlacklisted ? (
-                    <Label type="danger">blacklisted</Label>
-                  ) : null}
-                </div>
-              ) : null}
-              {data && lastFetchedAt ? (
-                <span className="text-xs">
-                  last refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
-                </span>
-              ) : null}
-              {error ? <p className="text-sm text-red-700">{error}</p> : null}
-            </InnerPanel>
-            {data ? <BumpkinSummaryPanel data={data} /> : null}
-            {data ? <NextUpPanel timers={timers} now={now} /> : null}
-            {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
-          </div>
-
-          {data ? (
-            // CSS multi-column layout (not grid) so a short panel under a
-            // tall one stacks immediately in the same column instead of
-            // leaving an empty grid-row gap. Timer-column count is fixed
-            // by breakpoint so panel width stays proportional with the
-            // Farm ID column:
-            //   <lg     : 1 timer col (mobile, full-width stack)
-            //   lg-2xl  : 2 timer cols (Farm + 2 = 3 total)
-            //   2xl+    : 3 timer cols (Farm + 3 = 4 total)
-            // Adding more timer panels just makes existing columns
-            // taller — no breakpoint maintenance needed.
-            <div className="columns-1 gap-2 sm:col-span-7 lg:col-span-8 lg:columns-2 2xl:col-span-9 2xl:columns-3">
-              {visibleCategories.map((cat) => (
+        {/* Single CSS multi-column flow containing every panel. Source
+            order is FarmIdForm → BumpkinSummary → NextUp → Deliveries
+            → CATEGORY_ORDER timer panels; the browser auto-balances
+            heights across columns. Total column count per breakpoint:
+              <sm  : 1 col (mobile, full-width stack)
+              sm   : 2 cols
+              lg   : 3 cols
+              2xl+ : 4 cols
+            Matches the pre-merge layout where the Farm ID column +
+            timer columns summed to the same totals. Adding more
+            panels just makes existing columns taller — no breakpoint
+            maintenance needed. `break-inside-avoid` on each direct
+            child keeps panels intact across column boundaries. */}
+        <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
+          <InnerPanel className="flex flex-col gap-3">
+            <p className="text-sm">
+              In the game:{" "}
+              <strong>
+                {"Settings > Advanced > Developer Options > API Key"}
+              </strong>{" "}
+              to generate your key. Both fields are stored locally on your
+              device.
+            </p>
+            <FarmIdForm
+              initialFarmId={farmId}
+              initialApiKey={apiKey}
+              onSubmit={load}
+              loading={loading}
+              lastLoaded={data ? { farmId, apiKey } : undefined}
+              cooldownLeftMs={cooldownLeft}
+            />
+            {data ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Label type="default">Farm #{data.id}</Label>
+                {data.nft_id || data.nftId ? (
+                  <Label type="info">NFT {data.nft_id ?? data.nftId}</Label>
+                ) : null}
+                {data.isBlacklisted ? (
+                  <Label type="danger">blacklisted</Label>
+                ) : null}
+              </div>
+            ) : null}
+            {data && lastFetchedAt ? (
+              <span className="text-xs">
+                last refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
+              </span>
+            ) : null}
+            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+          </InnerPanel>
+          {data ? <BumpkinSummaryPanel data={data} /> : null}
+          {data ? <NextUpPanel timers={timers} now={now} /> : null}
+          {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
+          {data
+            ? visibleCategories.map((cat) => (
                 <TimerSection
                   key={cat}
                   category={cat}
                   timers={byCategory.get(cat) ?? []}
                   now={now}
                 />
-              ))}
-            </div>
-          ) : null}
+              ))
+            : null}
         </div>
-        {/* Extra bottom padding on `<lg` so the fixed MobileNav strip
+        {/* Extra bottom padding on `<sm` so the fixed MobileNav strip
             doesn't cover the last section. */}
-        <div className="h-16 lg:hidden" aria-hidden />
+        <div className="h-16 sm:hidden" aria-hidden />
       </OuterPanel>
       {data ? <MobileNav sections={navSections} /> : null}
     </div>

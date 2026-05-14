@@ -33,9 +33,10 @@ export function MobileNav({ sections }: Props) {
   return (
     <nav
       aria-label="Section navigation"
-      // Fixed to the bottom on mobile; hidden once the Farm ID sidebar
-      // appears (lg+) since the grid layout is already scannable.
-      className="fixed inset-x-0 bottom-0 z-20 px-1 pb-2 lg:hidden"
+      // Fixed to the bottom on mobile (1-col layout); hidden as soon as
+      // the multi-column flow kicks in (sm+) since the layout is
+      // already scannable horizontally.
+      className="fixed inset-x-0 bottom-0 z-20 px-1 pb-2 sm:hidden"
       // pb adds room for the iOS home indicator on devices that report
       // a safe-area inset.
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
