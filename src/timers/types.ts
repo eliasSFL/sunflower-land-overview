@@ -8,10 +8,29 @@ export type Category =
   | "Resources"
   | "Salt"
   | "Animals"
-  | "Cooking"
+  | "Fire Pit"
+  | "Smoothie Shack"
+  | "Deli"
+  | "Kitchen"
+  | "Bakery"
+  | "Fish Market"
   | "Composters"
   | "Aging Shed"
   | "Crafting Box";
+
+// Each cooking / processing building is its own top-level category so
+// the layout flows them as independent panels and MobileNav gets a chip
+// per building. Order within the cooking cluster mirrors the upstream
+// COOKING_BUILDINGS array (Fire Pit → … → Kitchen), with Fish Market
+// appended since it's a processing building rather than cooking proper.
+export const COOKING_BUILDING_CATEGORIES: readonly Category[] = [
+  "Fire Pit",
+  "Bakery",
+  "Deli",
+  "Smoothie Shack",
+  "Kitchen",
+  "Fish Market",
+];
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -23,7 +42,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Resources",
   "Salt",
   "Animals",
-  "Cooking",
+  ...COOKING_BUILDING_CATEGORIES,
   "Composters",
   "Aging Shed",
   "Crafting Box",

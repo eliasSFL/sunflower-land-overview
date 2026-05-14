@@ -9,12 +9,13 @@ import {
   type PlacedItem,
   type ProcessedResource,
 } from "../game/index.ts";
-import type { Boost, Timer, TimerContext, TimerSlot } from "./types.ts";
+import type { Boost, Timer, TimerContext } from "./types.ts";
 
-// One Timer per cooking / processing building INSTANCE. The card's
-// `slots` field carries each queue position (item + predicted yield +
-// readyAt), and `readyAt` at the card level is the earliest slot — so
-// the section header shows the next thing this building will produce.
+// One Timer per queue slot — mirrors the Crafting Box pattern so each
+// recipe gets its own row inside the building's panel (the panel itself
+// comes from `category: <building name>`). Slot index lives in the
+// aggregationKey so identical recipes at different positions stay
+// separate cards.
 //
 // Predictive PRNG: `getCookingAmount` / `getProcessedResourceAmount`
 // thread `farmId + counter + KNOWN_IDS[recipe]` through `prngChance`,
@@ -26,8 +27,12 @@ import type { Boost, Timer, TimerContext, TimerSlot } from "./types.ts";
 // Boost surfacing: both upstream helpers now return a `boostsUsed`
 // array — `getCookingAmount` lists Double Nom / Fiery Jackpot /
 // Master Chef's Cleaver, `getProcessedResourceAmount` lists Bubble
-// Aura. We thread them straight onto each slot so the card can
-// render a per-slot boost dropdown.
+// Aura. We surface them as card-level boosts (chevron dropdown) on
+// each slot's row, since each slot is now a standalone card.
+//
+// Idle buildings (placed but no queue) emit one idle Timer per
+// instance with `idle: true` so the section header still renders the
+// panel with a "Not cooking" body — same approach as Crafting Box.
 
 const COOKING_BUILDINGS: readonly BuildingName[] = [
   "Fire Pit",
@@ -206,73 +211,40 @@ export function extractCookingTimers(
     predicted.set(slotKey(slot), { amount, boosts });
   }
 
-  // Group raw slots back by (building, instanceKey) preserving original
-  // queue order (slotIdx), and emit one Timer per building instance.
-  type Group = {
-    building: BuildingName;
-    instanceKey: string;
-    slots: RawSlot[];
-  };
-  const groups = new Map<string, Group>();
-  for (const slot of rawSlots) {
-    const key = `${slot.building}|${slot.instanceKey}`;
-    const g = groups.get(key) ?? {
-      building: slot.building,
-      instanceKey: slot.instanceKey,
-      slots: [],
-    };
-    g.slots.push(slot);
-    groups.set(key, g);
-  }
-
   const out: Timer[] = [];
 
-  for (const { building, instanceKey, slots: rawList } of groups.values()) {
-    rawList.sort((a, b) => a.slotIdx - b.slotIdx);
-
-    const slotEntries: TimerSlot[] = [];
-    let earliestReady = Number.POSITIVE_INFINITY;
-
-    for (const slot of rawList) {
-      const p = predicted.get(slotKey(slot));
-      const amount = p?.amount ?? 1;
-      slotEntries.push({
-        item: slot.recipe.name,
-        icon: getItemIcon(slot.recipe.name),
-        amount,
-        readyAt: slot.recipe.readyAt,
-        boosts: p?.boosts,
-      });
-      earliestReady = Math.min(earliestReady, slot.recipe.readyAt);
-    }
-
+  // One Timer per queue slot — same shape as Crop Machine packs /
+  // Crafting Box queue items. Recipe name becomes the card headline,
+  // recipe icon the card icon, and the unique aggregationKey keeps
+  // identical recipes in different queue positions as separate cards.
+  for (const slot of rawSlots) {
+    const p = predicted.get(slotKey(slot));
+    const amount = p?.amount ?? 1;
     out.push({
-      id: `cooking:${building}:${instanceKey}`,
-      category: "Cooking",
-      label: building,
-      icon: getItemIcon(building),
-      readyAt: earliestReady,
-      slots: slotEntries,
-      // Boosts now live per slot; the card-level dropdown stays off
-      // when we're rendering slot rows.
-      // Each building instance is its own card — no merging.
-      aggregationKey: `Cooking|${building}|${instanceKey}`,
+      id: `cooking:${slot.building}:${slot.instanceKey}:slot:${slot.slotIdx}`,
+      category: slot.building as Timer["category"],
+      label: slot.recipe.name,
+      icon: getItemIcon(slot.recipe.name),
+      readyAt: slot.recipe.readyAt,
+      predictedYield: { amount, item: slot.recipe.name },
+      boosts: p?.boosts,
+      aggregationKey: `Cooking|${slot.building}|${slot.instanceKey}|${slot.slotIdx}`,
     });
   }
 
-  // Placed-but-empty buildings — one card per instance, no slots, marked
-  // idle so TimerCard hides the countdown and TimerSection sorts them
-  // below the active ones.
+  // Placed-but-empty buildings — one idle Timer per instance so the
+  // section panel still renders with a "Not cooking" body. Matches the
+  // Crafting Box pattern.
   for (const { building, instanceKey } of idleBuildings) {
     out.push({
-      id: `cooking:${building}:${instanceKey}`,
-      category: "Cooking",
+      id: `cooking:${building}:${instanceKey}:idle`,
+      category: building as Timer["category"],
       label: building,
       icon: getItemIcon(building),
       readyAt: 0,
       idle: true,
       idleText: "Not cooking",
-      aggregationKey: `Cooking|${building}|${instanceKey}`,
+      aggregationKey: `Cooking|${building}|${instanceKey}|idle`,
     });
   }
 

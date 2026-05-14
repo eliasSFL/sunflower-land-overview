@@ -1,4 +1,5 @@
 import type { AggregatedTimer, Category } from "../timers/index.ts";
+import { getCategoryIcon } from "./categoryIcon.ts";
 import { sectionId } from "./sectionId.ts";
 import { TimerCard } from "./TimerCard.tsx";
 import { InnerPanel, Label } from "./ui/index.ts";
@@ -20,7 +21,12 @@ const EMPTY_MESSAGES: Record<Category, string> = {
   Flowers: "No flowers planted",
   Beehives: "No active beehives",
   Animals: "No animals",
-  Cooking: "Nothing cooking",
+  "Fire Pit": "Not cooking",
+  "Smoothie Shack": "Not cooking",
+  Deli: "Not cooking",
+  Kitchen: "Not cooking",
+  Bakery: "Not cooking",
+  "Fish Market": "Not processing",
   Composters: "No composters placed",
   "Aging Shed": "No aging shed placed",
   "Crafting Box": "Nothing crafting",
@@ -47,7 +53,7 @@ export function TimerSection({ category, timers, now }: Props) {
       className="mb-2 flex w-full scroll-mt-4 break-inside-avoid flex-col gap-2"
     >
       <header>
-        <Label type="default">
+        <Label type="default" icon={getCategoryIcon(category)}>
           {category}
           {isEmpty ? "" : ` · ${totalCount}`}
         </Label>

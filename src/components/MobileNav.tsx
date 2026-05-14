@@ -1,5 +1,5 @@
 import { CATEGORY_ORDER, type Category } from "../timers/index.ts";
-import { getItemIcon } from "../game/index.ts";
+import { getCategoryIcon } from "./categoryIcon.ts";
 import { sectionId } from "./sectionId.ts";
 import { pixelDarkBorderStyle } from "./ui/borderStyles.ts";
 import { InnerPanel } from "./ui/index.ts";
@@ -9,24 +9,8 @@ import { InnerPanel } from "./ui/index.ts";
 // scannable multi-column grid, so the strip would just be noise.
 //
 // Each chip renders an item icon as a recognisable representative for
-// the category (no separate icon set to maintain — we lean on
-// ITEM_DETAILS via getItemIcon).
-
-const CATEGORY_ICON: Record<Category, string> = {
-  Crops: "Sunflower",
-  "Fruit Patches": "Apple",
-  Greenhouse: "Rice",
-  "Crop Machine": "Crop Machine",
-  Flowers: "Red Pansy",
-  Beehives: "Honey",
-  Animals: "Chicken",
-  Cooking: "Fire Pit",
-  Composters: "Compost Bin",
-  "Aging Shed": "Aging Shed",
-  "Crafting Box": "Crafting Box",
-  Resources: "Wood",
-  Salt: "Salt",
-};
+// the category (the icon mapping is shared with the section Label
+// headers — see `categoryIcon.ts`).
 
 type Props = {
   // Pass through which categories should be linkable. We keep it
@@ -72,7 +56,7 @@ export function MobileNav({ visibleCategories }: Props) {
                 }}
               >
                 <img
-                  src={getItemIcon(CATEGORY_ICON[category])}
+                  src={getCategoryIcon(category)}
                   alt=""
                   aria-hidden
                   className="h-4 w-4 shrink-0 object-contain"

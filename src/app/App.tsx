@@ -14,7 +14,11 @@ import {
 } from "../api/fetchFarm.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
-import { extractAndAggregate, CATEGORY_ORDER } from "../timers/index.ts";
+import {
+  extractAndAggregate,
+  CATEGORY_ORDER,
+  COOKING_BUILDING_CATEGORIES,
+} from "../timers/index.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import * as storage from "../lib/storage.ts";
 
@@ -109,6 +113,22 @@ export function App() {
     }
     return grouped;
   }, [timers]);
+
+  // Cooking buildings only show up if the player has actually placed
+  // one — otherwise we'd render a "Smoothie Shack: Not cooking" panel
+  // (and a MobileNav chip) for a building they don't own. Other
+  // categories (Crops, Animals, …) always render so the panel still
+  // serves as a "you could be doing this" reminder when idle.
+  const visibleCategories = useMemo(
+    () =>
+      CATEGORY_ORDER.filter((cat) => {
+        if (COOKING_BUILDING_CATEGORIES.includes(cat)) {
+          return (byCategory.get(cat) ?? []).length > 0;
+        }
+        return true;
+      }),
+    [byCategory],
+  );
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -250,7 +270,7 @@ export function App() {
             // Adding more timer panels just makes existing columns
             // taller — no breakpoint maintenance needed.
             <div className="columns-1 gap-2 sm:col-span-7 lg:col-span-8 lg:columns-2 2xl:col-span-9 2xl:columns-3">
-              {CATEGORY_ORDER.map((cat) => (
+              {visibleCategories.map((cat) => (
                 <TimerSection
                   key={cat}
                   category={cat}
@@ -265,7 +285,7 @@ export function App() {
             doesn't cover the last section. */}
         <div className="h-16 lg:hidden" aria-hidden />
       </OuterPanel>
-      {data ? <MobileNav visibleCategories={CATEGORY_ORDER} /> : null}
+      {data ? <MobileNav visibleCategories={visibleCategories} /> : null}
     </div>
   );
 }

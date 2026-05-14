@@ -23,7 +23,11 @@ export type {
   Status,
   TimerContext,
 } from "./types.ts";
-export { CATEGORY_ORDER, statusOf } from "./types.ts";
+export {
+  CATEGORY_ORDER,
+  COOKING_BUILDING_CATEGORIES,
+  statusOf,
+} from "./types.ts";
 export { aggregateTimers } from "./aggregate.ts";
 
 export function extractAllTimers(
