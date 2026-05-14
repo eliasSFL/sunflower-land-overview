@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "postinstall": "git submodule update --init --recursive",
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
@@ -39,6 +39,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
+    "vite-plugin-pwa": "^1.3.0",
     "wrangler": "^4.90.0"
   }
 }

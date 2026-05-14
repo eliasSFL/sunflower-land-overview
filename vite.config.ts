@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 // Build-time git metadata. Falls back to an empty string if `git`
 // fails (e.g. running outside a repo) so the UI can hide the link
@@ -74,6 +75,58 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      VitePWA({
+        registerType: "autoUpdate",
+        includeAssets: [
+          "favicon.webp",
+          "icons/sfl_overview-180.webp",
+        ],
+        manifest: {
+          name: "Sunflower Land Overview",
+          short_name: "SFL Overview",
+          description:
+            "Live timers for your Sunflower Land farm — crops, animals, cooking, composters, deliveries and more.",
+          start_url: "/",
+          scope: "/",
+          display: "standalone",
+          orientation: "portrait",
+          background_color: "#181425",
+          theme_color: "#181425",
+          icons: [
+            {
+              src: "/icons/sfl_overview-192.webp",
+              sizes: "192x192",
+              type: "image/webp",
+            },
+            {
+              src: "/icons/sfl_overview-512.webp",
+              sizes: "512x512",
+              type: "image/webp",
+            },
+            {
+              src: "/icons/sfl_overview-maskable-512.webp",
+              sizes: "512x512",
+              type: "image/webp",
+              purpose: "maskable",
+            },
+          ],
+        },
+        workbox: {
+          // SPA navigation fallback so deep-linked URLs paint
+          // index.html offline. /api/* and /version.json must stay
+          // network-only — the former because farm data is per-user
+          // and uncacheable, the latter because the version-check
+          // hook relies on a fresh response to detect new deploys.
+          navigateFallback: "/index.html",
+          navigateFallbackDenylist: [/^\/api\//, /^\/version\.json$/],
+          cleanupOutdatedCaches: true,
+          // The submodule pulls everything into one ~12 MB chunk;
+          // Workbox's 2 MiB default would silently skip precaching it
+          // and break offline shell loads. Revisit if/when we add
+          // code-splitting.
+          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+        },
+      }),
     ],
     resolve: {
       // Order matters: more-specific patterns first.
