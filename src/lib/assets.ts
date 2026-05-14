@@ -34,6 +34,7 @@ export const CHROME_ICONS = {
   chevron_down: `${CDN}/icons/chevron_down.png`,
   chevron_up: `${CDN}/icons/chevron_up.png`,
   chevron_right: `${CDN}/icons/chevron_right.png`,
+  confirm: `${CDN}/icons/confirm.png`,
   lightning: `${CDN}/icons/lightning.png`,
   player: `${CDN}/icons/player.png`,
   // In-game XP / progress bar chrome — used by the BumpkinSummaryPanel

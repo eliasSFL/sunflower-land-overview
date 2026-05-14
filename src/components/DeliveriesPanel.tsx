@@ -156,7 +156,13 @@ function DeliveryRow({ order, state, now }: RowProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm capitalize">{order.from}</span>
             {isCompleted ? (
-              <Label type="success">Completed</Label>
+              <img
+                src={CHROME_ICONS.confirm}
+                alt="Completed"
+                title="Completed"
+                className="h-4 w-4 shrink-0 object-contain"
+                style={{ imageRendering: "pixelated" }}
+              />
             ) : allMet ? (
               <Label type="success">Ready</Label>
             ) : null}
