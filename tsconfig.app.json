@@ -28,6 +28,10 @@
     }
   },
   "include": ["src"],
-  "exclude": ["src/**/__tests__/**"],
+  // sw.ts is built by vite-plugin-pwa's injectManifest pipeline with
+  // its own webworker lib + Workbox virtual import — including it in
+  // the SPA's DOM-typed tsc -b would surface global-scope conflicts
+  // (self vs window, etc.).
+  "exclude": ["src/**/__tests__/**", "src/sw.ts"],
   "references": [{ "path": "./tsconfig.sunflower-land.json" }]
 }

@@ -16,7 +16,23 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["node", "@cloudflare/workers-types"]
+    // `vite/client` provides ImportMeta.env / ImportMeta.glob, which
+    // src/* files transitively imported by worker/scheduler.ts rely on
+    // (the SPA's `import.meta.env.VITE_*` is replaced at build time by
+    // vite.worker.config.ts's `define` block for the worker build).
+    "types": ["node", "@cloudflare/workers-types", "vite/client"],
+    // Path aliases for worker/* files that pull in src/timers/* (the
+    // cron scheduler runs the same extractor as the SPA). Mirrors
+    // tsconfig.app.json so transitive imports of features/*, lib/*,
+    // etc. resolve to the submodule.
+    "paths": {
+      "features/*": ["./sunflower-land/src/features/*"],
+      "lib/*": ["./sunflower-land/src/lib/*"],
+      "components/*": ["./sunflower-land/src/components/*"],
+      "metadata/*": ["./sunflower-land/metadata/*"],
+      "assets/*": ["./sunflower-land/src/assets/*"]
+    }
   },
-  "include": ["vite.config.ts", "worker/**/*.ts"]
+  "include": ["vite.config.ts", "vite.worker.config.ts", "worker/**/*.ts"],
+  "references": [{ "path": "./tsconfig.sunflower-land.json" }]
 }

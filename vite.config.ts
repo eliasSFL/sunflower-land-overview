@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
   const SFL_ASSET_CDN = env.VITE_PRIVATE_IMAGE_URL || DEFAULT_ASSET_CDN;
   const SFL_NETWORK = env.VITE_NETWORK || DEFAULT_NETWORK;
   const SFL_ANIMATION_URL = env.VITE_ANIMATION_URL || DEFAULT_ANIMATION_URL;
+  const SFL_VAPID_PUBLIC = env.VITE_VAPID_PUBLIC || "";
 
   return {
     define: {
@@ -50,6 +51,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_ANIMATION_URL": JSON.stringify(SFL_ANIMATION_URL),
       "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
       "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
+      "import.meta.env.VITE_VAPID_PUBLIC": JSON.stringify(SFL_VAPID_PUBLIC),
     },
     plugins: [
       react(),
@@ -77,9 +79,16 @@ export default defineConfig(({ mode }) => {
       },
       VitePWA({
         registerType: "autoUpdate",
+        // Custom SW source — phase 2 added push + notificationclick
+        // handlers, which generateSW can't express. Workbox still
+        // injects the precache manifest at build time.
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
         includeAssets: [
           "favicon.webp",
           "icons/sfl_overview-180.webp",
+          "icons/sfl_overview-badge-96.webp",
         ],
         manifest: {
           name: "Sunflower Land Overview",
@@ -111,15 +120,7 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          // SPA navigation fallback so deep-linked URLs paint
-          // index.html offline. /api/* and /version.json must stay
-          // network-only — the former because farm data is per-user
-          // and uncacheable, the latter because the version-check
-          // hook relies on a fresh response to detect new deploys.
-          navigateFallback: "/index.html",
-          navigateFallbackDenylist: [/^\/api\//, /^\/version\.json$/],
-          cleanupOutdatedCaches: true,
+        injectManifest: {
           // The submodule pulls everything into one ~12 MB chunk;
           // Workbox's 2 MiB default would silently skip precaching it
           // and break offline shell loads. Revisit if/when we add

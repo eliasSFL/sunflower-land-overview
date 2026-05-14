@@ -1,7 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sunflower-land-overview",
-  "main": "worker/index.ts",
+  // Built by `npm run build:worker` (vite.worker.config.ts) so the
+  // submodule path aliases used by src/timers/* resolve correctly in
+  // the cron scheduler. Wrangler deploys the pre-built single ESM file.
+  "main": "dist-worker/index.js",
   "compatibility_date": "2026-05-09",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -11,5 +14,30 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
+  },
+  // Push notification system (phase 2). All four bindings must be
+  // provisioned for /api/push/* and the cron scheduler to function;
+  // the routes return 503 and the cron no-ops when any are absent so
+  // the base Worker still deploys without the notification stack.
+  //
+  // Secrets (set via `wrangler secret put`, not in this file):
+  //   VAPID_PUBLIC          base64url raw P-256 public key
+  //   VAPID_PRIVATE         base64url raw P-256 private scalar
+  //   SFL_COMMUNITY_API_KEY shared key for /community/getFarms (one
+  //                         per overview project, not per user)
+  //
+  // KV namespace id below must be replaced with the value returned
+  // by `wrangler kv namespace create PUSH_SUBS`.
+  "kv_namespaces": [
+    {
+      "binding": "PUSH_SUBS",
+      "id": "REPLACE_WITH_KV_NAMESPACE_ID",
+    },
+  ],
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+  "vars": {
+    "VAPID_SUBJECT": "mailto:notifications@sunflower-land.com",
   },
 }
