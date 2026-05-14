@@ -54,8 +54,23 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target =
-    (event.notification.data as { url?: string } | null)?.url ?? "/";
+  // Parse the push payload's url against our own origin and keep only
+  // the pathname. Push payloads are aes128gcm-encrypted to the client's
+  // subscription keys so an external attacker can't craft them, but
+  // defense in depth: anything cross-origin or unparseable falls back
+  // to "/".
+  const raw = (event.notification.data as { url?: string } | null)?.url;
+  let normalizedPath = "/";
+  if (typeof raw === "string") {
+    try {
+      const u = new URL(raw, self.location.origin);
+      if (u.origin === self.location.origin) {
+        normalizedPath = u.pathname;
+      }
+    } catch {
+      // unparseable url → keep default "/"
+    }
+  }
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({
@@ -64,12 +79,12 @@ self.addEventListener("notificationclick", (event) => {
       });
       for (const client of all) {
         const url = new URL(client.url);
-        if (url.pathname === target || target === "/") {
+        if (url.pathname === normalizedPath || normalizedPath === "/") {
           await client.focus();
           return;
         }
       }
-      await self.clients.openWindow(target);
+      await self.clients.openWindow(normalizedPath);
     })(),
   );
 });

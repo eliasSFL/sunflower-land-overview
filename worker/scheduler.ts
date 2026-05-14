@@ -120,7 +120,15 @@ export async function runScheduledTick(env: Env): Promise<void> {
 
   for (let i = 0; i < farmIds.length; i += MAX_BATCH) {
     const batch = farmIds.slice(i, i + MAX_BATCH);
-    const resp = await getFarmsBatch(env.SFL_COMMUNITY_API_KEY!, batch);
+    let resp;
+    try {
+      resp = await getFarmsBatch(env.SFL_COMMUNITY_API_KEY!, batch);
+    } catch (err) {
+      // One bad batch (network blip, 5xx from upstream, parse error)
+      // shouldn't abort the whole tick — log and try the next batch.
+      console.error("getFarmsBatch failed for batch", batch, err);
+      continue;
+    }
     if (!resp) return; // throttled — bail this tick
 
     for (const [idStr, raw] of Object.entries(resp.farms)) {
@@ -128,7 +136,14 @@ export async function runScheduledTick(env: Env): Promise<void> {
       const id = Number(idStr);
       const subs = byFarm.get(id);
       if (!subs) continue;
-      await processFarm(env, vapid, subs, raw as GameState, id, now);
+      try {
+        await processFarm(env, vapid, subs, raw as GameState, id, now);
+      } catch (err) {
+        // A broken farm payload (or extractor throw on edge-case
+        // state) should not block notifications for other farms in
+        // this tick.
+        console.error("processFarm failed for farm", id, err);
+      }
     }
   }
 }

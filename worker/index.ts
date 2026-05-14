@@ -51,6 +51,16 @@ async function readJson<T>(request: Request): Promise<T | null> {
   }
 }
 
+// Reject p256dh / auth values that aren't well-formed base64url before
+// they reach KV — otherwise the cron's b64uDecode hits an atob error
+// and aborts the whole tick.
+const BASE64URL_RE = /^[A-Za-z0-9_-]+=*$/;
+function isBase64Url(value: unknown): value is string {
+  return (
+    typeof value === "string" && value.length > 0 && BASE64URL_RE.test(value)
+  );
+}
+
 async function handleSubscribePost(request: Request, env: Env): Promise<Response> {
   type Body = {
     subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
@@ -61,8 +71,8 @@ async function handleSubscribePost(request: Request, env: Env): Promise<Response
   if (
     !body ||
     !body.subscription?.endpoint ||
-    !body.subscription.keys?.p256dh ||
-    !body.subscription.keys.auth ||
+    !isBase64Url(body.subscription.keys?.p256dh) ||
+    !isBase64Url(body.subscription.keys?.auth) ||
     typeof body.farmId !== "number" ||
     !body.categories
   ) {
