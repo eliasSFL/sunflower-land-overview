@@ -267,23 +267,22 @@ export function App() {
             imageRendering: "pixelated",
           }}
         >
-          <div className="z-10 pl-3 sm:pl-4">
-            <p className="text-base sm:text-lg text-white text-shadow">
+          <div className="z-10 min-w-0 flex-1 pl-3 sm:pl-4">
+            <p className="truncate text-base sm:text-lg text-white text-shadow">
               Sunflower Land Overview
             </p>
-            <p className="text-xs text-white text-shadow">
+            <p className="hidden text-xs text-white text-shadow sm:block">
               Live timers for your farm
             </p>
           </div>
           {/* Build hash + last-refreshed time + stale-version nag, top
               right. `text-right` keeps the stack flush to the right
-              edge when any line wraps. The refreshed label re-renders
-              each `now` tick (every 1s) so it stays current without a
-              dedicated interval. */}
-          <div className="z-10 flex flex-col items-end gap-1 pr-3 text-right sm:pr-4">
+              edge. `shrink-0` prevents the right column from squeezing
+              the title; concise mobile labels keep its width modest. */}
+          <div className="z-10 flex shrink-0 flex-col items-end gap-1 pr-3 text-right sm:pr-4">
             {shortSha ? (
               <span className="text-xs text-white text-shadow">
-                Version:{" "}
+                <span className="hidden sm:inline">Version: </span>
                 <a
                   href={commitUrl}
                   target="_blank"
@@ -300,7 +299,8 @@ export function App() {
                 className="whitespace-nowrap text-xs text-white text-shadow"
                 title={new Date(lastFetchedAt).toLocaleString()}
               >
-                Refreshed {formatRefreshedAgo(lastFetchedAt, now)}
+                <span className="hidden sm:inline">Refreshed </span>
+                {formatRefreshedAgo(lastFetchedAt, now)}
               </span>
             ) : null}
             {isStale ? (
@@ -317,7 +317,10 @@ export function App() {
                 className="cursor-pointer whitespace-nowrap text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
                 title="A newer build is deployed — click to reload"
               >
-                New version available · click to refresh
+                <span className="sm:hidden">Update available</span>
+                <span className="hidden sm:inline">
+                  New version available · click to refresh
+                </span>
               </span>
             ) : null}
           </div>
