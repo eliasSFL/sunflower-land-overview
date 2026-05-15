@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
@@ -6,6 +6,9 @@ import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
+import { RefreshButton } from "../components/RefreshButton.tsx";
+import { SettingsButton } from "../components/SettingsButton.tsx";
+import { SettingsModal } from "../components/SettingsModal.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import {
@@ -17,7 +20,7 @@ import {
   READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
-import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
+import { OuterPanel, InnerPanel } from "../components/ui/index.ts";
 import { getChapterTicket, getItemIcon } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import {
@@ -34,6 +37,7 @@ import {
   COOKING_BUILDING_CATEGORIES,
 } from "../timers/index.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
+import { pullDoSnapshot } from "../notifications/snapshot.ts";
 import * as storage from "../lib/storage.ts";
 
 const GITHUB_REPO =
@@ -41,7 +45,6 @@ const GITHUB_REPO =
   "eliasSFL/sunflower-land-overview";
 
 const FARM_ID_KEY = "sfl-overview:farm-id";
-const API_KEY_KEY = "sfl-overview:api-key";
 const REFRESH_COOLDOWN_MS = 60_000;
 
 const BANNER_URL = BANNER_URLS.marketplace;
@@ -49,9 +52,6 @@ const BANNER_URL = BANNER_URLS.marketplace;
 export function App() {
   const [farmId, setFarmId] = useState<string>(
     () => storage.load<string>(FARM_ID_KEY) ?? "",
-  );
-  const [apiKey, setApiKey] = useState<string>(
-    () => storage.load<string>(API_KEY_KEY) ?? "",
   );
   // Seed from the localStorage cache so a reload paints the farm
   // immediately. The `fetchedAt` stamp keeps the "last refreshed" label
@@ -69,12 +69,39 @@ export function App() {
   const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>(
     () => initialCache?.fetchedAt,
   );
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const inFlightRef = useRef<Promise<void> | undefined>(undefined);
 
   const now = useNow(1000);
 
-  const load = async (id: string, key: string) => {
+  // On mount: if we have a cached farm, ask the DO whether it's seen
+  // a newer snapshot since the cache's `at` timestamp. The Coordinator
+  // updates DO state every 10 min regardless of whether the PWA was
+  // open, so this catches state changes the player made in the main
+  // game while the overview was closed.
+  useEffect(() => {
+    if (!initialCache || !data) return;
+    let cancelled = false;
+    (async () => {
+      const fresher = await pullDoSnapshot(data.id, initialCache.fetchedAt);
+      if (cancelled || !fresher) return;
+      // Re-load from localStorage so makeGame() runs over the freshly-
+      // written payload — keeps Decimal hydration logic in one place.
+      const reloaded = loadCachedFarm(data.id);
+      if (reloaded) {
+        setData(reloaded.data);
+        setLastFetchedAt(reloaded.fetchedAt);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount — `initialCache` is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const load = async (id: string) => {
     if (inFlightRef.current) return inFlightRef.current;
     if (
       lastFetchedAt &&
@@ -87,12 +114,10 @@ export function App() {
     setError(undefined);
     const p = (async () => {
       try {
-        const resp = await fetchFarm(id, key);
+        const resp = await fetchFarm(id);
         setData(resp);
         setFarmId(id);
-        setApiKey(key);
         storage.save(FARM_ID_KEY, id);
-        storage.save(API_KEY_KEY, key);
         setLastFetchedAt(Date.now());
       } catch (e) {
         if (e instanceof ApiError) {
@@ -294,41 +319,20 @@ export function App() {
             maintenance needed. `break-inside-avoid` on each direct
             child keeps panels intact across column boundaries. */}
         <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
-          <InnerPanel className="flex flex-col gap-3">
-            <p className="text-sm">
-              In the game:{" "}
-              <strong>
-                {"Settings > Advanced > Developer Options > API Key"}
-              </strong>{" "}
-              to generate your key. Both fields are stored locally on your
-              device.
-            </p>
-            <FarmIdForm
-              initialFarmId={farmId}
-              initialApiKey={apiKey}
-              onSubmit={load}
-              loading={loading}
-              lastLoaded={data ? { farmId, apiKey } : undefined}
-              cooldownLeftMs={cooldownLeft}
-            />
-            {data ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Label type="default">Farm #{data.id}</Label>
-                {data.nft_id || data.nftId ? (
-                  <Label type="info">NFT {data.nft_id ?? data.nftId}</Label>
-                ) : null}
-                {data.isBlacklisted ? (
-                  <Label type="danger">blacklisted</Label>
-                ) : null}
-              </div>
-            ) : null}
-            {data && lastFetchedAt ? (
-              <span className="text-xs">
-                last refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
-              </span>
-            ) : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
-          </InnerPanel>
+          {!data ? (
+            <InnerPanel className="flex flex-col gap-3">
+              <p className="text-sm">
+                Enter your Farm ID to see live timers. Your ID is the number
+                next to your name in the main game.
+              </p>
+              <FarmIdForm
+                initialFarmId={farmId}
+                onSubmit={load}
+                loading={loading}
+              />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            </InnerPanel>
+          ) : null}
           {data ? <BumpkinSummaryPanel data={data} /> : null}
           {data ? <ReadyPanel timers={timers} now={now} /> : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
@@ -349,6 +353,25 @@ export function App() {
         <div className="h-16 sm:hidden" aria-hidden />
       </OuterPanel>
       {data ? <MobileNav sections={navSections} /> : null}
+      {data ? (
+        <>
+          <RefreshButton
+            onClick={() => load(farmId)}
+            loading={loading}
+            cooldownLeftMs={cooldownLeft}
+          />
+          <SettingsButton onClick={() => setSettingsOpen(true)} />
+          <SettingsModal
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            farmId={farmId}
+            data={data}
+            onLoad={load}
+            loading={loading}
+            error={error}
+          />
+        </>
+      ) : null}
     </div>
   );
 }
