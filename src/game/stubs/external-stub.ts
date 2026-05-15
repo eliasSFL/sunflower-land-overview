@@ -74,6 +74,11 @@ export const Transition = stub;
 // react-i18next
 export const initReactI18next = stub;
 export const I18nextProvider = stub;
+// `translate(key, opts)` is the submodule's own i18n helper from
+// `lib/i18n/index.ts` — when that module is stubbed in the worker
+// build, callers grab `translate` as a named export. Return the key
+// so any string interpolation downstream still gets a value.
+export const translate = (key: string) => key;
 // web3-utils — these need numeric semantics for callers that wrap them in
 // Decimal(). Returning "0" lets `new Decimal(fromWei(x))` succeed.
 export const fromWei = (_v?: unknown) => "0";

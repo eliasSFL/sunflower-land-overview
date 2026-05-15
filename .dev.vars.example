@@ -1,0 +1,20 @@
+# Local-dev secrets for wrangler. Wrangler reads `.dev.vars` (gitignored)
+# automatically when running `wrangler dev`. Production uses Cloudflare
+# dashboard secrets (Settings → Variables and Secrets → Type: Secret).
+#
+# Generate a *local* VAPID keypair with:
+#   npx web-push generate-vapid-keys --json
+# Don't reuse production keys here — the public key is baked into push
+# subscriptions on each device, so mixing prod & dev keys will break
+# pushes.
+
+VAPID_PUBLIC=
+VAPID_PRIVATE=
+
+# Master HMAC secret for community API key minting. Same value as the
+# Cloudflare prod secret. Without it, /api/farms/:id can't mint a
+# per-farm key and upstream fetches will 401. For local dev only, you
+# can paste a per-farm community key here (Settings → Developer
+# Options → API Key in the game) — mintFarmKey detects that shape and
+# uses it as-is, restricted to that one farm.
+SFL_COMMUNITY_API_KEY=

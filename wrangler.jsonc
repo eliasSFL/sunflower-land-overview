@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sunflower-land-overview",
-  "main": "worker/index.ts",
+  "main": "dist-worker/index.js",
   "compatibility_date": "2026-05-09",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -11,5 +11,25 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
+  },
+  "d1_databases": [
+    {
+      "binding": "sfl_overview_push",
+      "database_name": "sfl-overview-push",
+      "database_id": "874811ca-04c4-4e51-a1f6-0af8788699f0",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "FARM_PUSH_DO", "class_name": "FarmPushDO" }],
+  },
+  "migrations": [
+    { "tag": "v3-add-farm-push-do", "new_sqlite_classes": ["FarmPushDO"] },
+  ],
+  "triggers": {
+    "crons": ["*/10 * * * *"],
+  },
+  "vars": {
+    "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
   },
 }

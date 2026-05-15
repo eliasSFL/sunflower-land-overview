@@ -46,6 +46,14 @@ export const CHROME_ICONS = {
   progress_bar_border: `${CDN}/ui/progress/progress_bar_border.png`,
   // Next-Up panel chip on the mobile nav.
   timer: submoduleAsset("icons/timer.gif"),
+  // Floating settings button + modal close. `settings_disc` is the
+  // gray disc-with-gear used by the main game's HUD; bundled because
+  // it isn't on the CDN. `empty_disc` is the same disc with no glyph,
+  // used as the background for the refresh button (overlay an inline
+  // SVG refresh arrow on top).
+  settings_disc: submoduleAsset("icons/settings_disc.png"),
+  empty_disc: submoduleAsset("icons/empty_disc.png"),
+  close: `${CDN}/icons/close.png`,
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.
   coins: submoduleAsset("icons/coins.webp"),

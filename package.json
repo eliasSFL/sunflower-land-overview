@@ -6,7 +6,9 @@
   "scripts": {
     "postinstall": "git submodule update --init --recursive",
     "dev": "vite --host",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:client && npm run build:worker",
+    "build:client": "tsc -b && vite build",
+    "build:worker": "vite build --config vite.worker.config.ts",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "lint": "eslint .",
@@ -14,13 +16,15 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "agents": "^0.12.4",
     "classnames": "^2.5.1",
     "decimal.js-light": "^2.5.1",
     "immer": "^11.1.8",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260509.1",
@@ -29,6 +33,7 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",

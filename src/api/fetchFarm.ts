@@ -1,4 +1,5 @@
 import { makeGame, type GameState } from "../game/index.ts";
+import { postRefresh } from "../notifications/api.ts";
 
 export type FarmResponse = {
   farm: GameState;
@@ -57,18 +58,13 @@ export function loadCachedFarm(
   }
 }
 
-export async function fetchFarm(
-  farmId: string,
-  apiKey: string,
-): Promise<FarmResponse> {
+export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   const trimmedId = farmId.trim();
   if (!/^\d+$/.test(trimmedId)) {
     throw new ApiError(400, "Farm ID must be a number");
   }
 
-  const res = await fetch(`/api/farms/${trimmedId}`, {
-    headers: { "x-api-key": apiKey.trim() },
-  });
+  const res = await fetch(`/api/farms/${trimmedId}`);
 
   const text = await res.text();
   let parsed: unknown;
@@ -88,9 +84,6 @@ export async function fetchFarm(
     throw new ApiError(res.status, message, parsed);
   }
 
-  // Minimal shape check — every downstream consumer assumes `farm` is
-  // present and `id` is numeric. A malformed 200 response from a
-  // misconfigured proxy would otherwise crash deeper in the pipeline.
   if (
     !parsed ||
     typeof parsed !== "object" ||
@@ -109,5 +102,13 @@ export async function fetchFarm(
   // / `.add()` on these — they'd crash on the raw JSON numbers.
   const raw = parsed as FarmResponse;
   saveCachedFarm(trimmedId, raw);
+
+  // Best-effort ping so the DO catches up immediately instead of
+  // waiting for the next coordinator sweep. Swallow errors — the
+  // sweep is the safety net.
+  if (typeof raw.id === "number") {
+    void postRefresh({ farmId: raw.id }).catch(() => {});
+  }
+
   return { ...raw, farm: makeGame(raw.farm) };
 }

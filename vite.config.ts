@@ -10,7 +10,9 @@ import { VitePWA } from "vite-plugin-pwa";
 // gracefully.
 const gitCommit = (() => {
   try {
-    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+    return execSync("git rev-parse HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
       .toString()
       .trim();
   } catch {
@@ -77,10 +79,21 @@ export default defineConfig(({ mode }) => {
       },
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: [
-          "favicon.webp",
-          "icons/sfl_overview-180.webp",
-        ],
+        // We own the service worker source (src/sw.ts) so we can add
+        // `push` + `notificationclick` handlers for Web Push. Workbox
+        // primitives (precacheAndRoute, NavigationRoute) are still
+        // imported there, mirroring generateSW behaviour.
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
+        injectManifest: {
+          // The submodule pulls everything into one ~12 MB chunk;
+          // Workbox's 2 MiB default would silently skip precaching it
+          // and break offline shell loads. Revisit if/when we add
+          // code-splitting.
+          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+        },
+        includeAssets: ["favicon.webp", "icons/sfl_overview-180.webp"],
         manifest: {
           name: "Sunflower Land Overview",
           short_name: "SFL Overview",
@@ -111,21 +124,9 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          // SPA navigation fallback so deep-linked URLs paint
-          // index.html offline. /api/* and /version.json must stay
-          // network-only — the former because farm data is per-user
-          // and uncacheable, the latter because the version-check
-          // hook relies on a fresh response to detect new deploys.
-          navigateFallback: "/index.html",
-          navigateFallbackDenylist: [/^\/api\//, /^\/version\.json$/],
-          cleanupOutdatedCaches: true,
-          // The submodule pulls everything into one ~12 MB chunk;
-          // Workbox's 2 MiB default would silently skip precaching it
-          // and break offline shell loads. Revisit if/when we add
-          // code-splitting.
-          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-        },
+        // `workbox` (generateSW) replaced by our own src/sw.ts under
+        // `injectManifest` — Workbox primitives there register the
+        // same navigation fallback + denylist.
       }),
     ],
     resolve: {
@@ -197,11 +198,20 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
+      // Forward Worker-served routes to a locally-running `wrangler dev`
+      // on :8787. Run both in parallel:
+      //   terminal 1:  npx wrangler dev
+      //   terminal 2:  npm run dev
+      // The Worker mints its own community key from SFL_COMMUNITY_API_KEY
+      // (see .dev.vars), so the SPA never sends an x-api-key header.
       proxy: {
         "/api/farms": {
-          target: "https://api.sunflower-land.com",
+          target: "http://localhost:8787",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/farms/, "/community/farms"),
+        },
+        "/push": {
+          target: "http://localhost:8787",
+          changeOrigin: true,
         },
       },
     },

@@ -1,71 +1,198 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// Cloudflare Worker entrypoint — bundled by wrangler.
+// Cloudflare Worker entrypoint — bundled by `npm run build:worker`
+// (vite.worker.config.ts) and deployed by wrangler.
 //
-// Two responsibilities:
-//   1. Proxy GET /api/farms/{id} to api.sunflower-land.com so the browser
-//      never makes a cross-origin request and we don't need to be on the
-//      SFL API's CORS allowlist.
-//   2. Anything else falls through to the static-assets binding, which
-//      serves the Vite build under /dist (with SPA fallback configured in
-//      wrangler.jsonc).
+// Responsibilities:
+//   1. Proxy GET /api/farms/{id} to api.sunflower-land.com using a
+//      per-farm community key minted from the master HMAC secret
+//      (SFL_COMMUNITY_API_KEY). The browser never sees or sends an
+//      API key.
+//   2. Expose /push/* routes that fan out to per-farm FarmPushDO
+//      instances for Web Push subscription + test sends.
 //
-// The user's API key flows through this Worker as a request header — we
-// don't log or persist it.
+// Phase 2 will add: scheduled() handler for the cron-driven Coordinator
+// sweep, GET /push/state for snapshot pulls, POST /push/refresh.
+
+import { mintFarmKey } from "./communityApi.ts";
+import { sweep } from "./coordinator.ts";
+import type { Env, SubscribeBody } from "./types.ts";
+
+export { FarmPushDO } from "./farmPushDO.ts";
+
+function json(body: unknown, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(body), {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+async function readJson<T>(request: Request): Promise<T | null> {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function doStub(env: Env, farmId: number) {
+  return env.FARM_PUSH_DO.get(env.FARM_PUSH_DO.idFromName(String(farmId)));
+}
+
+async function handlePushSubscribe(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = await readJson<SubscribeBody>(request);
+  if (!body || typeof body.farmId !== "number") {
+    return json({ error: "Missing farmId" }, { status: 400 });
+  }
+  return doStub(env, body.farmId).fetch("https://do/subscribe", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function handlePushUnsubscribe(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
+  if (!body || typeof body.farmId !== "number" || !body.endpoint) {
+    return json({ error: "Missing farmId or endpoint" }, { status: 400 });
+  }
+  return doStub(env, body.farmId).fetch("https://do/unsubscribe", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ endpoint: body.endpoint }),
+  });
+}
+
+async function handlePushTest(request: Request, env: Env): Promise<Response> {
+  const body = await readJson<{ farmId?: number }>(request);
+  if (!body || typeof body.farmId !== "number") {
+    return json({ error: "Missing farmId" }, { status: 400 });
+  }
+  return doStub(env, body.farmId).fetch("https://do/test", {
+    method: "POST",
+  });
+}
+
+async function handlePushRefresh(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = await readJson<{ farmId?: number }>(request);
+  if (!body || typeof body.farmId !== "number") {
+    return json({ error: "Missing farmId" }, { status: 400 });
+  }
+  return doStub(env, body.farmId).fetch("https://do/refresh", {
+    method: "POST",
+  });
+}
+
+async function handlePushState(
+  env: Env,
+  farmId: number,
+  since: number,
+): Promise<Response> {
+  const url = new URL("https://do/state");
+  url.searchParams.set("since", String(since));
+  return doStub(env, farmId).fetch(url.toString());
+}
 
 const UPSTREAM = "https://api.sunflower-land.com";
 
-interface Env {
-  ASSETS: Fetcher;
+async function handleProxyFarm(env: Env, id: string): Promise<Response> {
+  if (!/^\d+$/.test(id)) {
+    return json({ error: "Invalid farm id" }, { status: 400 });
+  }
+  if (!env.SFL_COMMUNITY_API_KEY) {
+    return json(
+      { error: "Server not configured (SFL_COMMUNITY_API_KEY missing)" },
+      { status: 503 },
+    );
+  }
+  const farmId = Number(id);
+  const key = await mintFarmKey(farmId, env.SFL_COMMUNITY_API_KEY);
+  let upstream: Response;
+  try {
+    upstream = await fetch(
+      `${UPSTREAM}/community/farms/${encodeURIComponent(id)}`,
+      { headers: { "x-api-key": key } },
+    );
+  } catch (err) {
+    return json(
+      {
+        error: "Bad Gateway",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      { status: 502 },
+    );
+  }
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: {
+      "content-type":
+        upstream.headers.get("content-type") ?? "application/json",
+      "cache-control": "no-store",
+    },
+  });
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const method = request.method;
 
-    const match = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
-    if (match && request.method === "GET") {
-      const id = match[1];
-      if (!/^\d+$/.test(id)) {
-        return Response.json({ error: "Invalid farm id" }, { status: 400 });
-      }
+    // Farm proxy.
+    const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
+    if (farmMatch && method === "GET") {
+      return handleProxyFarm(env, farmMatch[1]);
+    }
 
-      const apiKey = request.headers.get("x-api-key") ?? "";
-      if (!apiKey) {
-        return Response.json(
-          { error: "Missing x-api-key header" },
-          { status: 401 },
-        );
-      }
-
-      let upstream: Response;
-      try {
-        upstream = await fetch(
-          `${UPSTREAM}/community/farms/${encodeURIComponent(id)}`,
-          { headers: { "x-api-key": apiKey } },
-        );
-      } catch (err) {
-        // Network / DNS / TLS failure reaching the upstream API. Surface
-        // a controlled JSON 502 so clients always get the same shape.
-        return Response.json(
-          {
-            error: "Bad Gateway",
-            message: err instanceof Error ? err.message : String(err),
-          },
-          { status: 502, headers: { "cache-control": "no-store" } },
-        );
-      }
-
-      return new Response(upstream.body, {
-        status: upstream.status,
-        headers: {
-          "content-type":
-            upstream.headers.get("content-type") ?? "application/json",
-          "cache-control": "no-store",
-        },
-      });
+    // Push routes.
+    if (url.pathname === "/push/vapid" && method === "GET") {
+      if (!env.VAPID_PUBLIC)
+        return json({ error: "Not configured" }, { status: 503 });
+      return json({ publicKey: env.VAPID_PUBLIC });
+    }
+    if (url.pathname === "/push/subscribe" && method === "POST") {
+      return handlePushSubscribe(request, env);
+    }
+    if (url.pathname === "/push/unsubscribe" && method === "POST") {
+      return handlePushUnsubscribe(request, env);
+    }
+    if (url.pathname === "/push/test" && method === "POST") {
+      return handlePushTest(request, env);
+    }
+    if (url.pathname === "/push/refresh" && method === "POST") {
+      return handlePushRefresh(request, env);
+    }
+    const stateMatch = /^\/push\/state\/(\d+)$/.exec(url.pathname);
+    if (stateMatch && method === "GET") {
+      const since = Number(url.searchParams.get("since") ?? "0");
+      return handlePushState(env, Number(stateMatch[1]), since);
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  // Cron-triggered Coordinator sweep. Every 10 min walks paginated
+  // /community/farms, fan-outs to each opted-in DO.
+  async scheduled(_event, env: Env, ctx): Promise<void> {
+    ctx.waitUntil(
+      sweep(env).catch((err) => {
+        console.error(
+          "coordinator: sweep crashed:",
+          err instanceof Error ? `${err.message}\n${err.stack}` : err,
+        );
+      }),
+    );
   },
 } satisfies ExportedHandler<Env>;
