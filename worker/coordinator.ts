@@ -3,7 +3,12 @@ import { mintFarmKey } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
 const UPSTREAM = "https://api.sunflower-land.com";
-const PAGE_SIZE = 500;
+// Backend caps each paginated response at ~5.5 MB. Farms vary
+// ~20–250 KB each, so a generous page size blows the cap and the
+// backend returns 500. 50 farms × ~100 KB avg = ~5 MB, well under
+// the limit while still keeping the sweep fast (~800 calls for 40k
+// farms instead of ~80).
+const PAGE_SIZE = 50;
 const MAX_BACKOFF_MS = 60_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -33,7 +38,17 @@ async function scanFarmsPage(
     return { ok: false, throttled: false, status: 0 };
   }
   if (res.status === 429) return { ok: false, throttled: true };
-  if (!res.ok) return { ok: false, throttled: false, status: res.status };
+  if (!res.ok) {
+    // Best-effort read of the upstream error body for diagnostics —
+    // truncated so a huge HTML error page doesn't flood the log.
+    const text = await res.text().catch(() => "");
+    console.warn(
+      `coordinator: upstream ${res.status} for /community/farms?limit=${limit}` +
+        (cursor ? `&cursor=${cursor}` : "") +
+        ` :: ${text.slice(0, 300)}`,
+    );
+    return { ok: false, throttled: false, status: res.status };
+  }
   try {
     const body = (await res.json()) as ScanBody;
     return { ok: true, body };
