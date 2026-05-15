@@ -49,6 +49,17 @@ const REFRESH_COOLDOWN_MS = 60_000;
 
 const BANNER_URL = BANNER_URLS.marketplace;
 
+// Short "Refreshed X ago" label for the header. Updates each render
+// since `now` ticks every second.
+function formatRefreshedAgo(at: number, now: number): string {
+  const diff = Math.max(0, now - at);
+  if (diff < 5_000) return "just now";
+  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return new Date(at).toLocaleDateString();
+}
+
 export function App() {
   const [farmId, setFarmId] = useState<string>(
     () => storage.load<string>(FARM_ID_KEY) ?? "",
@@ -248,7 +259,7 @@ export function App() {
         {/* Banner header — repeating pixel-art grass tile, mirrors the
             in-game Marketplace / Flower Dashboard chrome. */}
         <header
-          className="relative mb-2 flex h-[70px] items-center justify-between rounded-sm"
+          className="relative mb-2 flex min-h-22 items-center justify-between rounded-sm py-2"
           style={{
             backgroundImage: `url(${BANNER_URL})`,
             backgroundRepeat: "repeat",
@@ -264,12 +275,11 @@ export function App() {
               Live timers for your farm
             </p>
           </div>
-          {/* Build hash + stale-version nag, top right. The hash links
-              to its commit on GitHub; the "Refresh" prompt shows when
-              the polled /version.json no longer matches the bundle's
-              own VITE_COMMIT_SHA. `text-right` keeps the version /
-              nag text flush to the right edge when the pixel-art font
-              (text-xs ≈ 24px here) wraps onto a second line. */}
+          {/* Build hash + last-refreshed time + stale-version nag, top
+              right. `text-right` keeps the stack flush to the right
+              edge when any line wraps. The refreshed label re-renders
+              each `now` tick (every 1s) so it stays current without a
+              dedicated interval. */}
           <div className="z-10 flex flex-col items-end gap-1 pr-3 text-right sm:pr-4">
             {shortSha ? (
               <span className="text-xs text-white text-shadow">
@@ -283,6 +293,14 @@ export function App() {
                 >
                   {shortSha}
                 </a>
+              </span>
+            ) : null}
+            {lastFetchedAt ? (
+              <span
+                className="whitespace-nowrap text-xs text-white text-shadow"
+                title={new Date(lastFetchedAt).toLocaleString()}
+              >
+                Refreshed {formatRefreshedAgo(lastFetchedAt, now)}
               </span>
             ) : null}
             {isStale ? (
