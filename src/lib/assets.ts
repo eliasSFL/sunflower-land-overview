@@ -53,6 +53,7 @@ export const CHROME_ICONS = {
   // SVG refresh arrow on top).
   settings_disc: submoduleAsset("icons/settings_disc.png"),
   empty_disc: submoduleAsset("icons/empty_disc.png"),
+  fast_forward: submoduleAsset("icons/fast_forward.png"),
   close: `${CDN}/icons/close.png`,
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.

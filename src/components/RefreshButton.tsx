@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 import { CHROME_ICONS } from "../lib/assets.ts";
 
 type Props = {
@@ -6,14 +8,43 @@ type Props = {
   cooldownLeftMs?: number;
 };
 
-// Floating refresh disc, stacked above the SettingsButton. Mirrors the
-// main game's HUD pattern (save floppy + gear). The cooldown is shown
-// as a small numeric badge in the corner so the user knows when it'll
-// next be available; clicks during cooldown are no-ops.
+// Three-state icon timing — matches the 2 s confirm flash in
+// sunflower-land/src/features/island/hud/components/Save.tsx.
+const SUCCESS_FLASH_MS = 2000;
+
+// Floating refresh disc, stacked above the SettingsButton. Mirrors
+// the main game's save-button affordance (Save.tsx in the submodule):
+//   * idle / cooldown → fast_forward arrows
+//   * refreshing      → animated timer.gif spinner
+//   * just succeeded  → confirm checkmark (2 s flash, then back to idle)
+// The cooldown is shown as a small numeric badge in the corner so the
+// user knows when it'll next be available; clicks during cooldown are
+// no-ops.
 export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
   const cooling = cooldownLeftMs > 0;
   const disabled = loading || cooling;
   const seconds = Math.ceil(cooldownLeftMs / 1000);
+
+  const [justSucceeded, setJustSucceeded] = useState(false);
+  const prevLoadingRef = useRef(false);
+
+  useEffect(() => {
+    // Detect loading true → false transition. On that edge, flash
+    // the confirm icon for `SUCCESS_FLASH_MS` and then revert.
+    if (prevLoadingRef.current && !loading) {
+      setJustSucceeded(true);
+      const t = setTimeout(() => setJustSucceeded(false), SUCCESS_FLASH_MS);
+      prevLoadingRef.current = !!loading;
+      return () => clearTimeout(t);
+    }
+    prevLoadingRef.current = !!loading;
+  }, [loading]);
+
+  const iconSrc = loading
+    ? CHROME_ICONS.timer
+    : justSucceeded
+      ? CHROME_ICONS.confirm
+      : CHROME_ICONS.fast_forward;
 
   return (
     <button
@@ -39,25 +70,13 @@ export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
           className="absolute inset-0 h-full w-full drop-shadow"
           style={{ imageRendering: "pixelated" }}
         />
-        {/* Inline SVG refresh arrow centred on the disc. Pixel-style
-            stroke-width and a small drop-shadow keep it consistent
-            with the disc art without needing a bespoke asset. */}
-        <svg
-          viewBox="0 0 24 24"
+        <img
+          src={iconSrc}
+          alt=""
           aria-hidden
-          className={
-            "absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-[#3e2731] " +
-            (loading ? "animate-spin" : "")
-          }
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 12a9 9 0 1 1-3-6.7" />
-          <polyline points="21 4 21 10 15 10" />
-        </svg>
+          className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2"
+          style={{ imageRendering: "pixelated" }}
+        />
         {cooling ? (
           <span
             className="absolute -bottom-1 -right-1 rounded-full bg-[#3e2731] px-1 text-[10px] font-semibold leading-4 text-white"
