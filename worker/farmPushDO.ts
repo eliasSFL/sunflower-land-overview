@@ -16,6 +16,12 @@ import type {
   SnapshotEnvelope,
 } from "./types.ts";
 
+// Round yield amounts to 2 decimal places, strip trailing zeros so
+// notification bodies don't show JS float garbage like "4.8000000002".
+function formatAmount(n: number): string {
+  return parseFloat(n.toFixed(2)).toString();
+}
+
 type State = {
   farmId: number | null;
   subscriptions: StoredSubscription[];
@@ -260,7 +266,7 @@ export class FarmPushDO extends Agent<Env, State> {
         if (t.readyAt <= now) continue;
         const label = t.label;
         const headline = t.predictedYield
-          ? `${countPrefix}${t.predictedYield.amount} ${t.predictedYield.item}`
+          ? `${countPrefix}${formatAmount(t.predictedYield.amount)} ${t.predictedYield.item}`
           : `${countPrefix}${label}`;
         fresh.set(aggKey, {
           fireKey: aggKey,
