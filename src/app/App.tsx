@@ -268,7 +268,7 @@ export function App() {
           }}
         >
           <div className="z-10 min-w-0 flex-1 pl-3 sm:pl-4">
-            <p className="truncate text-base sm:text-lg text-white text-shadow">
+            <p className="text-base sm:text-lg text-white text-shadow">
               Sunflower Land Overview
             </p>
             <p className="hidden text-xs text-white text-shadow sm:block">
