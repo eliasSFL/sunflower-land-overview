@@ -32,7 +32,9 @@ async function fetchBatch(
 ): Promise<BatchResult> {
   let res: Response;
   try {
-    res = await fetch(`${UPSTREAM}/community/farms`, {
+    // Legacy id-form endpoint is `POST /community/getFarms`, NOT
+    // `/community/farms` (which is the un-deprecated paginated GET).
+    res = await fetch(`${UPSTREAM}/community/getFarms`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -48,7 +50,7 @@ async function fetchBatch(
     const retryable = res.status === 429 || res.status >= 500;
     const text = await res.text().catch(() => "");
     console.warn(
-      `coordinator: upstream ${res.status} for batch of ${ids.length} ids :: ${text.slice(0, 300)}`,
+      `coordinator: upstream ${res.status} for POST /community/getFarms (${ids.length} ids) :: ${text.slice(0, 300)}`,
     );
     return { ok: false, retryable, status: res.status };
   }
