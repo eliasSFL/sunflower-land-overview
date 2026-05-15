@@ -164,7 +164,13 @@ function DeliveryRow({ order, state, now }: RowProps) {
                 style={{ imageRendering: "pixelated" }}
               />
             ) : allMet ? (
-              <Label type="success">Ready</Label>
+              <img
+                src={CHROME_ICONS.expression_alerted}
+                alt="Ready to deliver"
+                title="Ready to deliver"
+                className="h-4 w-4 shrink-0 object-contain"
+                style={{ imageRendering: "pixelated" }}
+              />
             ) : null}
           </div>
           {ingredients.map(({ name, required, have, icon, met }) => (
