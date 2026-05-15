@@ -250,7 +250,7 @@ export function App() {
   const { bundleSha, isStale } = useVersionCheck();
   const shortSha = bundleSha.slice(0, 7);
   const commitUrl = bundleSha
-    ? `https://github.com/${GITHUB_REPO}/commit/${bundleSha}`
+    ? `https://github.com/${GITHUB_REPO}/tree/${bundleSha}`
     : `https://github.com/${GITHUB_REPO}`;
 
   return (
