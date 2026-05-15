@@ -18,6 +18,13 @@ export default defineConfig({
     "import.meta.env.VITE_ANIMATION_URL": JSON.stringify(""),
     "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(""),
     "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(""),
+    // Forces CONFIG.PORTAL_APP to a truthy value so the submodule's
+    // `features/game/types/chapters.ts:getCurrentChapter` returns the
+    // hardcoded "Salt Awakening" fallback instead of throwing
+    // "No Chapter found" when Cloudflare's deploy-time validation
+    // happens to run outside any defined chapter window. The DO's
+    // pure-data paths never use the chapter info downstream.
+    "import.meta.env.VITE_PORTAL_APP": JSON.stringify("1"),
   },
   resolve: {
     alias: [
