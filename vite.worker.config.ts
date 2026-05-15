@@ -6,15 +6,49 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const ASSET_STUB = r("./src/game/stubs/asset-stub.ts");
 const EXTERNAL_STUB = r("./src/game/stubs/external-stub.ts");
 
+// SFL's public asset CDN — same convention SUNNYSIDE.* uses
+// (`${CONFIG.PROTECTED_IMAGE_URL}/<path>`). Used by the cdn-asset
+// plugin below to give each image import a real fetchable URL.
+const SFL_CDN = "https://sunflower-land.com/game-assets";
+
+// Vite plugin: rewrite every `assets/*.<image-ext>` import to a string
+// export pointing at the SFL CDN. The submodule imports its art via
+// `import banana from "assets/resources/banana.png"`. In the SPA build
+// Vite emits these as hashed files; in the worker bundle there's no
+// asset-emission pipeline, so without this plugin every import stubs
+// out to "" and Web-Push notifications fall back to the generic app
+// icon. The CDN convention is `<base>/<path-without-src-assets>`,
+// matching what SUNNYSIDE.* already does for chrome icons.
+const cdnAssetPlugin = {
+  name: "sfl-asset-cdn",
+  enforce: "pre" as const,
+  resolveId(id: string) {
+    const m = /^(?:src\/)?assets\/(.+\.(?:png|webp|gif|jpe?g|svg))$/.exec(id);
+    if (m) return `\0sfl-cdn:${m[1]}`;
+    return null;
+  },
+  load(id: string) {
+    if (id.startsWith("\0sfl-cdn:")) {
+      const path = id.slice("\0sfl-cdn:".length);
+      return `export default ${JSON.stringify(`${SFL_CDN}/${path}`)};`;
+    }
+    return null;
+  },
+};
+
 // Worker build target. Reuses the same submodule path aliases the SPA
 // uses (see vite.config.ts) so worker/* can import from src/timers/*
 // and let extraction run server-side without replicating any
 // submodule logic. Output is a single ESM file that wrangler deploys
 // directly (wrangler.jsonc's `main` points here).
 export default defineConfig({
+  plugins: [cdnAssetPlugin],
   define: {
     "import.meta.env.VITE_NETWORK": JSON.stringify("mainnet"),
-    "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(""),
+    // Point CONFIG.PROTECTED_IMAGE_URL at the public CDN so SUNNYSIDE-
+    // sourced images (e.g. SUNNYSIDE.resource.wood) resolve to real
+    // URLs. Bundled-image imports are handled by cdnAssetPlugin above.
+    "import.meta.env.VITE_PRIVATE_IMAGE_URL": JSON.stringify(SFL_CDN),
     "import.meta.env.VITE_ANIMATION_URL": JSON.stringify(""),
     "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(""),
     "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(""),
@@ -28,12 +62,15 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      // Audio + font assets are never executed in the worker — keep
+      // them stubbed. Image extensions are handled by cdnAssetPlugin
+      // so each import becomes a CDN URL string.
       {
-        find: /^assets\/.*\.(mp3|wav|ogg|otf|ttf|woff2?|png|webp|gif|jpg|jpeg|svg)$/,
+        find: /^assets\/.*\.(mp3|wav|ogg|otf|ttf|woff2?)$/,
         replacement: ASSET_STUB,
       },
       {
-        find: /^src\/assets\/.*\.(mp3|wav|ogg|otf|ttf|woff2?|png|webp|gif|jpg|jpeg|svg)$/,
+        find: /^src\/assets\/.*\.(mp3|wav|ogg|otf|ttf|woff2?)$/,
         replacement: ASSET_STUB,
       },
       {
