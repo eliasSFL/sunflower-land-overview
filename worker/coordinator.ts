@@ -13,8 +13,12 @@ const MAX_BACKOFF_MS = 60_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Legacy `POST /community/getFarms` returns farms keyed by id with the
+// GameState fields spread directly into each value (plus isBlacklisted),
+// NOT the `{ farm, id, … }` envelope shape that `GET /community/farms/{id}`
+// uses. The Coordinator has to re-wrap before posting to the DO.
 type BatchBody = {
-  farms: Record<string, { id: number } & Record<string, unknown>>;
+  farms: Record<string, (Record<string, unknown> & { isBlacklisted?: boolean }) | null>;
   // Farm IDs the backend declined to return (account deletion,
   // blacklist, etc). We log but don't retry within a single sweep —
   // the next sweep tries again.
@@ -122,26 +126,49 @@ export async function sweep(env: Env): Promise<void> {
     backoffMs = 0;
 
     const { farms, skipped } = res.body;
-    const entries = Object.entries(farms);
+    const entries = Object.entries(farms).filter(
+      (e): e is [string, Record<string, unknown> & { isBlacklisted?: boolean }] =>
+        e[1] != null,
+    );
     totalFetched += entries.length;
     totalSkipped += (skipped ?? []).length;
 
-    // Fan-out concurrently within a batch. Errors on individual DOs
-    // don't abort siblings — Promise.allSettled swallows rejections.
-    await Promise.allSettled(
-      entries.map(async ([id, raw]) => {
-        const stub = env.FARM_PUSH_DO.get(
-          env.FARM_PUSH_DO.idFromName(String(id)),
-        );
-        await stub.fetch("https://do/onSnapshot", {
+    // Fan-out concurrently within a batch. Each entry's value is the
+    // GameState fields spread directly (legacy /getFarms shape) — we
+    // re-wrap into the `{ farm, id, isBlacklisted }` envelope the DO's
+    // /onSnapshot route expects. Track per-DO failures so we don't
+    // mark them synced.
+    const fanout = await Promise.allSettled(
+      entries.map(async ([idStr, value]) => {
+        const farmId = Number(idStr);
+        const { isBlacklisted, ...gameState } = value;
+        const stub = env.FARM_PUSH_DO.get(env.FARM_PUSH_DO.idFromName(idStr));
+        const r = await stub.fetch("https://do/onSnapshot", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(raw),
+          body: JSON.stringify({
+            farm: gameState,
+            id: farmId,
+            isBlacklisted: !!isBlacklisted,
+          }),
         });
+        if (!r.ok) {
+          const text = await r.text().catch(() => "");
+          throw new Error(
+            `DO(${farmId}) /onSnapshot ${r.status}: ${text.slice(0, 200)}`,
+          );
+        }
+        return farmId;
       }),
     );
 
-    synced.push(...entries.map(([id]) => Number(id)));
+    for (const result of fanout) {
+      if (result.status === "fulfilled") {
+        synced.push(result.value);
+      } else {
+        console.warn(`coordinator: ${result.reason}`);
+      }
+    }
     batchIdx++;
   }
 
