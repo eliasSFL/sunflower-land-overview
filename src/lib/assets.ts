@@ -52,7 +52,11 @@ export const CHROME_ICONS = {
   // used as the background for the refresh button (overlay an inline
   // SVG refresh arrow on top).
   settings_disc: submoduleAsset("icons/settings_disc.png"),
+  // `empty_disc` is just the disc outline (transparent inside).
+  // `empty_disc_background` is the matching fill — layer the fill
+  // first then the outline on top to mirror how settings_disc looks.
   empty_disc: submoduleAsset("icons/empty_disc.png"),
+  empty_disc_background: submoduleAsset("icons/empty_disc_background.png"),
   fast_forward: submoduleAsset("icons/fast_forward.png"),
   close: `${CDN}/icons/close.png`,
   // Currency icons live alongside the submodule's other inventory

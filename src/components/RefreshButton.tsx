@@ -64,10 +64,20 @@ export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
       className="fixed bottom-20 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
     >
       <div className="relative h-12 w-12 sm:h-14 sm:w-14">
+        {/* Disc = filled background + outline. settings_disc.png is a
+            single sprite that already has both; empty_disc.png is just
+            the outline, so we composite the matching background under
+            it. */}
+        <img
+          src={CHROME_ICONS.empty_disc_background}
+          alt=""
+          className="absolute inset-0 h-full w-full drop-shadow"
+          style={{ imageRendering: "pixelated" }}
+        />
         <img
           src={CHROME_ICONS.empty_disc}
           alt=""
-          className="absolute inset-0 h-full w-full drop-shadow"
+          className="absolute inset-0 h-full w-full"
           style={{ imageRendering: "pixelated" }}
         />
         <img
