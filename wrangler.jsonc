@@ -12,4 +12,10 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
   },
+  "migrations": [
+    {
+      "tag": "v2-remove-farm-push-do",
+      "deleted_classes": ["FarmPushDO"],
+    },
+  ],
 }
