@@ -10,6 +10,10 @@ const UPSTREAM = "https://api.sunflower-land.com";
 // farms instead of ~80).
 const PAGE_SIZE = 50;
 const MAX_BACKOFF_MS = 60_000;
+// Throttle the sweep against upstream — at 0ms we get ~19s/page from
+// rate-limited IPs; small fixed delay keeps each page snappy and stays
+// under the backend's 5s baseline-IP-throttle window.
+const PER_PAGE_DELAY_MS = 250;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -18,10 +22,13 @@ type ScanBody = {
   next_cursor?: string;
 };
 
+// Upstream may signal "back off" via 429 (explicit rate limit) or 5xx
+// (overloaded). Both are retryable from our perspective; only 4xx
+// other than 429 are terminal.
 type ScanResult =
   | { ok: true; body: ScanBody }
-  | { ok: false; throttled: true }
-  | { ok: false; throttled: false; status: number };
+  | { ok: false; retryable: true; status: number }
+  | { ok: false; retryable: false; status: number };
 
 async function scanFarmsPage(
   cursor: string | undefined,
@@ -35,25 +42,27 @@ async function scanFarmsPage(
   try {
     res = await fetch(u, { headers: { "x-api-key": apiKey } });
   } catch {
-    return { ok: false, throttled: false, status: 0 };
+    // Network failure — treat as retryable; could be a transient
+    // egress issue or upstream restart.
+    return { ok: false, retryable: true, status: 0 };
   }
-  if (res.status === 429) return { ok: false, throttled: true };
   if (!res.ok) {
-    // Best-effort read of the upstream error body for diagnostics —
-    // truncated so a huge HTML error page doesn't flood the log.
+    // 429 + 5xx = backend asking us to slow down or itself overloaded.
+    // Both retry. 4xx (other than 429) = a real bug; abort the sweep.
+    const retryable = res.status === 429 || res.status >= 500;
     const text = await res.text().catch(() => "");
     console.warn(
       `coordinator: upstream ${res.status} for /community/farms?limit=${limit}` +
         (cursor ? `&cursor=${cursor}` : "") +
         ` :: ${text.slice(0, 300)}`,
     );
-    return { ok: false, throttled: false, status: res.status };
+    return { ok: false, retryable, status: res.status };
   }
   try {
     const body = (await res.json()) as ScanBody;
     return { ok: true, body };
   } catch {
-    return { ok: false, throttled: false, status: 0 };
+    return { ok: false, retryable: false, status: 0 };
   }
 }
 
@@ -92,17 +101,23 @@ export async function sweep(env: Env): Promise<void> {
   const deadline = startedAt + 25 * 60 * 1000;
 
   while (Date.now() < deadline) {
+    // Pause between pages — combination of any active backoff and a
+    // small fixed delay to stay under the backend's per-IP throttle
+    // window even when we're not seeing errors.
     if (backoffMs > 0) await sleep(backoffMs);
+    else if (cursor !== undefined) await sleep(PER_PAGE_DELAY_MS);
 
     const res = await scanFarmsPage(cursor, PAGE_SIZE, scanKey);
     if (!res.ok) {
-      if (res.throttled) {
+      if (res.retryable) {
         backoffMs = Math.min(Math.max(backoffMs * 2, 2_000), MAX_BACKOFF_MS);
         continue;
       }
-      // Permanent error or network failure — abort the sweep; the next
-      // cron tick retries from cursor=undefined.
-      console.warn(`coordinator: page failed with status ${res.status}`);
+      // Permanent error or malformed response — abort the sweep; the
+      // next cron tick retries from cursor=undefined.
+      console.warn(
+        `coordinator: page failed permanently with status ${res.status}`,
+      );
       break;
     }
     backoffMs = 0;

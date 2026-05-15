@@ -146,7 +146,11 @@ async function handleProxyFarm(env: Env, id: string): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url);
     const method = request.method;
 
@@ -173,6 +177,21 @@ export default {
     }
     if (url.pathname === "/push/refresh" && method === "POST") {
       return handlePushRefresh(request, env);
+    }
+    // Debug — manually fire the Coordinator sweep. Useful when the
+    // cron-managed schedule appears to skip a tick. Idempotent: the
+    // sweep just refetches each opted-in farm and re-applies its
+    // snapshot to its DO. Output streams to `wrangler tail`.
+    if (url.pathname === "/push/sweep" && method === "POST") {
+      ctx.waitUntil(
+        sweep(env).catch((err) => {
+          console.error(
+            "manual sweep crashed:",
+            err instanceof Error ? `${err.message}\n${err.stack}` : err,
+          );
+        }),
+      );
+      return json({ triggered: true });
     }
     const stateMatch = /^\/push\/state\/(\d+)$/.exec(url.pathname);
     if (stateMatch && method === "GET") {
