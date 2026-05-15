@@ -12,6 +12,7 @@ export function sectionId(category: Category): string {
 // one place makes it easy to add a new panel — declare the id here,
 // stamp it on the panel root, and include it in App's nav list.
 export const BUMPKIN_SECTION_ID = "section-bumpkin";
+export const READY_SECTION_ID = "section-ready";
 export const NEXT_UP_SECTION_ID = "section-next-up";
 export const DELIVERIES_COINS_SECTION_ID = "section-deliveries-coins";
 export const DELIVERIES_FLOWER_SECTION_ID = "section-deliveries-flower";

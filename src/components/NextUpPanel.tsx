@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
 import { formatRemaining, formatYield } from "../lib/format.ts";
-import { NEXT_UP_SECTION_ID } from "./sectionId.ts";
+import { NEXT_UP_SECTION_ID, READY_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 
 // Compact "next ready" feed shown under the Farm ID panel. Fills the
@@ -114,7 +114,7 @@ function buildRows(timers: AggregatedTimer[]): Row[] {
     lastKeptIdx.set(key, deduped.length - 1);
   }
 
-  return deduped.slice(0, MAX_ROWS);
+  return deduped;
 }
 
 type Props = {
@@ -122,17 +122,44 @@ type Props = {
   now: number;
 };
 
-export function NextUpPanel({ timers, now }: Props) {
-  const rows = useMemo(() => buildRows(timers), [timers]);
+export function ReadyPanel({ timers, now }: Props) {
+  const rows = useMemo(
+    () =>
+      buildRows(timers)
+        .filter((r) => r.readyAt <= now)
+        .slice(0, MAX_ROWS),
+    [timers, now],
+  );
   if (rows.length === 0) return null;
+  return <RowList id={READY_SECTION_ID} title="Ready" rows={rows} now={now} />;
+}
 
+export function NextUpPanel({ timers, now }: Props) {
+  const rows = useMemo(
+    () =>
+      buildRows(timers)
+        .filter((r) => r.readyAt > now)
+        .slice(0, MAX_ROWS),
+    [timers, now],
+  );
+  if (rows.length === 0) return null;
   return (
-    <InnerPanel
-      id={NEXT_UP_SECTION_ID}
-      className="flex scroll-mt-4 flex-col gap-2"
-    >
+    <RowList id={NEXT_UP_SECTION_ID} title="Next up" rows={rows} now={now} />
+  );
+}
+
+type RowListProps = {
+  id: string;
+  title: string;
+  rows: Row[];
+  now: number;
+};
+
+function RowList({ id, title, rows, now }: RowListProps) {
+  return (
+    <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
-        <Label type="default">Next up</Label>
+        <Label type="default">{title}</Label>
       </header>
       <ul className="flex flex-col gap-1">
         {rows.map((row, idx) => {

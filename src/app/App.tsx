@@ -5,7 +5,7 @@ import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
-import { NextUpPanel } from "../components/NextUpPanel.tsx";
+import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import {
@@ -14,6 +14,7 @@ import {
   DELIVERIES_FLOWER_SECTION_ID,
   DELIVERIES_TICKETS_SECTION_ID,
   NEXT_UP_SECTION_ID,
+  READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
 import { Label, OuterPanel, InnerPanel } from "../components/ui/index.ts";
@@ -148,13 +149,25 @@ export function App() {
   // needs its section id stamped on the panel root and a push here.
   const navSections = useMemo<NavSection[]>(() => {
     if (!data) return [];
-    const out: NavSection[] = [
-      {
-        id: BUMPKIN_SECTION_ID,
-        label: "Bumpkin",
-        icon: CHROME_ICONS.level_up,
-      },
-    ];
+    const out: NavSection[] = [];
+    const hasReady = timers.some((t) => {
+      if (t.idle) return false;
+      if (t.slots && t.slots.length > 0)
+        return t.slots.some((s) => s.readyAt <= now);
+      return t.readyAt <= now;
+    });
+    if (hasReady) {
+      out.push({
+        id: READY_SECTION_ID,
+        label: "Ready",
+        icon: CHROME_ICONS.expression_alerted,
+      });
+    }
+    out.push({
+      id: BUMPKIN_SECTION_ID,
+      label: "Bumpkin",
+      icon: CHROME_ICONS.level_up,
+    });
     out.push({
       id: NEXT_UP_SECTION_ID,
       label: "Next up",
@@ -191,7 +204,7 @@ export function App() {
       });
     }
     return out;
-  }, [data, now, visibleCategories]);
+  }, [data, now, timers, visibleCategories]);
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -268,8 +281,8 @@ export function App() {
         </header>
 
         {/* Single CSS multi-column flow containing every panel. Source
-            order is FarmIdForm → BumpkinSummary → NextUp → Deliveries
-            → CATEGORY_ORDER timer panels; the browser auto-balances
+            order is FarmIdForm → Ready → BumpkinSummary → NextUp →
+            Deliveries → CATEGORY_ORDER timer panels; the browser auto-balances
             heights across columns. Total column count per breakpoint:
               <sm  : 1 col (mobile, full-width stack)
               sm   : 2 cols
@@ -317,6 +330,7 @@ export function App() {
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
           </InnerPanel>
           {data ? <BumpkinSummaryPanel data={data} /> : null}
+          {data ? <ReadyPanel timers={timers} now={now} /> : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
           {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
           {data
