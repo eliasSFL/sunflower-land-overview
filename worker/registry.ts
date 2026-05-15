@@ -29,21 +29,9 @@ export async function listOptedInIds(env: Env): Promise<number[]> {
   return (res.results ?? []).map((r) => r.farm_id);
 }
 
-// Mark the farms that the latest sweep actually saw. Helps detect
-// "opted-in but never returned by upstream" (account deletion,
-// blacklisting, or a cursor skip).
-export async function markSynced(
-  env: Env,
-  farmIds: number[],
-  at: number,
-): Promise<void> {
-  if (farmIds.length === 0) return;
-  const placeholders = farmIds.map(() => "?").join(",");
-  await env.sfl_overview_push
-    .prepare(
-      `UPDATE opted_in SET last_synced_at = ?
-       WHERE farm_id IN (${placeholders})`,
-    )
-    .bind(at, ...farmIds)
-    .run();
-}
+// `last_synced_at` was historically maintained here as a per-farm
+// `markSynced` write at the end of each sweep. The column stays in
+// the table (storage is rounding noise) but we no longer write to it
+// — the DO's own `state.snapshot.fetchedAt` is the source of truth
+// for "when did this farm last refresh", and avoiding the per-sweep
+// write saves N D1 row-writes × 4,320 sweeps/month.

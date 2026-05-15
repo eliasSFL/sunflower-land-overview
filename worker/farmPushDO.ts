@@ -26,6 +26,13 @@ type State = {
   farmId: number | null;
   subscriptions: StoredSubscription[];
   snapshot?: SnapshotEnvelope;
+  // Last upstream `updatedAt` we ran the timer extractor against.
+  // When the Coordinator/refresh path hands us the same value we can
+  // short-circuit the expensive `makeGame` + `extractAndAggregate`
+  // work — `FarmModel.updatedAt` only bumps when a real save lands
+  // (see backend `addFarmDefaultValues` + `mongoDiff`), so equality
+  // means nothing relevant changed.
+  snapshotUpdatedAt?: string;
   // Keyed by `fireKey` (aggregationKey, or aggregationKey#item@readyAt
   // for multi-slot timers). Tracks scheduled push fires so we can diff
   // against the next snapshot and cancel obsolete ones.
@@ -238,6 +245,24 @@ export class FarmPushDO extends Agent<Env, State> {
     const now = Date.now();
     const farmId = raw.id;
 
+    // Cheap escape hatch: when `updatedAt` matches what we last saw,
+    // nothing meaningful changed upstream, so the timer extractor +
+    // schedule diff would produce identical results. Skip the heavy
+    // work and just bump `fetchedAt` so `/push/state` still serves
+    // the snapshot to callers who haven't seen this version yet.
+    const upstreamUpdatedAt = (raw as { updatedAt?: string }).updatedAt;
+    if (
+      upstreamUpdatedAt !== undefined &&
+      upstreamUpdatedAt === this.state.snapshotUpdatedAt
+    ) {
+      this.setState({
+        ...this.state,
+        farmId,
+        snapshot: { raw, fetchedAt: now },
+      });
+      return;
+    }
+
     const hydrated = makeGame(raw.farm as Parameters<typeof makeGame>[0]);
     const aggregated = extractAndAggregate(hydrated, farmId, now);
 
@@ -285,11 +310,22 @@ export class FarmPushDO extends Agent<Env, State> {
 
     for (const [k, fire] of Object.entries(old)) {
       const next = fresh.get(k);
-      if (!next || next.readyAt !== fire.readyAt) {
+      // Re-schedule when any payload field differs, not just readyAt.
+      // The alarm callback receives a frozen copy of `f` at schedule
+      // time, so if our formatter or icon-URL logic changes between
+      // versions, existing alarms keep firing with the old payload
+      // unless we explicitly recreate them.
+      const unchanged =
+        next !== undefined &&
+        next.readyAt === fire.readyAt &&
+        next.title === fire.title &&
+        next.body === fire.body &&
+        next.icon === fire.icon;
+      if (!unchanged) {
         await this.cancelSchedule(fire.scheduleId).catch(() => {});
         // Don't carry over.
       } else {
-        // readyAt unchanged → keep the existing schedule.
+        // Payload unchanged → keep the existing schedule.
         nextScheduled[k] = fire;
         fresh.delete(k);
       }
@@ -311,6 +347,7 @@ export class FarmPushDO extends Agent<Env, State> {
       ...this.state,
       farmId,
       snapshot: { raw, fetchedAt: now },
+      snapshotUpdatedAt: upstreamUpdatedAt,
       scheduled: nextScheduled,
     });
   }

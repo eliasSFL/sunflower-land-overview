@@ -1,4 +1,4 @@
-import { listOptedInIds, markSynced } from "./registry.ts";
+import { listOptedInIds } from "./registry.ts";
 import { mintFarmKey } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
@@ -172,12 +172,14 @@ export async function sweep(env: Env): Promise<void> {
     batchIdx++;
   }
 
-  if (synced.length > 0) {
-    await markSynced(env, synced, startedAt).catch(() => {});
-  }
+  // Note: `last_synced_at` is no longer written per-sweep — the
+  // DO's own `state.snapshot.fetchedAt` is the source of truth for
+  // "when did this farm last refresh". Saves N D1 row-writes per
+  // sweep without changing observable behaviour.
 
   console.log(
     `coordinator: fetched=${totalFetched} skipped=${totalSkipped} ` +
-      `batches=${batchIdx}/${batches.length} ms=${Date.now() - startedAt}`,
+      `synced=${synced.length} batches=${batchIdx}/${batches.length} ` +
+      `ms=${Date.now() - startedAt}`,
   );
 }
