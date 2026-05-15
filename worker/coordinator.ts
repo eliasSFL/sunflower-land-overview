@@ -3,74 +3,75 @@ import { mintFarmKey } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
 const UPSTREAM = "https://api.sunflower-land.com";
-// Backend caps each paginated response at ~5.5 MB. Farms vary
-// ~20–250 KB each, so a generous page size blows the cap and the
-// backend returns 500. 50 farms × ~100 KB avg = ~5 MB, well under
-// the limit while still keeping the sweep fast (~800 calls for 40k
-// farms instead of ~80).
-const PAGE_SIZE = 50;
+// Upstream's legacy `POST /community/farms { ids }` form accepts max
+// 100 ids per request. We use the same cap.
+const BATCH_SIZE = 100;
+// Small pause between batches to stay under the 5 s baseline-IP
+// throttle window on the backend.
+const PER_BATCH_DELAY_MS = 250;
 const MAX_BACKOFF_MS = 60_000;
-// Throttle the sweep against upstream — at 0ms we get ~19s/page from
-// rate-limited IPs; small fixed delay keeps each page snappy and stays
-// under the backend's 5s baseline-IP-throttle window.
-const PER_PAGE_DELAY_MS = 250;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type ScanBody = {
+type BatchBody = {
   farms: Record<string, { id: number } & Record<string, unknown>>;
-  next_cursor?: string;
+  // Farm IDs the backend declined to return (account deletion,
+  // blacklist, etc). We log but don't retry within a single sweep —
+  // the next sweep tries again.
+  skipped?: number[];
 };
 
-// Upstream may signal "back off" via 429 (explicit rate limit) or 5xx
-// (overloaded). Both are retryable from our perspective; only 4xx
-// other than 429 are terminal.
-type ScanResult =
-  | { ok: true; body: ScanBody }
+type BatchResult =
+  | { ok: true; body: BatchBody }
   | { ok: false; retryable: true; status: number }
   | { ok: false; retryable: false; status: number };
 
-async function scanFarmsPage(
-  cursor: string | undefined,
-  limit: number,
+async function fetchBatch(
+  ids: number[],
   apiKey: string,
-): Promise<ScanResult> {
-  const u = new URL(`${UPSTREAM}/community/farms`);
-  u.searchParams.set("limit", String(limit));
-  if (cursor) u.searchParams.set("cursor", cursor);
+): Promise<BatchResult> {
   let res: Response;
   try {
-    res = await fetch(u, { headers: { "x-api-key": apiKey } });
+    res = await fetch(`${UPSTREAM}/community/farms`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({ ids }),
+    });
   } catch {
-    // Network failure — treat as retryable; could be a transient
-    // egress issue or upstream restart.
     return { ok: false, retryable: true, status: 0 };
   }
   if (!res.ok) {
-    // 429 + 5xx = backend asking us to slow down or itself overloaded.
-    // Both retry. 4xx (other than 429) = a real bug; abort the sweep.
+    // 429 + 5xx = backend overload, retry. Other 4xx = bug/auth, abort.
     const retryable = res.status === 429 || res.status >= 500;
     const text = await res.text().catch(() => "");
     console.warn(
-      `coordinator: upstream ${res.status} for /community/farms?limit=${limit}` +
-        (cursor ? `&cursor=${cursor}` : "") +
-        ` :: ${text.slice(0, 300)}`,
+      `coordinator: upstream ${res.status} for batch of ${ids.length} ids :: ${text.slice(0, 300)}`,
     );
     return { ok: false, retryable, status: res.status };
   }
   try {
-    const body = (await res.json()) as ScanBody;
+    const body = (await res.json()) as BatchBody;
     return { ok: true, body };
   } catch {
     return { ok: false, retryable: false, status: 0 };
   }
 }
 
-// Runs from the Worker's `scheduled()` handler every 10 min.
-//   1. Build the opt-in filter set from D1.
-//   2. Walk paginated /community/farms, page size 500.
-//   3. Filter each page to opted-in farms; fan-out to each DO.
-//   4. Mark synced farms with the sweep's start timestamp.
+// Runs from the Worker's `scheduled()` handler every 10 min and on
+// demand via POST /push/sweep.
+//
+//   1. Read every opted-in farmId from D1.
+//   2. Chunk into batches of 100.
+//   3. POST each batch to /community/farms { ids } (the deprecated
+//      legacy path; un-deprecated paginated version doesn't accept
+//      id filters and would require a full-DB scan).
+//   4. Fan-out each returned farm to its FarmPushDO via /onSnapshot.
+//
+// 40k subscribers → 400 batches × ~1 s each = ~7 min worst case, well
+// inside the 25-min wall-clock budget per sweep tick.
 export async function sweep(env: Env): Promise<void> {
   const startedAt = Date.now();
 
@@ -79,58 +80,54 @@ export async function sweep(env: Env): Promise<void> {
     return;
   }
 
-  const optedIn = new Set<number>(await listOptedInIds(env));
-  if (optedIn.size === 0) return;
+  const optedInList = await listOptedInIds(env);
+  if (optedInList.length === 0) return;
 
-  // Mint a key once per sweep. The coordinator key is per-farm in
-  // shape but the master secret is what's authoritative here — when
-  // the env value is already a per-farm key (local dev), mintFarmKey
-  // passes it through, which means we can only scan the encoded farm.
-  // That's fine for local dev; prod uses the master secret and scans
-  // everything.
-  const scanKey = await mintFarmKey(0, env.SFL_COMMUNITY_API_KEY);
+  const apiKey = await mintFarmKey(0, env.SFL_COMMUNITY_API_KEY);
 
-  let cursor: string | undefined;
-  let totalScanned = 0;
-  let totalMatched = 0;
+  // Chunk into batches.
+  const batches: number[][] = [];
+  for (let i = 0; i < optedInList.length; i += BATCH_SIZE) {
+    batches.push(optedInList.slice(i, i + BATCH_SIZE));
+  }
+
+  let totalFetched = 0;
+  let totalSkipped = 0;
   const synced: number[] = [];
   let backoffMs = 0;
+  let batchIdx = 0;
 
-  // Loop budget: leave headroom before the next 10-min cron tick. Cap
-  // at 25 min wall-clock per sweep.
+  // 25-min cap; cron fires every 10 min so this leaves 5-min headroom.
   const deadline = startedAt + 25 * 60 * 1000;
 
-  while (Date.now() < deadline) {
-    // Pause between pages — combination of any active backoff and a
-    // small fixed delay to stay under the backend's per-IP throttle
-    // window even when we're not seeing errors.
+  while (batchIdx < batches.length && Date.now() < deadline) {
     if (backoffMs > 0) await sleep(backoffMs);
-    else if (cursor !== undefined) await sleep(PER_PAGE_DELAY_MS);
+    else if (batchIdx > 0) await sleep(PER_BATCH_DELAY_MS);
 
-    const res = await scanFarmsPage(cursor, PAGE_SIZE, scanKey);
+    const ids = batches[batchIdx];
+    const res = await fetchBatch(ids, apiKey);
+
     if (!res.ok) {
       if (res.retryable) {
         backoffMs = Math.min(Math.max(backoffMs * 2, 2_000), MAX_BACKOFF_MS);
-        continue;
+        continue; // retry the same batch
       }
-      // Permanent error or malformed response — abort the sweep; the
-      // next cron tick retries from cursor=undefined.
       console.warn(
-        `coordinator: page failed permanently with status ${res.status}`,
+        `coordinator: batch failed permanently with status ${res.status}; aborting sweep`,
       );
       break;
     }
     backoffMs = 0;
 
-    const { farms, next_cursor } = res.body;
+    const { farms, skipped } = res.body;
     const entries = Object.entries(farms);
-    totalScanned += entries.length;
+    totalFetched += entries.length;
+    totalSkipped += (skipped ?? []).length;
 
-    const matches = entries.filter(([id]) => optedIn.has(Number(id)));
-    totalMatched += matches.length;
-
+    // Fan-out concurrently within a batch. Errors on individual DOs
+    // don't abort siblings — Promise.allSettled swallows rejections.
     await Promise.allSettled(
-      matches.map(async ([id, raw]) => {
+      entries.map(async ([id, raw]) => {
         const stub = env.FARM_PUSH_DO.get(
           env.FARM_PUSH_DO.idFromName(String(id)),
         );
@@ -141,10 +138,9 @@ export async function sweep(env: Env): Promise<void> {
         });
       }),
     );
-    synced.push(...matches.map(([id]) => Number(id)));
 
-    if (!next_cursor) break;
-    cursor = next_cursor;
+    synced.push(...entries.map(([id]) => Number(id)));
+    batchIdx++;
   }
 
   if (synced.length > 0) {
@@ -152,6 +148,7 @@ export async function sweep(env: Env): Promise<void> {
   }
 
   console.log(
-    `coordinator: scanned=${totalScanned} matched=${totalMatched} ms=${Date.now() - startedAt}`,
+    `coordinator: fetched=${totalFetched} skipped=${totalSkipped} ` +
+      `batches=${batchIdx}/${batches.length} ms=${Date.now() - startedAt}`,
   );
 }
