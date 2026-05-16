@@ -50,7 +50,7 @@ cp .dev.vars.example .dev.vars   # Wrangler (worker) — secrets
 - `.env` — only needed if you want to override the asset CDN or talk to testnet.
 - `.dev.vars` — the Worker reads this automatically. The two things that matter for local dev:
   - `SFL_COMMUNITY_API_KEY` — master HMAC secret used to mint per-farm community keys for `/api/farms/:id`. Without it, farm fetches return 503. For local-only experimentation you can paste a single-farm community key (in-game **Settings → Developer Options → API Key**); the Worker auto-detects that shape and uses it as-is, scoped to that one farm.
-  - `VAPID_PUBLIC` / `VAPID_PRIVATE` — only needed if you want to test push notifications. Generate a *local* keypair with `npx web-push generate-vapid-keys --json` (don't reuse the prod keys — the public key is baked into each device's subscription, so mixing dev/prod will break pushes).
+  - `VAPID_PUBLIC` / `VAPID_PRIVATE` — only needed if you want to test push notifications. Generate a _local_ keypair with `npx web-push generate-vapid-keys --json` (don't reuse the prod keys — the public key is baked into each device's subscription, so mixing dev/prod will break pushes).
   - `ADMIN_SECRET` — gates `POST /push/sweep` (manual Coordinator trigger). Only needed if you want to fire a sweep on demand locally; the cron path doesn't go through this check. Generate with `openssl rand -hex 32`. In production set it with `wrangler secret put ADMIN_SECRET`. Without it on the env, the endpoint fails closed (403).
 
 ### 3. Start the three dev processes

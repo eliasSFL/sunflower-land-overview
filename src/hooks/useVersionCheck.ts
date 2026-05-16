@@ -16,7 +16,9 @@ type Result = {
   isStale: boolean;
 };
 
-export function useVersionCheck(intervalMs: number = DEFAULT_INTERVAL_MS): Result {
+export function useVersionCheck(
+  intervalMs: number = DEFAULT_INTERVAL_MS,
+): Result {
   const bundleSha =
     (import.meta.env.VITE_COMMIT_SHA as string | undefined) ?? "";
   const [deployedSha, setDeployedSha] = useState<string | undefined>();
@@ -46,8 +48,7 @@ export function useVersionCheck(intervalMs: number = DEFAULT_INTERVAL_MS): Resul
     };
   }, [intervalMs]);
 
-  const isStale =
-    !!bundleSha && !!deployedSha && deployedSha !== bundleSha;
+  const isStale = !!bundleSha && !!deployedSha && deployedSha !== bundleSha;
 
   return { bundleSha, deployedSha, isStale };
 }

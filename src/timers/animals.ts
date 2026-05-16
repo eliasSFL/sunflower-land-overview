@@ -103,9 +103,7 @@ export function extractAnimalTimers(
     // threshold, so the claim-time level is at least current + 1.
     const currentLevel = getAnimalLevel(animal.experience, type);
     const level: AnimalLevel =
-      animal.state === "ready"
-        ? currentLevel
-        : NEXT_ANIMAL_LEVEL[currentLevel];
+      animal.state === "ready" ? currentLevel : NEXT_ANIMAL_LEVEL[currentLevel];
     const drops = ANIMAL_RESOURCE_DROP[type][level];
     const resources = getKeys(drops);
     // Level 0 = no drop table entries; nothing meaningful to surface yet.

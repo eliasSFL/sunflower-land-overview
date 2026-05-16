@@ -29,8 +29,7 @@ function predictAmount(
   const criticalHit = flower.criticalHit ?? {};
   const result = getFlowerAmount({
     game,
-    criticalDrop: (name: CriticalHitName) =>
-      Boolean(criticalHit[name] ?? 0),
+    criticalDrop: (name: CriticalHitName) => Boolean(criticalHit[name] ?? 0),
   }) as {
     amount?: number;
     boostsUsed?: Array<{ name: BoostName; value: string }>;

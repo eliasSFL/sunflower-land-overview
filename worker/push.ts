@@ -101,7 +101,8 @@ export async function sendAll(
               ok: false,
               gone: false,
               endpoint: chunk[j].endpoint,
-              error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+              error:
+                r.reason instanceof Error ? r.reason.message : String(r.reason),
             },
       );
     }

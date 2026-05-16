@@ -24,7 +24,10 @@ let sweepInFlight = false;
 // NOT the `{ farm, id, … }` envelope shape that `GET /community/farms/{id}`
 // uses. The Coordinator has to re-wrap before posting to the DO.
 type BatchBody = {
-  farms: Record<string, (Record<string, unknown> & { isBlacklisted?: boolean }) | null>;
+  farms: Record<
+    string,
+    (Record<string, unknown> & { isBlacklisted?: boolean }) | null
+  >;
   // Farm IDs the backend declined to return (account deletion,
   // blacklist, etc). We log but don't retry within a single sweep —
   // the next sweep tries again.
@@ -36,10 +39,7 @@ type BatchResult =
   | { ok: false; retryable: true; status: number }
   | { ok: false; retryable: false; status: number };
 
-async function fetchBatch(
-  ids: number[],
-  apiKey: string,
-): Promise<BatchResult> {
+async function fetchBatch(ids: number[], apiKey: string): Promise<BatchResult> {
   let res: Response;
   try {
     // Legacy id-form endpoint is `POST /community/getFarms`, NOT
@@ -146,7 +146,9 @@ async function sweepImpl(env: Env): Promise<void> {
 
     const { farms, skipped } = res.body;
     const entries = Object.entries(farms).filter(
-      (e): e is [string, Record<string, unknown> & { isBlacklisted?: boolean }] =>
+      (
+        e,
+      ): e is [string, Record<string, unknown> & { isBlacklisted?: boolean }] =>
         e[1] != null,
     );
     totalFetched += entries.length;

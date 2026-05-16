@@ -61,7 +61,10 @@ export type StoredSubscription = {
 // Wire shape for /push/subscribe request bodies.
 export type SubscribeBody = {
   farmId: number;
-  subscription: Omit<StoredSubscription, "mutedCategories" | "notificationTarget">;
+  subscription: Omit<
+    StoredSubscription,
+    "mutedCategories" | "notificationTarget"
+  >;
   mutedCategories?: string[];
   notificationTarget?: NotificationTarget;
 };

@@ -98,8 +98,7 @@ export function extractComposterTimers(
         // (Earthworm / Grub / Red Wiggler), so the seed counter is
         // just the farm-activity value at the moment we look.
         const worm = composterDetails[name].worm;
-        const wormActivityKey =
-          `${worm} Collected` satisfies FarmActivityName;
+        const wormActivityKey = `${worm} Collected` satisfies FarmActivityName;
         const counter = farmActivity[wormActivityKey] ?? 0;
         let wormAmount = 0;
         let wormBoosts: Boost[] | undefined;

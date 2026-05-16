@@ -131,11 +131,7 @@ export function TimerCard({ timer, now }: Props) {
         );
 
         if (!slotHasBoosts) {
-          return (
-            <li key={`${slot.item}:${i}`}>
-              {slotRow}
-            </li>
-          );
+          return <li key={`${slot.item}:${i}`}>{slotRow}</li>;
         }
 
         return (

@@ -110,7 +110,10 @@ function buildRows(timers: AggregatedTimer[]): Row[] {
   for (const row of rows) {
     const key = `${row.source}|${row.label}`;
     const idx = lastKeptIdx.get(key);
-    if (idx !== undefined && row.readyAt - deduped[idx].readyAt < DEDUPE_WINDOW_MS) {
+    if (
+      idx !== undefined &&
+      row.readyAt - deduped[idx].readyAt < DEDUPE_WINDOW_MS
+    ) {
       deduped[idx].count += 1;
       continue;
     }

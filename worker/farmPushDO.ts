@@ -23,7 +23,10 @@ import type {
 // origin; "play" jumps to the main game.
 const PLAY_URL = "https://sunflower-land.com/play";
 
-function clickUrl(target: NotificationTarget | undefined, farmId: number | null): string {
+function clickUrl(
+  target: NotificationTarget | undefined,
+  farmId: number | null,
+): string {
   if (target === "play") return PLAY_URL;
   return `/?farmId=${farmId ?? ""}`;
 }
@@ -184,16 +187,13 @@ export class FarmPushDO extends Agent<Env, State> {
         // upstream_error / network / parse — fail closed so callers
         // retry rather than us tentatively persisting and hoping the
         // sweep cleans up.
-        return new Response(
-          JSON.stringify({ error: "Upstream unavailable" }),
-          {
-            status: 503,
-            headers: {
-              "content-type": "application/json",
-              "retry-after": "30",
-            },
+        return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
+          status: 503,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": "30",
           },
-        );
+        });
       }
       // Hot the snapshot now so the persist below sees an up-to-date
       // `state.snapshot` and so any client follow-up `/push/state`

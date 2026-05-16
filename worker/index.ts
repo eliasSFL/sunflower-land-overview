@@ -143,10 +143,7 @@ async function handlePushCategories(
   });
 }
 
-async function handlePushTarget(
-  request: Request,
-  env: Env,
-): Promise<Response> {
+async function handlePushTarget(request: Request, env: Env): Promise<Response> {
   const body = await readJson<{
     farmId?: number;
     endpoint?: string;
@@ -273,10 +270,7 @@ export default {
     // otherwise grant each id its own 60/min budget per IP — which
     // for `/api/farms/{id}` amplifies into ~unlimited upstream
     // proxy traffic by rotating ids.
-    if (
-      url.pathname.startsWith("/push/") ||
-      url.pathname.startsWith("/api/")
-    ) {
+    if (url.pathname.startsWith("/push/") || url.pathname.startsWith("/api/")) {
       let routeKey: string;
       if (url.pathname.startsWith("/api/farms/")) routeKey = "/api/farms";
       else if (url.pathname.startsWith("/push/state/"))
