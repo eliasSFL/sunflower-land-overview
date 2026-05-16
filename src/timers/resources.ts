@@ -18,7 +18,9 @@ import {
   type GameState,
   type OilReserve,
   type Rock,
+  type RockName,
   type Tree,
+  type TreeName,
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
@@ -84,16 +86,15 @@ export function extractResourceTimers(
   // Group by tree.name (or "Tree" default) so each variant's counter +
   // AOE thread independently.
   const treesByName = new Map<
-    string,
+    TreeName,
     Array<{ nodeId: string; tree: Tree; readyAt: number }>
   >();
   for (const [nodeId, tree] of Object.entries(state.trees ?? {})) {
     if (!isPlaced(tree)) continue;
-    const t = tree as Tree;
-    const treeName = t.name ?? "Tree";
-    const readyAt = t.wood.choppedAt + RECOVERY_SECONDS.Wood * 1000;
+    const treeName: TreeName = tree.name ?? "Tree";
+    const readyAt = tree.wood.choppedAt + RECOVERY_SECONDS.Wood * 1000;
     const list = treesByName.get(treeName) ?? [];
-    list.push({ nodeId, tree: t, readyAt });
+    list.push({ nodeId, tree, readyAt });
     treesByName.set(treeName, list);
   }
   for (const [treeName, group] of treesByName) {
@@ -121,7 +122,7 @@ export function extractResourceTimers(
   const rockConfigs: Array<{
     kind: ResourceKind;
     map: Record<string, Rock> | undefined;
-    defaultName: string;
+    defaultName: RockName;
     batch:
       | typeof batchStoneYields
       | typeof batchIronYields
@@ -149,16 +150,15 @@ export function extractResourceTimers(
   for (const { kind, map, defaultName, batch } of rockConfigs) {
     const recoveryMs = RECOVERY_SECONDS[kind] * 1000;
     const byName = new Map<
-      string,
+      RockName,
       Array<{ nodeId: string; rock: Rock; readyAt: number }>
     >();
     for (const [nodeId, rock] of Object.entries(map ?? {})) {
       if (!isPlaced(rock)) continue;
-      const r = rock as Rock;
-      const rockName = r.name ?? defaultName;
-      const readyAt = r.stone.minedAt + recoveryMs;
+      const rockName: RockName = rock.name ?? defaultName;
+      const readyAt = rock.stone.minedAt + recoveryMs;
       const list = byName.get(rockName) ?? [];
-      list.push({ nodeId, rock: r, readyAt });
+      list.push({ nodeId, rock, readyAt });
       byName.set(rockName, list);
     }
     for (const [rockName, group] of byName) {
@@ -199,7 +199,7 @@ export function extractResourceTimers(
     if (rock.minesLeft <= 0) continue;
     crimstones.push({
       nodeId,
-      rock: rock as FiniteResource,
+      rock,
       readyAt: rock.stone.minedAt + crimstoneRecoveryMs,
     });
   }
@@ -256,7 +256,7 @@ export function extractResourceTimers(
     if (!isPlaced(reserve)) continue;
     oilEntries.push({
       nodeId,
-      reserve: reserve as OilReserve,
+      reserve,
       readyAt: reserve.oil.drilledAt + oilRecoveryMs,
     });
   }

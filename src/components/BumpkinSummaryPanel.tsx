@@ -4,6 +4,7 @@ import {
   getExperienceToNextLevel,
   isMaxLevel,
   MAX_BUMPKIN_LEVEL,
+  type InventoryItemName,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
@@ -25,12 +26,10 @@ function formatInt(value: number | bigint): string {
 
 function getInventoryAmount(
   inventory: FarmResponse["farm"]["inventory"],
-  name: string,
+  name: InventoryItemName,
 ): number {
-  const decimal = (inventory as Record<string, { toNumber?: () => number }>)[
-    name
-  ];
-  if (!decimal || typeof decimal.toNumber !== "function") return 0;
+  const decimal = inventory[name];
+  if (!decimal) return 0;
   return decimal.toNumber();
 }
 

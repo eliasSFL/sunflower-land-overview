@@ -1,11 +1,11 @@
-import { getItemIcon } from "../game/index.ts";
+import { getItemIcon, type InventoryItemName } from "../game/index.ts";
 import type { Category } from "../timers/index.ts";
 
 // Item name passed through getItemIcon for each category. Kept as a name
 // (not a resolved URL) so updates to ITEM_DETAILS in the submodule
 // propagate without a rebuild here. Each cooking / processing building
 // uses its own building icon since each is its own top-level category.
-const CATEGORY_ICON_NAME: Record<Category, string> = {
+const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
   Crops: "Sunflower",
   "Fruit Patches": "Apple",
   Greenhouse: "Rice",

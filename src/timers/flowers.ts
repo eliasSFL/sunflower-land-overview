@@ -5,6 +5,8 @@ import {
   getBoostLabel,
   getFlowerAmount,
   getItemIcon,
+  type BoostName,
+  type CriticalHitName,
   type GameState,
   type PlantedFlower,
 } from "../game/index.ts";
@@ -24,17 +26,18 @@ function predictAmount(
   flower: PlantedFlower,
 ): { amount: number; boosts: Boost[] } {
   if (flower.amount !== undefined) return { amount: flower.amount, boosts: [] };
-  const criticalHit = (flower.criticalHit ?? {}) as Record<string, number>;
+  const criticalHit = flower.criticalHit ?? {};
   const result = getFlowerAmount({
     game,
-    criticalDrop: (name: string) => Boolean(criticalHit[name] ?? 0),
+    criticalDrop: (name: CriticalHitName) =>
+      Boolean(criticalHit[name] ?? 0),
   }) as {
     amount?: number;
-    boostsUsed?: Array<{ name: string; value: string }>;
+    boostsUsed?: Array<{ name: BoostName; value: string }>;
   };
   const boosts: Boost[] = Array.isArray(result?.boostsUsed)
     ? result.boostsUsed.map((b) => {
-        const name = String(b.name);
+        const name = b.name;
         return {
           name,
           value: String(b.value),

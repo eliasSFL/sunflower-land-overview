@@ -1,16 +1,17 @@
 import {
   getFermentationRecipe,
   getItemIcon,
+  getObjectEntries,
   getSpiceRackRecipe,
   type AgingRackSlot,
-  type AgingShed,
   type FermentationJob,
   type FermentationRecipeName,
   type GameState,
-  type PlacedItem,
+  type InventoryItemName,
   type SpiceRackJob,
   type SpiceRackRecipeName,
 } from "../game/index.ts";
+import type { AgedFishName } from "../game/types.ts";
 import type { Category, Timer, TimerContext, TimerSlot } from "./types.ts";
 
 // One Timer per Aging Shed rack — three total when the building is
@@ -30,13 +31,13 @@ const BUILDING_NAME = "Aging Shed";
 
 function fermentationOutput(
   recipe: FermentationRecipeName,
-): { item: string; amount: number } | undefined {
+): { item: InventoryItemName; amount: number } | undefined {
   try {
     const def = getFermentationRecipe(recipe);
-    const entries = Object.entries(def?.outputs ?? {});
+    const entries = getObjectEntries(def?.outputs ?? {});
     if (entries.length === 0) return undefined;
     const [item, decimal] = entries[0];
-    return { item, amount: decimal?.toNumber() ?? 1 };
+    return { item, amount: decimal?.toNumber?.() ?? 1 };
   } catch {
     return undefined;
   }
@@ -44,13 +45,13 @@ function fermentationOutput(
 
 function spiceOutput(
   recipe: SpiceRackRecipeName,
-): { item: string; amount: number } | undefined {
+): { item: InventoryItemName; amount: number } | undefined {
   try {
     const def = getSpiceRackRecipe(recipe);
-    const entries = Object.entries(def?.outputs ?? {});
+    const entries = getObjectEntries(def?.outputs ?? {});
     if (entries.length === 0) return undefined;
     const [item, decimal] = entries[0];
-    return { item, amount: decimal?.toNumber() ?? 1 };
+    return { item, amount: decimal?.toNumber?.() ?? 1 };
   } catch {
     return undefined;
   }
@@ -58,8 +59,10 @@ function spiceOutput(
 
 function agingSlotEntry(slot: AgingRackSlot): TimerSlot {
   // Aged fish output is `Aged ${fish}` — Prime Aged is a PRNG flip
-  // resolved on collect; we show the conservative "Aged" name.
-  const item = `Aged ${slot.fish}`;
+  // resolved on collect; we show the conservative "Aged" name. The
+  // `Aged ${FishName}` literal is an upstream AgedFishName, which is
+  // part of InventoryItemName via the CookableName union.
+  const item: AgedFishName = `Aged ${slot.fish}`;
   return {
     item,
     icon: getItemIcon(item),
@@ -131,13 +134,11 @@ export function extractAgingShedTimers(
   // tracks placement coordinates; `state.agingShed` holds the racks
   // (always present in the save shape even when the building isn't
   // built yet).
-  const placedBuildings = (state.buildings?.[BUILDING_NAME] ??
-    []) as PlacedItem[];
+  const placedBuildings = state.buildings?.[BUILDING_NAME] ?? [];
   const placed = placedBuildings.some((b) => !!b.coordinates);
   if (!placed) return [];
 
-  const shed = state.agingShed as AgingShed | undefined;
-  const racks = shed?.racks;
+  const racks = state.agingShed?.racks;
 
   const agingSlots: TimerSlot[] = (racks?.aging ?? []).map(agingSlotEntry);
   const fermentationSlots: TimerSlot[] = [];

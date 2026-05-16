@@ -3,9 +3,11 @@ import {
   getBoostIcon,
   getCompostAmount,
   getItemIcon,
+  getObjectEntries,
   rollWormAmount,
-  type CompostBuilding,
+  type BoostName,
   type ComposterName,
+  type FarmActivityName,
   type GameState,
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
@@ -31,7 +33,7 @@ const COMPOSTERS: readonly ComposterName[] = [
 ];
 
 function toBoosts(
-  raw: ReadonlyArray<{ name: string; value: string }>,
+  raw: ReadonlyArray<{ name: BoostName; value: string }>,
   state: GameState,
 ): Boost[] | undefined {
   if (raw.length === 0) return undefined;
@@ -50,7 +52,7 @@ export function extractComposterTimers(
   const farmActivity = state.farmActivity ?? {};
 
   for (const name of COMPOSTERS) {
-    const instances = (state.buildings?.[name] ?? []) as CompostBuilding[];
+    const instances = state.buildings?.[name] ?? [];
     instances.forEach((inst, idx) => {
       // Skip unplaced instances (e.g. mid-move). Matches the cooking
       // extractor's idle-skip rule.
@@ -59,7 +61,7 @@ export function extractComposterTimers(
 
       const producing = inst.producing;
       if (producing) {
-        const entries = Object.entries(producing.items ?? {});
+        const entries = getObjectEntries(producing.items ?? {});
         const [item, amount] = entries[0] ?? [name, 0];
 
         // --- Compost row ---
@@ -71,7 +73,10 @@ export function extractComposterTimers(
         // the player will actually collect).
         let compostBoosts: Boost[] | undefined;
         try {
-          const { boostsUsed } = getCompostAmount({ game: state, building: name });
+          const { boostsUsed } = getCompostAmount({
+            game: state,
+            building: name,
+          });
           compostBoosts = toBoosts(boostsUsed, state);
         } catch {
           // Fall back to no boost list if upstream throws.
@@ -93,10 +98,9 @@ export function extractComposterTimers(
         // (Earthworm / Grub / Red Wiggler), so the seed counter is
         // just the farm-activity value at the moment we look.
         const worm = composterDetails[name].worm;
-        const counter =
-          (farmActivity as Record<string, number | undefined>)[
-            `${worm} Collected`
-          ] ?? 0;
+        const wormActivityKey =
+          `${worm} Collected` satisfies FarmActivityName;
+        const counter = farmActivity[wormActivityKey] ?? 0;
         let wormAmount = 0;
         let wormBoosts: Boost[] | undefined;
         try {

@@ -38,6 +38,12 @@ export {
   batchOilYields,
 } from "./batch-yields.ts";
 export { getItemIcon, getBoostIcon, getBoostLabel } from "./icons.ts";
+// Typed Object.entries / Object.keys — upstream's thin wrappers that
+// preserve the `keyof T` and value types, so iterating
+// `producing.items` / `recipe.outputs` (both
+// `Partial<Record<InventoryItemName, …>>`) yields `[InventoryItemName,
+// …]` instead of `[string, …]`.
+export { getObjectEntries, getKeys } from "lib/object";
 // Hydrates the raw API payload into a GameState — wraps inventory /
 // balance / stock fields in Decimal so upstream helpers that call
 // `.gt(0)` (e.g. animal boost gates on "Barn Manager") work. The API
@@ -84,6 +90,12 @@ export {
 // already itemised.
 export { getCookingAmount } from "features/game/events/landExpansion/collectRecipe";
 export { getProcessedResourceAmount } from "features/game/events/landExpansion/collectProcessedResource";
+// Discriminator dictionaries for the cooking / processing recipe union.
+// `name in COOKABLES` narrows `CookableName | ProcessedResource` →
+// `CookableName`; `name in PROCESSED_RESOURCES` does the inverse. Used
+// by the cooking-timer extractor.
+export { COOKABLES } from "features/game/types/consumables";
+export { PROCESSED_RESOURCES } from "features/game/types/processedFood";
 // Per-building queue / capacity caps used by the IdlePanel to compute
 // "X slots free". `hasVipAccess` gates the larger cap for cooking and
 // fish processing; `getBoostedAnimalCapacity` accounts for skill /
@@ -154,6 +166,11 @@ export {
 export { isTicketNPC } from "features/island/delivery/lib/delivery";
 export { getChapterTicket } from "features/game/types/chapters";
 export type { Order, Delivery } from "features/game/types/game";
+// Discriminator for the `InventoryItemName | BumpkinItem` union — true
+// when the name is a collectible (i.e. lives in `state.inventory`),
+// false when it's a wearable (lives in `state.wardrobe`). Used by the
+// delivery row to look up the player's "have" count in the right place.
+export { isCollectible } from "features/game/events/landExpansion/garbageSold";
 // NPC avatar pieces. `NPC_WEARABLES` is the canonical equipped-parts
 // map upstream uses everywhere it renders an NPC; `getAnimatedWebpUrl`
 // builds the CDN URL the in-game `NPCIcon` component points at. Pair
@@ -162,6 +179,7 @@ export type { Order, Delivery } from "features/game/types/game";
 export { NPC_WEARABLES } from "lib/npcs";
 export type { NPCName } from "lib/npcs";
 export { getAnimatedWebpUrl } from "features/world/lib/animations";
+
 export type {
   GameState,
   CropName,
@@ -216,5 +234,28 @@ export type {
   FermentationRecipeName,
   SpiceRackRecipeName,
   FishName,
+  AgedFishName,
+  PrimeAgedFishName,
   CraftingQueueItem,
+  // Composter worm name + the corresponding farmActivity counter key.
+  Worm,
+  // Activity counter keys (template-literal union covering every
+  // `${X} Cooked` / `${X} Processed` / `${Worm} Collected` etc).
+  FarmActivityName,
+  // AOE bookkeeping for resource yield batching.
+  AOE,
+  // Boost union + critical-drop callback arg
+  BoostName,
+  CriticalHitName,
+  // Inventory key union (collectibles + tools + tickets + ...)
+  InventoryItemName,
+  // Wearable name union — Crafting Box queues these alongside collectibles.
+  BumpkinItem,
+  // Resource node-name unions (Tree / Rock variants)
+  TreeName,
+  RockName,
+  // Compost names — plot fertiliser vs. greenhouse fertiliser differ
+  FruitCompostName,
+  CropCompostName,
+  GreenhouseCompostName,
 } from "./types.ts";

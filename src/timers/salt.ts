@@ -5,12 +5,13 @@ import {
   getSaltChargeGenerationTime,
   getSaltYieldPerRake,
   materializeSaltRegen,
+  type BoostName,
   type GameState,
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 function toBoosts(
-  raw: ReadonlyArray<{ name: string; value: string }>,
+  raw: ReadonlyArray<{ name: BoostName; value: string }>,
   state: GameState,
 ): Boost[] | undefined {
   if (raw.length === 0) return undefined;

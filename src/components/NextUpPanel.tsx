@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
+import type { AnimalResource, AnimalType } from "../game/index.ts";
 import { formatRemaining, formatYield } from "../lib/format.ts";
 import { NEXT_UP_SECTION_ID, READY_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
@@ -54,7 +55,7 @@ const STATUS_LABEL = {
 // Animal cards live in a single "Animals" category but each row's
 // resource maps unambiguously to one animal type — surface that as the
 // source so a row reads "Egg / Chicken" instead of "Egg / Animals".
-const ANIMAL_BY_RESOURCE: Record<string, string> = {
+const ANIMAL_BY_RESOURCE: Record<AnimalResource, AnimalType> = {
   Egg: "Chicken",
   Feather: "Chicken",
   Milk: "Cow",
@@ -62,6 +63,9 @@ const ANIMAL_BY_RESOURCE: Record<string, string> = {
   Wool: "Sheep",
   "Merino Wool": "Sheep",
 };
+
+const isAnimalResource = (label: string): label is AnimalResource =>
+  label in ANIMAL_BY_RESOURCE;
 
 function buildRows(timers: AggregatedTimer[]): Row[] {
   const rows: Row[] = [];
@@ -83,8 +87,8 @@ function buildRows(timers: AggregatedTimer[]): Row[] {
     }
     const itemLabel = t.predictedYield?.item ?? t.label;
     const source =
-      t.category === "Animals"
-        ? (ANIMAL_BY_RESOURCE[itemLabel] ?? t.category)
+      t.category === "Animals" && isAnimalResource(itemLabel)
+        ? ANIMAL_BY_RESOURCE[itemLabel]
         : t.category;
     rows.push({
       key: t.id,

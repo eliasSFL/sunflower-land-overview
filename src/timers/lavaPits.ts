@@ -3,8 +3,8 @@ import {
   getItemIcon,
   getLavaPitTime,
   getObsidianYield,
+  type BoostName,
   type GameState,
-  type LavaPit,
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
@@ -27,7 +27,7 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // means landscaped away.
 
 function toBoosts(
-  raw: ReadonlyArray<{ name: string; value: string }>,
+  raw: ReadonlyArray<{ name: BoostName; value: string }>,
   state: GameState,
 ): Boost[] | undefined {
   if (raw.length === 0) return undefined;
@@ -63,15 +63,13 @@ export function extractLavaPitTimers(
   const out: Timer[] = [];
 
   for (const [pitId, pit] of Object.entries(lavaPits)) {
-    const p = pit as LavaPit;
-
     // Landscaped away.
-    if (p.x === undefined && p.y === undefined) continue;
+    if (pit.x === undefined && pit.y === undefined) continue;
     // Not started, or already collected.
-    if (p.startedAt === undefined) continue;
-    if (p.collectedAt !== undefined) continue;
+    if (pit.startedAt === undefined) continue;
+    if (pit.collectedAt !== undefined) continue;
 
-    const readyAt = p.readyAt ?? p.startedAt + getTime();
+    const readyAt = pit.readyAt ?? pit.startedAt + getTime();
 
     out.push({
       id: `resource:Obsidian:${pitId}`,
