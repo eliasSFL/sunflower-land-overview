@@ -185,6 +185,7 @@ export type {
   Animal,
   AnimalBuilding,
   AnimalResource,
+  AnimalLevel,
   AnimalState,
   AnimalType,
   BuildingName,

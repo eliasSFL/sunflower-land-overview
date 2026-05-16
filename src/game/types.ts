@@ -48,6 +48,7 @@ export type {
   AnimalBuilding,
   AnimalResource,
   AnimalState,
+
   // Cooking / processing buildings
   BuildingProduct,
   PlacedItem,
@@ -59,7 +60,7 @@ export type {
   GameState,
 } from "features/game/types/game";
 
-export type { AnimalType } from "features/game/types/animals";
+export type { AnimalType, AnimalLevel } from "features/game/types/animals";
 export type {
   CookingBuildingName,
   ProcessingBuildingName,

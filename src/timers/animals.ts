@@ -7,6 +7,7 @@ import {
   type Animal,
   type AnimalResource,
   type AnimalType,
+  type AnimalLevel,
   type GameState,
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
@@ -68,7 +69,17 @@ export function extractAnimalTimers(
     if (animal.state === "sick") continue;
 
     const type = animal.type;
-    const level = getAnimalLevel(animal.experience, type);
+    // claimProduce only runs when state === "ready" (the upstream throws
+    // otherwise), and it reads `getAnimalLevel(experience)` at that
+    // moment. So for "ready" animals our current level matches the
+    // claim-time level. For idle/happy/sad the player still needs to
+    // feed (possibly multiple times) before the animal becomes "ready" —
+    // and the state only flips to "ready" when a feed crosses a level
+    // threshold, so the claim-time level is at least current + 1.
+    const currentLevel = getAnimalLevel(animal.experience, type);
+    const level = (
+      animal.state === "ready" ? currentLevel : Math.min(currentLevel + 1, 15)
+    ) as AnimalLevel;
     const drops = ANIMAL_RESOURCE_DROP[type][level];
     const resources = Object.keys(drops) as AnimalResource[];
     // Level 0 = no drop table entries; nothing meaningful to surface yet.
