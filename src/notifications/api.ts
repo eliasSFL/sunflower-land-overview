@@ -4,6 +4,7 @@
 export type SubscribeBody = {
   farmId: number;
   subscription: PushSubscriptionJSON;
+  mutedCategories?: string[];
 };
 
 const JSON_HEADERS = { "content-type": "application/json" } as const;
@@ -27,6 +28,18 @@ export async function postUnsubscribe(body: {
   endpoint: string;
 }): Promise<Response> {
   return fetch("/push/unsubscribe", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function postCategories(body: {
+  farmId: number;
+  endpoint: string;
+  mutedCategories: string[];
+}): Promise<Response> {
+  return fetch("/push/categories", {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),

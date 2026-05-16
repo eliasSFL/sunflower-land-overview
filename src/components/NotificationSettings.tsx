@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Button, Label } from "./ui/index.ts";
+import { Button, Checkbox, Label } from "./ui/index.ts";
 import {
   canSubscribe,
   getPermissionState,
@@ -17,26 +17,31 @@ import {
 import {
   postSubscribe,
   postUnsubscribe,
+  postCategories,
   postTest,
 } from "../notifications/api.ts";
 import {
   loadEnabled,
   saveEnabled,
   clearEnabled,
+  loadMutedCategories,
+  saveMutedCategories,
 } from "../notifications/prefs.ts";
+import { CATEGORY_ORDER, type Category } from "../timers/types.ts";
+import { getCategoryIcon } from "./categoryIcon.ts";
 
 type Props = {
   farmId: number;
 };
 
-// v1 surface: master toggle + test button + iOS install hint. Categories
-// (per-domain mute) live in v2 — the DO wire format already accepts a
-// `categories` field so v2 is purely additive.
 export function NotificationSettings({ farmId }: Props) {
   const [permission, setPermission] = useState<PermissionState>(() =>
     getPermissionState(),
   );
   const [enabled, setEnabled] = useState<boolean>(() => loadEnabled());
+  const [muted, setMuted] = useState<Set<Category>>(
+    () => new Set(loadMutedCategories()),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [testStatus, setTestStatus] = useState<string | undefined>();
@@ -110,6 +115,7 @@ export function NotificationSettings({ farmId }: Props) {
       const res = await postSubscribe({
         farmId,
         subscription: sub.toJSON() as PushSubscriptionJSON,
+        mutedCategories: [...muted],
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -174,8 +180,36 @@ export function NotificationSettings({ farmId }: Props) {
     }
   }
 
+  // Optimistically toggle the local set, persist, then fire-and-forget
+  // sync to the Worker. If the server call fails we surface an error
+  // but leave the local pref alone — next subscribe will re-send the
+  // current mute list anyway.
+  async function onToggleCategory(category: Category, checked: boolean) {
+    const next = new Set(muted);
+    if (checked) next.delete(category);
+    else next.add(category);
+    setMuted(next);
+    saveMutedCategories([...next]);
+
+    const sub = await getExistingSubscription();
+    if (!sub) return;
+    try {
+      const res = await postCategories({
+        farmId,
+        endpoint: sub.endpoint,
+        mutedCategories: [...next],
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? `Update failed: ${res.status}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-1 text-sm">
       <p>
         Get a push notification when timers on your farm are ready — even while
         the app is closed.
@@ -190,6 +224,30 @@ export function NotificationSettings({ farmId }: Props) {
       </div>
       {enabled ? (
         <>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs">Notify me about:</span>
+            <ul className="scrollable flex flex-col gap-2 overflow-auto max-h-44 px-2">
+              {CATEGORY_ORDER.map((cat) => {
+                const checked = !muted.has(cat);
+                return (
+                  <li key={cat} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={checked}
+                      onChange={(c) => void onToggleCategory(cat, c)}
+                      disabled={busy}
+                    />
+                    <img
+                      src={getCategoryIcon(cat)}
+                      alt=""
+                      className="w-6 h-6"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                    <span>{cat}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <Button onClick={onTest} disabled={busy}>
             Send test notification
           </Button>

@@ -27,7 +27,7 @@ export function SettingsModal({
 }: Props) {
   return (
     <Modal open={open} onClose={onClose} title="Settings">
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-1">
         <span className="text-sm font-semibold">Farm</span>
         <div className="flex flex-wrap items-center gap-2">
           <Label type="default">Farm #{data.id}</Label>
@@ -44,8 +44,7 @@ export function SettingsModal({
         />
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
       </section>
-      <div className="my-2 border-t border-[#3e2731]/30" />
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-1">
         <span className="text-sm font-semibold">Notifications</span>
         <NotificationSettings farmId={data.id} />
       </section>

@@ -10,6 +10,7 @@ import type {
   Env,
   StoredSubscription,
   SubscribeBody,
+  CategoriesBody,
   PushPayload,
   PendingFire,
   FirePayload,
@@ -65,6 +66,8 @@ export class FarmPushDO extends Agent<Env, State> {
         return this.handleSubscribe(request);
       case "/unsubscribe":
         return this.handleUnsubscribe(request);
+      case "/categories":
+        return this.handleCategories(request);
       case "/test":
         return this.handleTest();
       case "/refresh":
@@ -98,10 +101,14 @@ export class FarmPushDO extends Agent<Env, State> {
     const others = prevSubs.filter(
       (s) => s.endpoint !== body.subscription.endpoint,
     );
+    const stored: StoredSubscription = {
+      ...body.subscription,
+      mutedCategories: body.mutedCategories,
+    };
     this.setState({
       ...this.state,
       farmId: body.farmId,
-      subscriptions: [...others, body.subscription],
+      subscriptions: [...others, stored],
       scheduled: this.state.scheduled ?? {},
       notified: this.state.notified ?? {},
     });
@@ -131,6 +138,34 @@ export class FarmPushDO extends Agent<Env, State> {
     );
     this.setState({ ...this.state, subscriptions: remaining });
     if (remaining.length === 0) await this.cleanup();
+    return Response.json({ ok: true });
+  }
+
+  private async handleCategories(request: Request): Promise<Response> {
+    const body = (await request
+      .json()
+      .catch(() => null)) as CategoriesBody | null;
+    if (
+      !body?.endpoint ||
+      typeof body.farmId !== "number" ||
+      !Array.isArray(body.mutedCategories)
+    ) {
+      return Response.json({ error: "Invalid body" }, { status: 400 });
+    }
+    const subs = this.state.subscriptions ?? [];
+    let matched = false;
+    const next = subs.map((s) => {
+      if (s.endpoint !== body.endpoint) return s;
+      matched = true;
+      return { ...s, mutedCategories: body.mutedCategories };
+    });
+    if (!matched) {
+      // The subscription may have been pruned (404/410) before the
+      // client got around to syncing its category set. Nothing to
+      // patch — let the client re-subscribe to recreate it.
+      return Response.json({ error: "Unknown endpoint" }, { status: 404 });
+    }
+    this.setState({ ...this.state, subscriptions: next });
     return Response.json({ ok: true });
   }
 
@@ -185,22 +220,34 @@ export class FarmPushDO extends Agent<Env, State> {
   // Called by Agents' alarm dispatch when a per-timer schedule fires.
   // Method name passed to this.schedule() must match this name.
   async fireTimer(payload: FirePayload): Promise<void> {
-    const { fireKey, readyAt } = payload;
+    const { fireKey, readyAt, category } = payload;
 
     // Idempotency: drop if we've already pushed for this exact
     // (fireKey, readyAt). Alarms guarantee at-least-once; the OS `tag`
     // is a second line of defence client-side.
     if (this.state.notified[fireKey] === readyAt) return;
 
-    const pushPayload: PushPayload = {
-      title: payload.title,
-      body: payload.body,
-      tag: fireKey,
-      icon: payload.icon ?? "/icons/sfl_overview-192.webp",
-      badge: "/icons/sfl_overview-badge-96.webp",
-      url: `/?farmId=${this.state.farmId ?? ""}`,
-    };
-    await this.dispatchPush(pushPayload);
+    // Per-device mute filter. Older PendingFires don't carry a
+    // category (`undefined`), so they bypass the filter and fire to
+    // every subscription — keeps in-flight schedules from disappearing
+    // on deploy.
+    const targets = category
+      ? this.state.subscriptions.filter(
+          (s) => !(s.mutedCategories ?? []).includes(category),
+        )
+      : this.state.subscriptions;
+
+    if (targets.length > 0) {
+      const pushPayload: PushPayload = {
+        title: payload.title,
+        body: payload.body,
+        tag: fireKey,
+        icon: payload.icon ?? "/icons/sfl_overview-192.webp",
+        badge: "/icons/sfl_overview-badge-96.webp",
+        url: `/?farmId=${this.state.farmId ?? ""}`,
+      };
+      await this.dispatchPush(pushPayload, targets);
+    }
 
     // Garbage-collect notified entries older than 24h.
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
@@ -285,6 +332,7 @@ export class FarmPushDO extends Agent<Env, State> {
             title: `${s.item} ready`,
             body: `${t.label} · ${t.category}`,
             icon: s.icon ?? t.icon,
+            category: t.category,
           });
         }
       } else {
@@ -299,6 +347,7 @@ export class FarmPushDO extends Agent<Env, State> {
           title: `${label} ready`,
           body: `${headline} · ${t.category}`,
           icon: t.icon,
+          category: t.category,
         });
       }
     }
@@ -320,7 +369,8 @@ export class FarmPushDO extends Agent<Env, State> {
         next.readyAt === fire.readyAt &&
         next.title === fire.title &&
         next.body === fire.body &&
-        next.icon === fire.icon;
+        next.icon === fire.icon &&
+        next.category === fire.category;
       if (!unchanged) {
         await this.cancelSchedule(fire.scheduleId).catch(() => {});
         // Don't carry over.
@@ -352,9 +402,17 @@ export class FarmPushDO extends Agent<Env, State> {
     });
   }
 
-  // Send a push to every stored subscription, pruning dead endpoints.
-  private async dispatchPush(payload: PushPayload): Promise<Response> {
-    const results = await sendAll(this.env, this.state.subscriptions, payload);
+  // Send a push to the given subscription set (defaults to every
+  // stored subscription) and prune dead endpoints. Callers narrow the
+  // target list for per-category filtering; pruning still operates on
+  // the full state.subscriptions so a 410 from a muted endpoint is
+  // never observed and the DO can't react — that's fine, the next
+  // unmuted fire will prune it.
+  private async dispatchPush(
+    payload: PushPayload,
+    targets: StoredSubscription[] = this.state.subscriptions,
+  ): Promise<Response> {
+    const results = await sendAll(this.env, targets, payload);
     const dead = new Set(
       results
         .filter((r): r is Extract<typeof r, { gone: true }> => !r.ok && r.gone)

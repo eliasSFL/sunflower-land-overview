@@ -73,6 +73,37 @@ async function handlePushUnsubscribe(
   });
 }
 
+async function handlePushCategories(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = await readJson<{
+    farmId?: number;
+    endpoint?: string;
+    mutedCategories?: string[];
+  }>(request);
+  if (
+    !body ||
+    typeof body.farmId !== "number" ||
+    !body.endpoint ||
+    !Array.isArray(body.mutedCategories)
+  ) {
+    return json(
+      { error: "Missing farmId, endpoint, or mutedCategories" },
+      { status: 400 },
+    );
+  }
+  return doStub(env, body.farmId).fetch("https://do/categories", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      farmId: body.farmId,
+      endpoint: body.endpoint,
+      mutedCategories: body.mutedCategories,
+    }),
+  });
+}
+
 async function handlePushTest(request: Request, env: Env): Promise<Response> {
   const body = await readJson<{ farmId?: number }>(request);
   if (!body || typeof body.farmId !== "number") {
@@ -171,6 +202,9 @@ export default {
     }
     if (url.pathname === "/push/unsubscribe" && method === "POST") {
       return handlePushUnsubscribe(request, env);
+    }
+    if (url.pathname === "/push/categories" && method === "POST") {
+      return handlePushCategories(request, env);
     }
     if (url.pathname === "/push/test" && method === "POST") {
       return handlePushTest(request, env);

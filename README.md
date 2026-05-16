@@ -6,23 +6,24 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 
 ## Usage
 
-1. In the game: **Settings → Developer Options → API Key** to generate your key.
-2. Open the app, enter your **Farm ID** and **API Key**.
-3. Timers refresh automatically every 60 seconds.
+1. Open the app and enter your **Farm ID** (the number next to your name in the main game).
+2. Timers refresh automatically; the floating refresh button forces an immediate fetch.
+3. Optional: open Settings → **Notifications** to subscribe to push notifications when timers come due, and pick which categories you want to be notified about.
 
-Your farm ID and API key are stored in `localStorage` on your device only — they are sent directly to `https://api.sunflower-land.com` from your browser.
+Your farm ID is stored in `localStorage` on your device only. The browser never sends an API key — the Worker mints a per-farm community key from a master secret on the server side.
 
-## Develop
+## Run locally
 
-This repo references the [sunflower-land](https://github.com/sunflower-land/sunflower-land) game source as a git submodule at `./sunflower-land/`, tracking the `main` branch. The yield-prediction service in [`src/lib/yields.ts`](src/lib/yields.ts) imports the game's harvest functions directly so estimates always match what the game would compute on harvest.
+You need **two** processes running side-by-side: the Vite dev server (SPA) and `wrangler dev` (the Cloudflare Worker, which handles `/api/farms/:id` and `/push/*`). Vite proxies those paths to `localhost:8787` ([`vite.config.ts`](vite.config.ts)).
 
-Local development uses whatever commit of `main` you fetched last; production builds (Cloudflare Pages, see below) re-fetch `main` HEAD on every deploy so the deployed yields stay aligned with the live game.
+### 1. Clone with the game submodule
+
+The game source ([sunflower-land](https://github.com/sunflower-land/sunflower-land)) is a git submodule at [`./sunflower-land/`](sunflower-land/), tracking `main`. The yield/timer extractors in [`src/timers/`](src/timers/) and [`src/game/`](src/game/) import its harvest functions directly so estimates match what the game would compute.
 
 ```sh
 git clone --recurse-submodules https://github.com/eliasSFL/sunflower-land-overview.git
 cd sunflower-land-overview
 npm install
-npm run dev
 ```
 
 If you cloned without `--recurse-submodules`:
@@ -31,48 +32,70 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --remote --depth 1
 ```
 
-To pull the latest upstream `main` after the initial clone:
+To pull the latest upstream `main` later:
 
 ```sh
 git submodule update --remote --depth 1 -- sunflower-land
 ```
 
-`tsc` surfaces any drift in the predictor calls on the next build.
+### 2. Configure environment
+
+Two files, both gitignored:
+
+```sh
+cp .env.example .env             # Vite (client) — CDN + network
+cp .dev.vars.example .dev.vars   # Wrangler (worker) — secrets
+```
+
+- `.env` — only needed if you want to override the asset CDN or talk to testnet.
+- `.dev.vars` — the Worker reads this automatically. The two things that matter for local dev:
+  - `SFL_COMMUNITY_API_KEY` — master HMAC secret used to mint per-farm community keys for `/api/farms/:id`. Without it, farm fetches return 503. For local-only experimentation you can paste a single-farm community key (in-game **Settings → Developer Options → API Key**); the Worker auto-detects that shape and uses it as-is, scoped to that one farm.
+  - `VAPID_PUBLIC` / `VAPID_PRIVATE` — only needed if you want to test push notifications. Generate a *local* keypair with `npx web-push generate-vapid-keys --json` (don't reuse the prod keys — the public key is baked into each device's subscription, so mixing dev/prod will break pushes).
+
+### 3. Start the three dev processes
+
+```sh
+# terminal 1 — Worker on :8787 (serves dist-worker/index.js, hot-reloads on rebuild)
+npm run wrangler
+
+# terminal 2 — SPA on :3000
+npm run dev
+
+# terminal 3 — rebuild the Worker bundle on every save
+npm run worker
+```
+
+Open <http://localhost:3000>. API calls (`/api/farms/:id`, `/push/*`) are forwarded to the Worker by the Vite proxy.
+
+> Why three terminals? `wrangler.jsonc`'s `main` points at the pre-built `dist-worker/index.js`. Wrangler can't run `worker/index.ts` directly because the Worker bundle relies on the path aliases, asset-CDN plugin, and submodule stubs in [`vite.worker.config.ts`](vite.worker.config.ts). `npm run worker` (a `vite build --watch`) rebuilds that bundle on save, and `wrangler dev` hot-reloads when the file changes. For a one-shot session you can skip terminal 3 and just `npm run build:worker` manually after each Worker edit.
+
+### Smoke-testing without setting up push
+
+Hit the Worker directly:
+
+```sh
+curl http://localhost:8787/api/farms/<your-farm-id>
+curl -X POST http://localhost:8787/push/categories \
+  -H 'content-type: application/json' \
+  -d '{"farmId":1,"endpoint":"https://example/x","mutedCategories":["Crops"]}'
+```
+
+A `404 Unknown endpoint` from the categories call means the route is wired correctly — there's just no subscription registered for that fake endpoint.
 
 ## Build
 
 ```sh
-npm run build
-npm run preview
+npm run build      # builds both the SPA (dist/) and the Worker (dist-worker/)
+npm run preview    # build + `wrangler dev` against the built bundle
 ```
 
 ## Stack
 
-- Vite + React + TypeScript
+- Vite + React + TypeScript (SPA)
 - Tailwind CSS v4
-- Cloudflare Pages Function for the API proxy
-
-## How the API call works
-
-`api.sunflower-land.com` only allows browser requests from a small set of `sunflower-land.com` origins. To avoid the CORS restriction without changing the API, the frontend calls a same-origin path (`/api/farms/{id}`) which is proxied to the real API:
-
-- **Locally** — handled by the Vite dev proxy in [`vite.config.ts`](vite.config.ts).
-- **In production** — handled by [`functions/api/farms/[id].ts`](functions/api/farms/%5Bid%5D.ts), a Cloudflare Pages Function. The user's API key flows through the function as a header but is never logged or stored.
-
-## Deploy (Cloudflare Pages)
-
-1. Push to GitHub (already done).
-2. In Cloudflare dashboard → Pages → "Create a project" → connect to `eliasSFL/sunflower-land-overview`.
-3. Build settings:
-   - Framework preset: **Vite**
-   - Build command: `git submodule update --init --remote --depth 1 && npm run build`
-   - Build output: `dist`
-4. Deploy. The `functions/` directory is automatically picked up — no extra config needed.
-
-> `--remote` re-fetches `main` of the sunflower-land submodule on every deploy, so each build uses the latest game source. `--depth 1` keeps the clone shallow (the upstream repo is large). The pinned commit in `.gitmodules` is only used as a fallback when `--remote` isn't set.
-
-Any other host that supports static + serverless functions (Vercel, Netlify) works too; you'd just need to port the function file to that platform's convention.
+- Cloudflare Worker with a Durable Object per farm + a D1-backed opt-in registry and a 10-minute cron sweep for push notification scheduling. See [`worker/`](worker/).
+- `vite-plugin-pwa` with a hand-rolled service worker ([`src/sw.ts`](src/sw.ts)) for `push` + `notificationclick` handlers.
 
 ## Adding new timers
 
-All timer extraction lives in [`src/lib/timers.ts`](src/lib/timers.ts). Add a new block that pulls from the relevant slice of `gameState` and pushes `{ category, label, readyAt, key }` entries — the UI will pick it up automatically.
+Each category has its own extractor in [`src/timers/`](src/timers/) (e.g. [`crops.ts`](src/timers/crops.ts), [`beehives.ts`](src/timers/beehives.ts)). Add a function that returns `Timer[]` and wire it into [`src/timers/index.ts`](src/timers/index.ts); the UI will pick it up via `CATEGORY_ORDER` automatically. See [`CLAUDE.md`](CLAUDE.md) for the rule about calling upstream helpers directly rather than re-implementing yield math.

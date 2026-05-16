@@ -34,12 +34,27 @@ export type StoredSubscription = {
     p256dh: string;
     auth: string;
   };
+  // Categories the player has explicitly silenced on this device.
+  // Absent ≡ no mutes, so newly added timer categories (upstream
+  // expansions) default to "notify" instead of getting auto-silenced.
+  // Strings rather than the typed `Category` union so a stale stored
+  // record from an older app version doesn't break parsing.
+  mutedCategories?: string[];
 };
 
 // Wire shape for /push/subscribe request bodies.
 export type SubscribeBody = {
   farmId: number;
-  subscription: StoredSubscription;
+  subscription: Omit<StoredSubscription, "mutedCategories">;
+  mutedCategories?: string[];
+};
+
+// Wire shape for /push/categories — updates the mute list on an
+// existing subscription without re-running the full subscribe flow.
+export type CategoriesBody = {
+  farmId: number;
+  endpoint: string;
+  mutedCategories: string[];
 };
 
 // Wire shape for the JSON payload pushed to the SW. Mirrors what the
@@ -62,6 +77,11 @@ export type PendingFire = {
   title: string;
   body: string;
   icon?: string;
+  // Source category (e.g. "Crops", "Beehives"). Used at fire time to
+  // skip subscriptions whose `mutedCategories` includes this value.
+  // Optional so PendingFire records persisted before this field was
+  // introduced still load — those simply fire to everyone.
+  category?: string;
   scheduleId: string;
 };
 

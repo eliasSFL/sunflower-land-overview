@@ -192,6 +192,12 @@ export function App() {
         return t.slots.some((s) => s.readyAt <= now);
       return t.readyAt <= now;
     });
+
+    out.push({
+      id: BUMPKIN_SECTION_ID,
+      label: "Bumpkin",
+      icon: CHROME_ICONS.level_up,
+    });
     if (hasReady) {
       out.push({
         id: READY_SECTION_ID,
@@ -199,11 +205,6 @@ export function App() {
         icon: CHROME_ICONS.expression_alerted,
       });
     }
-    out.push({
-      id: BUMPKIN_SECTION_ID,
-      label: "Bumpkin",
-      icon: CHROME_ICONS.level_up,
-    });
     out.push({
       id: NEXT_UP_SECTION_ID,
       label: "Next up",
