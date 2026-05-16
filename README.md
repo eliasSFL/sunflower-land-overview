@@ -9,6 +9,11 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 >
 > 🌻 **Try it live:** _TBD — replace this line with the public deployment URL before launch._
 
+<p align="center">
+  <img src="docs/screenshots/sunflower-land-overview.png" alt="Sunflower Land Overview dashboard showing crop, delivery, greenhouse, animal, and fishing timers" width="49%" />
+  <img src="docs/screenshots/sunflower-land-overview-2.png" alt="Sunflower Land Overview dashboard showing beehive, crafting, fermentation, and baking timers" width="49%" />
+</p>
+
 ## Features
 
 - **Live timers** across every major farm activity — crops, fruit, greenhouse, cooking, composters, animals, beehives, deliveries, bounties.
