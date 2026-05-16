@@ -20,10 +20,12 @@ You need **two** processes running side-by-side: the Vite dev server (SPA) and `
 
 The game source ([sunflower-land](https://github.com/sunflower-land/sunflower-land)) is a git submodule at [`./sunflower-land/`](sunflower-land/), tracking `main`. The yield/timer extractors in [`src/timers/`](src/timers/) and [`src/game/`](src/game/) import its harvest functions directly so estimates match what the game would compute.
 
+This project uses **Yarn Classic (1.x)**. Install it with `npm i -g yarn` if you don't have it yet.
+
 ```sh
 git clone --recurse-submodules https://github.com/eliasSFL/sunflower-land-overview.git
 cd sunflower-land-overview
-npm install
+yarn install
 ```
 
 If you cloned without `--recurse-submodules`:
@@ -56,18 +58,18 @@ cp .dev.vars.example .dev.vars   # Wrangler (worker) — secrets
 
 ```sh
 # terminal 1 — Worker on :8787 (serves dist-worker/index.js, hot-reloads on rebuild)
-npm run wrangler
+yarn wrangler
 
 # terminal 2 — SPA on :3000
-npm run dev
+yarn dev
 
 # terminal 3 — rebuild the Worker bundle on every save
-npm run worker
+yarn worker
 ```
 
 Open <http://localhost:3000>. API calls (`/api/farms/:id`, `/push/*`) are forwarded to the Worker by the Vite proxy.
 
-> Why three terminals? `wrangler.jsonc`'s `main` points at the pre-built `dist-worker/index.js`. Wrangler can't run `worker/index.ts` directly because the Worker bundle relies on the path aliases, asset-CDN plugin, and submodule stubs in [`vite.worker.config.ts`](vite.worker.config.ts). `npm run worker` (a `vite build --watch`) rebuilds that bundle on save, and `wrangler dev` hot-reloads when the file changes. For a one-shot session you can skip terminal 3 and just `npm run build:worker` manually after each Worker edit.
+> Why three terminals? `wrangler.jsonc`'s `main` points at the pre-built `dist-worker/index.js`. Wrangler can't run `worker/index.ts` directly because the Worker bundle relies on the path aliases, asset-CDN plugin, and submodule stubs in [`vite.worker.config.ts`](vite.worker.config.ts). `yarn worker` (a `vite build --watch`) rebuilds that bundle on save, and `wrangler dev` hot-reloads when the file changes. For a one-shot session you can skip terminal 3 and just `yarn build:worker` manually after each Worker edit.
 
 ### Smoke-testing without setting up push
 
@@ -85,9 +87,20 @@ A `404 Unknown endpoint` from the categories call means the route is wired corre
 ## Build
 
 ```sh
-npm run build      # builds both the SPA (dist/) and the Worker (dist-worker/)
-npm run preview    # build + `wrangler dev` against the built bundle
+yarn build      # builds both the SPA (dist/) and the Worker (dist-worker/)
+yarn preview    # `wrangler dev` against the most recent build in dist/ and dist-worker/
+yarn deploy     # `wrangler deploy` against the most recent build (run `yarn build` first)
 ```
+
+## Deploy
+
+Production deploys run on **Cloudflare Workers Builds** (dashboard → Workers & Pages → this project → Settings → Build), git-connected to the repo:
+
+- **Build command:** `yarn build`
+- **Deploy command:** `npx wrangler deploy`
+- **Version command:** `npx wrangler versions upload`
+
+Cloudflare auto-detects yarn from `yarn.lock` and runs `yarn install` before the build command. That triggers the `postinstall` hook, which shallow-clones the `sunflower-land` submodule at the pinned SHA — so deploys are reproducible (same parent commit → same artifact). [`.github/workflows/bump-sunflower-land-submodule.yml`](.github/workflows/bump-sunflower-land-submodule.yml) auto-bumps that SHA daily; trigger it manually via `workflow_dispatch` before a deploy if you need the very latest game logic.
 
 ## Stack
 
