@@ -12,6 +12,12 @@ export type {
 } from "features/game/types/fruits";
 export type { FlowerName } from "features/game/types/flowers";
 export type { GreenHouseCropName } from "features/game/types/crops";
+export type { TreeName, RockName } from "features/game/types/resources";
+export type {
+  FruitCompostName,
+  CropCompostName,
+  GreenhouseCompostName,
+} from "features/game/types/composters";
 
 export type {
   // Crops
@@ -58,9 +64,19 @@ export type {
   CraftingQueueItem,
   // Root
   GameState,
+  // Boost / critical-hit unions
+  BoostName,
+  CriticalHitName,
+  // Inventory key union
+  InventoryItemName,
+  // AOE bookkeeping returned by upstream yield helpers, threaded
+  // through batch loops so an AOE that fired on plot N can't fire
+  // again on plot N+1.
+  AOE,
 } from "features/game/types/game";
 
 export type { AnimalType, AnimalLevel } from "features/game/types/animals";
+export type { BumpkinItem } from "features/game/types/bumpkin";
 export type {
   CookingBuildingName,
   ProcessingBuildingName,
@@ -68,7 +84,7 @@ export type {
 } from "features/game/types/buildings";
 export type { CookableName } from "features/game/types/consumables";
 export type { ProcessedResource } from "features/game/types/processedFood";
-export type { ComposterName } from "features/game/types/composters";
+export type { ComposterName, Worm } from "features/game/types/composters";
 export type {
   AgingShed,
   AgingRackSlot,
@@ -77,12 +93,22 @@ export type {
 } from "features/game/lib/agingShed";
 export type { FermentationRecipeName } from "features/game/types/fermentation";
 export type { SpiceRackRecipeName } from "features/game/types/spiceRack";
-export type { FishName } from "features/game/types/fishing";
-
+export type {
+  FishName,
+  AgedFishName,
+  PrimeAgedFishName,
+} from "features/game/types/fishing";
+export type { FarmActivityName } from "features/game/types/farmActivity";
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";
 import type { GreenHouseFruitName } from "features/game/types/fruits";
 import type { GameState } from "features/game/types/game";
+// BoostName subtypes — each branch of the BoostName union has its own
+// dictionary (CALENDAR_EVENT_ICONS, BUMPKIN_REVAMP_SKILL_TREE, …) so
+// the icon resolver narrows to these to look up images.
+export type { BumpkinRevampSkillName } from "features/game/types/bumpkinSkills";
+export type { BudNFTName } from "features/game/types/marketplace";
+export type { SeasonalEventName } from "features/game/types/calendar";
 
 export type GreenhousePlantName = GreenHouseCropName | GreenHouseFruitName;
 

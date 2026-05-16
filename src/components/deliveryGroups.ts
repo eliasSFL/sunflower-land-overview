@@ -12,7 +12,7 @@ export function getActiveDeliveryGroups(
   state: GameState,
   now: number,
 ): Record<DeliveryBucket, Order[]> {
-  const all = (state.delivery?.orders ?? []) as Order[];
+  const all = state.delivery?.orders ?? [];
   const visible = all
     .filter((o) => o.completedAt !== undefined || now >= o.readyAt)
     .sort((a, b) => {

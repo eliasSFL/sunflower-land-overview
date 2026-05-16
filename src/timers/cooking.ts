@@ -1,15 +1,39 @@
 import {
+  COOKABLES,
   getBoostIcon,
   getCookingAmount,
   getItemIcon,
   getProcessedResourceAmount,
+  PROCESSED_RESOURCES,
+  type BoostName,
   type BuildingName,
   type BuildingProduct,
+  type CookableName,
+  type FarmActivityName,
   type GameState,
   type PlacedItem,
   type ProcessedResource,
 } from "../game/index.ts";
-import type { Boost, Timer, TimerContext } from "./types.ts";
+import type { Boost, Category, Timer, TimerContext } from "./types.ts";
+import { COOKING_BUILDING_CATEGORIES } from "./types.ts";
+
+// `BuildingProduct.name` is `CookableName | ProcessedResource`; these
+// guards narrow it without a cast, using the upstream lookup tables
+// that already enumerate each side of the union.
+const isCookable = (
+  name: CookableName | ProcessedResource,
+): name is CookableName => name in COOKABLES;
+const isProcessedResource = (
+  name: CookableName | ProcessedResource,
+): name is ProcessedResource => name in PROCESSED_RESOURCES;
+
+// Cooking-building names overlap with the Category union (Fire Pit,
+// Bakery, … as well as Fish Market). The card-emitting loop pushes
+// `slot.building` into `category`; this guard proves the subset.
+const isCookingTimerCategory = (
+  name: BuildingName,
+): name is BuildingName & Category =>
+  (COOKING_BUILDING_CATEGORIES as readonly string[]).includes(name);
 
 // One Timer per queue slot — mirrors the Crafting Box pattern so each
 // recipe gets its own row inside the building's panel (the panel itself
@@ -82,7 +106,7 @@ function collectRawSlots(state: GameState): {
   };
 
   for (const name of COOKING_BUILDINGS) {
-    const instances = (state.buildings?.[name] ?? []) as PlacedItem[];
+    const instances = state.buildings?.[name] ?? [];
     instances.forEach((inst, idx) => {
       const queue = inst.crafting ?? [];
       const instanceKey = inst.id ?? `${idx}`;
@@ -102,8 +126,7 @@ function collectRawSlots(state: GameState): {
     });
   }
 
-  const fishMarkets = (state.buildings?.[PROCESSING_BUILDING] ??
-    []) as PlacedItem[];
+  const fishMarkets = state.buildings?.[PROCESSING_BUILDING] ?? [];
   fishMarkets.forEach((inst, idx) => {
     const queue = inst.processing ?? [];
     const instanceKey = inst.id ?? `${idx}`;
@@ -126,7 +149,7 @@ function collectRawSlots(state: GameState): {
 }
 
 function toBoosts(
-  raw: ReadonlyArray<{ name: string; value: string }>,
+  raw: ReadonlyArray<{ name: BoostName; value: string }>,
   state: GameState,
 ): Boost[] | undefined {
   if (raw.length === 0) return undefined;
@@ -165,13 +188,9 @@ export function extractCookingTimers(
     let amount = 1;
     let boosts: Boost[] | undefined;
 
-    if (slot.kind === "cooking") {
-      const base =
-        cookCounter[recipeName] ??
-        (farmActivity as Record<string, number | undefined>)[
-          `${recipeName} Cooked`
-        ] ??
-        0;
+    if (slot.kind === "cooking" && isCookable(recipeName)) {
+      const activityKey = `${recipeName} Cooked` satisfies FarmActivityName;
+      const base = cookCounter[recipeName] ?? farmActivity[activityKey] ?? 0;
       try {
         const result = getCookingAmount({
           building: slot.building,
@@ -186,17 +205,14 @@ export function extractCookingTimers(
         // Fall back to the initial amount=1 set above.
       }
       cookCounter[recipeName] = base + 1;
-    } else {
+    } else if (slot.kind === "processing" && isProcessedResource(recipeName)) {
+      const activityKey = `${recipeName} Processed` satisfies FarmActivityName;
       const base =
-        processedCounter[recipeName] ??
-        (farmActivity as Record<string, number | undefined>)[
-          `${recipeName} Processed`
-        ] ??
-        0;
+        processedCounter[recipeName] ?? farmActivity[activityKey] ?? 0;
       try {
         const result = getProcessedResourceAmount({
           game: state,
-          resource: recipeName as ProcessedResource,
+          resource: recipeName,
           farmId: ctx.farmId,
           counter: base,
         });
@@ -218,11 +234,12 @@ export function extractCookingTimers(
   // recipe icon the card icon, and the unique aggregationKey keeps
   // identical recipes in different queue positions as separate cards.
   for (const slot of rawSlots) {
+    if (!isCookingTimerCategory(slot.building)) continue;
     const p = predicted.get(slotKey(slot));
     const amount = p?.amount ?? 1;
     out.push({
       id: `cooking:${slot.building}:${slot.instanceKey}:slot:${slot.slotIdx}`,
-      category: slot.building as Timer["category"],
+      category: slot.building,
       label: slot.recipe.name,
       icon: getItemIcon(slot.recipe.name),
       readyAt: slot.recipe.readyAt,
@@ -236,9 +253,10 @@ export function extractCookingTimers(
   // section panel still renders with a "Not cooking" body. Matches the
   // Crafting Box pattern.
   for (const { building, instanceKey } of idleBuildings) {
+    if (!isCookingTimerCategory(building)) continue;
     out.push({
       id: `cooking:${building}:${instanceKey}:idle`,
-      category: building as Timer["category"],
+      category: building,
       label: building,
       icon: getItemIcon(building),
       readyAt: 0,

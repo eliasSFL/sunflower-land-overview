@@ -3,13 +3,38 @@ import {
   getAnimalLevel,
   getBoostIcon,
   getItemIcon,
+  getKeys,
   getResourceDropAmount,
   type Animal,
   type AnimalResource,
   type AnimalType,
   type AnimalLevel,
+  type BoostName,
   type GameState,
 } from "../game/index.ts";
+
+// AnimalLevel is a numeric literal union 0..15. `satisfies` verifies
+// every key + value stays inside that union, so `NEXT_LEVEL[current]`
+// is statically typed as AnimalLevel — no `as` cast needed when
+// stepping from the current level to the next.
+const NEXT_ANIMAL_LEVEL = {
+  0: 1,
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5,
+  5: 6,
+  6: 7,
+  7: 8,
+  8: 9,
+  9: 10,
+  10: 11,
+  11: 12,
+  12: 13,
+  13: 14,
+  14: 15,
+  15: 15,
+} as const satisfies Record<AnimalLevel, AnimalLevel>;
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // One Timer per (animal, resource at the animal's current level). The
@@ -33,7 +58,7 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // current level + boosts.
 
 function toBoosts(
-  raw: ReadonlyArray<{ name: string; value: string }>,
+  raw: ReadonlyArray<{ name: BoostName; value: string }>,
   state: GameState,
 ): Boost[] | undefined {
   if (raw.length === 0) return undefined;
@@ -48,13 +73,13 @@ function* iterAnimals(state: GameState): Iterable<Animal> {
   const henHouse = state.henHouse;
   if (henHouse?.animals) {
     for (const animal of Object.values(henHouse.animals)) {
-      yield animal as Animal;
+      yield animal;
     }
   }
   const barn = state.barn;
   if (barn?.animals) {
     for (const animal of Object.values(barn.animals)) {
-      yield animal as Animal;
+      yield animal;
     }
   }
 }
@@ -77,11 +102,12 @@ export function extractAnimalTimers(
     // and the state only flips to "ready" when a feed crosses a level
     // threshold, so the claim-time level is at least current + 1.
     const currentLevel = getAnimalLevel(animal.experience, type);
-    const level = (
-      animal.state === "ready" ? currentLevel : Math.min(currentLevel + 1, 15)
-    ) as AnimalLevel;
+    const level: AnimalLevel =
+      animal.state === "ready"
+        ? currentLevel
+        : NEXT_ANIMAL_LEVEL[currentLevel];
     const drops = ANIMAL_RESOURCE_DROP[type][level];
-    const resources = Object.keys(drops) as AnimalResource[];
+    const resources = getKeys(drops);
     // Level 0 = no drop table entries; nothing meaningful to surface yet.
     if (resources.length === 0) continue;
 

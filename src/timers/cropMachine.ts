@@ -16,8 +16,7 @@ export function extractCropMachineTimers(
   state: GameState,
   ctx: TimerContext,
 ): Timer[] {
-  const machines = (state.buildings?.["Crop Machine"] ??
-    []) as CropMachineBuilding[];
+  const machines = state.buildings?.["Crop Machine"] ?? [];
   if (machines.length === 0) return [];
 
   type PackEntry = {

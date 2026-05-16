@@ -1,9 +1,4 @@
-import {
-  getItemIcon,
-  type CraftingQueueItem,
-  type GameState,
-  type PlacedItem,
-} from "../game/index.ts";
+import { getItemIcon, type GameState } from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 // One Timer per queue slot in the Crafting Box. Unlike cooking
@@ -21,12 +16,11 @@ export function extractCraftingBoxTimers(
 ): Timer[] {
   // Skip if the box isn't placed. State carries `craftingBox` even when
   // the building isn't built yet.
-  const placedBuildings = (state.buildings?.[BUILDING_NAME] ??
-    []) as PlacedItem[];
+  const placedBuildings = state.buildings?.[BUILDING_NAME] ?? [];
   const placed = placedBuildings.some((b) => !!b.coordinates);
   if (!placed) return [];
 
-  const queue = (state.craftingBox?.queue ?? []) as CraftingQueueItem[];
+  const queue = state.craftingBox?.queue ?? [];
 
   if (queue.length === 0) {
     return [

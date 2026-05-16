@@ -16,16 +16,21 @@ import { KNOWN_IDS } from "features/game/types";
 import { getBoostIcon, getBoostLabel } from "./icons.ts";
 
 import type {
+  BoostName,
   CropMachineQueueItem,
   CropName,
   CropPlot,
   FiniteResource,
+  FruitCompostName,
   GameState,
+  GreenhouseCompostName,
   GreenhousePlantName,
   OilReserve,
   PatchFruitName,
   Rock,
+  RockName,
   Tree,
+  TreeName,
 } from "./types.ts";
 
 export type CropYieldArgs = {
@@ -37,7 +42,7 @@ export type CropYieldArgs = {
 };
 
 export type YieldBoost = {
-  name: string;
+  name: BoostName;
   value: string;
   icon: string;
   label: string;
@@ -48,21 +53,20 @@ export type CropYieldResult = {
   boosts: YieldBoost[];
 };
 
-function normBoosts(raw: unknown, state: GameState): YieldBoost[] {
-  if (!Array.isArray(raw)) return [];
-  const out: YieldBoost[] = [];
-  for (const b of raw) {
-    if (b && typeof b === "object" && "name" in b && "value" in b) {
-      const name = String((b as { name: unknown }).name);
-      out.push({
-        name,
-        value: String((b as { value: unknown }).value),
-        icon: getBoostIcon(name, state),
-        label: getBoostLabel(name),
-      });
-    }
-  }
-  return out;
+// Attach icon + label (resolved against `state`) to each boost in the
+// upstream `boostsUsed` array. The `| undefined` accommodates fallback
+// branches where we don't have a real upstream result to forward.
+function normBoosts(
+  raw: { name: BoostName; value: string }[] | undefined,
+  state: GameState,
+): YieldBoost[] {
+  if (!raw) return [];
+  return raw.map(({ name, value }) => ({
+    name,
+    value,
+    icon: getBoostIcon(name, state),
+    label: getBoostLabel(name),
+  }));
 }
 
 export function getCropYieldAmount(args: CropYieldArgs): CropYieldResult {
@@ -76,17 +80,12 @@ export function getCropYieldAmount(args: CropYieldArgs): CropYieldResult {
 export type PatchFruitYieldArgs = {
   name: PatchFruitName;
   game: GameState;
-  fertiliser?: string;
+  fertiliser?: FruitCompostName;
   prngArgs?: { farmId: number; counter: number };
 };
 
 export function getPatchFruitYield(args: PatchFruitYieldArgs): CropYieldResult {
-  // `fertiliser` is a literal union upstream (FruitCompostName) — at our
-  // boundary we accept any string and let upstream tolerate unknown
-  // values rather than threading the union through every caller.
-  const result = upstreamGetFruitYield(
-    args as Parameters<typeof upstreamGetFruitYield>[0],
-  );
+  const result = upstreamGetFruitYield(args);
   return {
     amount: Number(result?.amount ?? 0),
     boosts: normBoosts(result?.boostsUsed, args.game),
@@ -98,13 +97,11 @@ export type GreenhouseYieldArgs = {
   game: GameState;
   createdAt: number;
   prngArgs: { farmId: number; counter: number };
-  fertiliser?: string;
+  fertiliser?: GreenhouseCompostName;
 };
 
 export function getGreenhouseYield(args: GreenhouseYieldArgs): CropYieldResult {
-  const result = upstreamGetGreenhouseYield(
-    args as Parameters<typeof upstreamGetGreenhouseYield>[0],
-  );
+  const result = upstreamGetGreenhouseYield(args);
   return {
     amount: Number(result?.amount ?? 0),
     boosts: normBoosts(result?.boostsUsed, args.game),
@@ -143,13 +140,12 @@ export function getCropMachinePackYield(
 // seed `counter` upstream. Defaults mirror the upstream branches:
 //   tree → "Tree" (chop.ts:403, but counter key uses "Basic Tree Chopped")
 //   stone → "Stone Rock"  iron → "Iron Rock"  gold → "Gold Rock"
-const lookupId = (name: string): number =>
-  (KNOWN_IDS as Record<string, number>)[name] ?? 0;
+const lookupId = (name: TreeName | RockName): number => KNOWN_IDS[name] ?? 0;
 
 export type WoodYieldArgs = {
   game: GameState;
   tree: Tree;
-  treeName: string;
+  treeName: TreeName;
   farmId: number;
   counter: number;
 };
@@ -171,7 +167,7 @@ export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
 export type StoneYieldArgs = {
   game: GameState;
   rock: Rock;
-  rockName: string;
+  rockName: RockName;
   id: string;
   createdAt: number;
   farmId: number;
@@ -197,7 +193,7 @@ export function getStoneYield(args: StoneYieldArgs): CropYieldResult {
 export type IronYieldArgs = {
   game: GameState;
   rock: Rock;
-  rockName: string;
+  rockName: RockName;
   createdAt: number;
   farmId: number;
   counter: number;
@@ -221,7 +217,7 @@ export function getIronYield(args: IronYieldArgs): CropYieldResult {
 export type GoldYieldArgs = {
   game: GameState;
   rock: Rock;
-  rockName: string;
+  rockName: RockName;
   createdAt: number;
   farmId: number;
   counter: number;

@@ -8,9 +8,7 @@ import {
   getMaxSpiceRackSlots,
   getAgingSlotCount,
   type BuildingName,
-  type CropMachineBuilding,
   type GameState,
-  type PlacedItem,
 } from "../game/index.ts";
 import type { AggregatedTimer, Category } from "../timers/index.ts";
 
@@ -20,8 +18,7 @@ const MAX_CRAFTING_BOX_SLOTS_VIP = 4;
 const MAX_CRAFTING_BOX_SLOTS_FREE = 1;
 
 // Each cooking building category name is also its BuildingName upstream
-// — the cast in `cookingBuildingFree` is what keeps TS happy on the
-// `state.buildings[name]` lookup.
+// — the intersection keeps `state.buildings[name]` lookups well-typed.
 const COOKING_BUILDINGS: readonly (Category & BuildingName)[] = [
   "Fire Pit",
   "Bakery",
@@ -44,7 +41,7 @@ function cookingBuildingFree(
   building: BuildingName,
   now: number,
 ): number {
-  const instances = (state.buildings?.[building] ?? []) as PlacedItem[];
+  const instances = state.buildings?.[building] ?? [];
   if (instances.length === 0) return 0;
   const maxPerBuilding = hasVipAccess({ game: state, now })
     ? MAX_COOKING_SLOTS
@@ -59,7 +56,7 @@ function cookingBuildingFree(
 }
 
 function fishMarketFree(state: GameState, now: number): number {
-  const instances = (state.buildings?.["Fish Market"] ?? []) as PlacedItem[];
+  const instances = state.buildings?.["Fish Market"] ?? [];
   if (instances.length === 0) return 0;
   const maxPerBuilding = hasVipAccess({ game: state, now })
     ? MAX_FISH_PROCESSING_SLOTS
@@ -74,8 +71,7 @@ function fishMarketFree(state: GameState, now: number): number {
 }
 
 function cropMachineFree(state: GameState): number {
-  const machines = (state.buildings?.["Crop Machine"] ??
-    []) as CropMachineBuilding[];
+  const machines = state.buildings?.["Crop Machine"] ?? [];
   if (machines.length === 0) return 0;
   const maxQueue = MAX_CROP_MACHINE_QUEUE_SIZE(state);
   let free = 0;
@@ -91,7 +87,7 @@ function craftingBoxFree(state: GameState, now: number): number {
   // top-level `state.craftingBox.queue` rather than on the placed
   // building (unlike cooking buildings). See startCrafting.ts which
   // reads `copy.craftingBox.queue` to gate `availableSlots`.
-  const instances = (state.buildings?.["Crafting Box"] ?? []) as PlacedItem[];
+  const instances = state.buildings?.["Crafting Box"] ?? [];
   if (!instances.some((b) => !!b.coordinates)) return 0;
   const maxSlots = hasVipAccess({ game: state, now })
     ? MAX_CRAFTING_BOX_SLOTS_VIP
@@ -106,7 +102,7 @@ function agingShedRacks(state: GameState): AgingRack[] {
   // Mirror the placement check in agingShed.ts: a shed listed under
   // `buildings["Aging Shed"]` without `coordinates` is mid-move / not
   // on the land and shouldn't count as engaged.
-  const placedItems = (state.buildings?.["Aging Shed"] ?? []) as PlacedItem[];
+  const placedItems = state.buildings?.["Aging Shed"] ?? [];
   if (!placedItems.some((b) => !!b.coordinates)) return [];
   const shed = state.agingShed;
   if (!shed) return [];

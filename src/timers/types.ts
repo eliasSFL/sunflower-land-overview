@@ -1,3 +1,18 @@
+import type {
+  BoostName,
+  BumpkinItem,
+  InventoryItemName,
+} from "../game/index.ts";
+
+// The `item` displayed on a TimerCard / TimerSlot row. Every extractor
+// resolves it to an InventoryItemName (crops, recipes, resources,
+// composted outputs, ...) or a BumpkinItem (Crafting Box wearables) —
+// with one intentional exception. Salt nodes display "N Salt Charged"
+// in the headline to convey that the stored count needs raking; the
+// per-rake "Salt" name would lose that meaning. Threading the literal
+// through the union keeps the type honest without forcing a UX change.
+export type TimerItemName = InventoryItemName | BumpkinItem | "Salt Charged";
+
 export type Category =
   | "Crops"
   | "Fruit Patches"
@@ -68,17 +83,17 @@ export const CATEGORY_ORDER: Category[] = [
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
-// BoostName from the submodule; `value` is the formatted contribution
-// (e.g. "+0.2", "x1.2"). We keep this as plain strings so callers don't
-// need to import BoostName. `icon` is resolved at extraction time via
-// the same upstream helper BoostsDisplay uses; empty string when the
-// resolver returns nothing (rare — usually the lightning fallback).
-// `label` is the display string (startCased / translated upstream).
-// `weight` is the per-node multiplier (innate Tree/Rock `multiplier` —
-// ancient trees, upgraded rocks, etc.); absent ≡ 1. The aggregator
-// sums weights into the `count` shown on the right of each row.
+// BoostName from the submodule (collectible / wearable / skill / bud /
+// seasonal-event); `value` is the formatted contribution (e.g. "+0.2",
+// "x1.2"). `icon` is resolved at extraction time via the same upstream
+// helper BoostsDisplay uses; empty string when the resolver returns
+// nothing (rare — usually the lightning fallback). `label` is the
+// display string (startCased / translated upstream). `weight` is the
+// per-node multiplier (innate Tree/Rock `multiplier` — ancient trees,
+// upgraded rocks, etc.); absent ≡ 1. The aggregator sums weights into
+// the `count` shown on the right of each row.
 export type Boost = {
-  name: string;
+  name: BoostName;
   value: string;
   icon?: string;
   label?: string;
@@ -97,7 +112,7 @@ export type AggregatedBoost = Boost & { count: number };
 // — TimerCard mirrors the chevron pattern it uses for card-level
 // boosts.
 export type TimerSlot = {
-  item: string;
+  item: TimerItemName;
   icon?: string;
   amount: number;
   readyAt: number;
@@ -110,7 +125,7 @@ export type Timer = {
   label: string;
   icon?: string;
   readyAt: number;
-  predictedYield?: { amount: number; item: string };
+  predictedYield?: { amount: number; item: TimerItemName };
   // When present, the card renders the slot list (one row per slot)
   // instead of a single yield headline. Used by cooking buildings where
   // one building card holds multiple queued recipes.

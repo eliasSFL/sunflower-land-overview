@@ -7,10 +7,12 @@ import {
   getBoostLabel,
   getChapterTicket,
   getItemIcon,
+  getObjectEntries,
   getOrderSellPrice,
+  isCollectible,
   isTicketNPC,
+  type BoostName,
   type GameState,
-  type NPCName,
   type Order,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
@@ -125,12 +127,16 @@ type RowProps = { order: Order; state: GameState; now: number };
 function DeliveryRow({ order, state, now }: RowProps) {
   // `items` is a sparse record — typically a single key for one
   // required item, but the upstream type allows multiple.
-  const itemEntries = Object.entries(order.items) as [string, number][];
+  const itemEntries = getObjectEntries(order.items);
   const isCompleted = !!order.completedAt;
   // Order ingredients can be regular inventory items (Crimstone, Sunflower)
   // or one of two currency keys ("coins", "sfl") that live on top-level
   // GameState fields with their own icons.
-  const ingredients = itemEntries.map(([name, required]) => {
+  const ingredients = itemEntries.map(([name, rawRequired]) => {
+    // `order.items` is a sparse Partial — for keys present here the
+    // value is a number, so a missing entry is a malformed save. Default
+    // to 0 so the UI degrades gracefully rather than rendering NaN.
+    const required = rawRequired ?? 0;
     let have: number;
     let icon: string;
     if (name === "coins") {
@@ -139,9 +145,11 @@ function DeliveryRow({ order, state, now }: RowProps) {
     } else if (name === "sfl") {
       have = state.balance.toNumber();
       icon = CHROME_ICONS.flower_token;
+    } else if (isCollectible(name)) {
+      have = state.inventory[name]?.toNumber() ?? 0;
+      icon = getItemIcon(name);
     } else {
-      have =
-        state.inventory[name as keyof typeof state.inventory]?.toNumber() ?? 0;
+      have = state.wardrobe[name] ?? 0;
       icon = getItemIcon(name);
     }
     return { name, required, have, icon, met: have >= required };
@@ -151,7 +159,7 @@ function DeliveryRow({ order, state, now }: RowProps) {
   return (
     <li className="flex items-start justify-between gap-3">
       <div className="flex items-start gap-2 min-w-0">
-        <NPCIcon npc={order.from as NPCName} />
+        <NPCIcon npc={order.from} />
         <div className="flex flex-col min-w-0 gap-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm capitalize">{order.from}</span>
@@ -209,14 +217,11 @@ function DeliveryReward({ order, state, now }: RowProps) {
   // computes it at claim time from VIP, chapter boost items, and the
   // Double Delivery calendar event. Call `generateDeliveryTickets`
   // ourselves and render the current chapter's token icon.
-  const rewardItems = Object.entries(order.reward.items ?? {}) as [
-    string,
-    number,
-  ][];
+  const rewardItems = getObjectEntries(order.reward.items ?? {});
 
   let coinAmount: number | undefined;
   let sflAmount: number | undefined;
-  let boostsUsed: { name: string; value: string }[] = [];
+  let boostsUsed: { name: BoostName; value: string }[] = [];
   if (order.reward.coins) {
     const { reward, boostsUsed: bu } = getOrderSellPrice<number>(
       state,
@@ -235,7 +240,7 @@ function DeliveryReward({ order, state, now }: RowProps) {
     boostsUsed = bu;
   }
 
-  const npc = order.from as NPCName;
+  const npc = order.from;
   const ticketResult = isTicketNPC(npc)
     ? generateDeliveryTickets({ game: state, npc, now })
     : { amount: 0, boostsUsed: [] };
@@ -269,21 +274,24 @@ function DeliveryReward({ order, state, now }: RowProps) {
           {formatYield(sflAmount)}
         </span>
       ) : null}
-      {rewardItems.map(([name, amount]) => (
-        <span
-          key={name}
-          className="flex items-center gap-1 whitespace-nowrap"
-        >
-          <img
-            src={getItemIcon(name)}
-            alt=""
-            aria-hidden
-            className="h-4 w-4 shrink-0 object-contain"
-            style={{ imageRendering: "pixelated" }}
-          />
-          {formatYield(amount)}
-        </span>
-      ))}
+      {rewardItems.map(([name, amount]) => {
+        if (!amount) return null;
+        return (
+          <span
+            key={name}
+            className="flex items-center gap-1 whitespace-nowrap"
+          >
+            <img
+              src={getItemIcon(name)}
+              alt=""
+              aria-hidden
+              className="h-4 w-4 shrink-0 object-contain"
+              style={{ imageRendering: "pixelated" }}
+            />
+            {formatYield(amount)}
+          </span>
+        );
+      })}
       {ticketName ? (
         <span className="flex items-center gap-1 whitespace-nowrap">
           <img

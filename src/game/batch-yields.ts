@@ -29,6 +29,8 @@ import { KNOWN_IDS } from "features/game/types";
 import { getBoostIcon, getBoostLabel } from "./icons.ts";
 
 import type {
+  AOE,
+  BoostName,
   CropName,
   CropPlot,
   FiniteResource,
@@ -39,15 +41,18 @@ import type {
   OilReserve,
   PatchFruitName,
   Rock,
+  RockName,
   Tree,
+  TreeName,
 } from "./types.ts";
+import type { FarmActivityName } from "features/game/types/farmActivity.ts";
 
 // Per-node yield prediction. `boosts` lists every boost the upstream
 // reported via `boostsUsed`; empty array if none fired. Icons + labels
 // are resolved here (same `state` we already have) so downstream UI
 // doesn't need to know about GameState.
 export type YieldBoost = {
-  name: string;
+  name: BoostName;
   value: string;
   icon: string;
   label: string;
@@ -67,29 +72,28 @@ export type YieldEntry = {
 
 export type YieldMap = Map<string, YieldEntry>;
 
-const lookupId = (name: string): number =>
-  (KNOWN_IDS as Record<string, number>)[name] ?? 0;
+const lookupId = (name: TreeName | RockName): number => KNOWN_IDS[name] ?? 0;
 
-const farmActivity = (state: GameState): Record<string, number | undefined> =>
-  (state.farmActivity ?? {}) as Record<string, number | undefined>;
+const farmActivity = (
+  state: GameState,
+): Partial<Record<FarmActivityName, number>> => state.farmActivity;
 
-// Normalize upstream `boostsUsed` (might be missing/non-array on
-// fallback paths) and attach icon + label resolved against `state`.
-function normBoosts(raw: unknown, state: GameState): YieldBoost[] {
-  if (!Array.isArray(raw)) return [];
-  const out: YieldBoost[] = [];
-  for (const b of raw) {
-    if (b && typeof b === "object" && "name" in b && "value" in b) {
-      const name = String((b as { name: unknown }).name);
-      out.push({
-        name,
-        value: String((b as { value: unknown }).value),
-        icon: getBoostIcon(name, state),
-        label: getBoostLabel(name),
-      });
-    }
-  }
-  return out;
+// Attach icon + label (resolved against `state`) to each boost in the
+// upstream `boostsUsed` array. Every upstream yield function returns
+// this as a typed `{ name: BoostName; value: string }[]`; the
+// `| undefined` accommodates fallback branches where we don't have a
+// real upstream result to forward.
+function normBoosts(
+  raw: { name: BoostName; value: string }[] | undefined,
+  state: GameState,
+): YieldBoost[] {
+  if (!raw) return [];
+  return raw.map(({ name, value }) => ({
+    name,
+    value,
+    icon: getBoostIcon(name, state),
+    label: getBoostLabel(name),
+  }));
 }
 
 // Tag every boost on a resource node with the node's innate multiplier.
@@ -153,7 +157,7 @@ export function batchCropYields(args: {
       if (upstream?.aoe) {
         // Carry the mutated aoe forward so an AOE that fired on this
         // plot can't fire again on the next plot in the same area.
-        workingGame = { ...workingGame, aoe: upstream.aoe } as GameState;
+        workingGame = { ...workingGame, aoe: upstream.aoe };
       }
     } catch {
       result.set(plotId, { amount: 1, boosts: [] });
@@ -190,7 +194,7 @@ export function batchPatchFruitYields(args: {
       const upstream = upstreamGetFruitYield({
         name: fruitName,
         game,
-        fertiliser: patch.fertiliser?.name as never,
+        fertiliser: patch.fertiliser?.name,
         prngArgs: { farmId, counter },
       });
       result.set(patchId, {
@@ -233,7 +237,7 @@ export function batchGreenhouseYields(args: {
         crop: plantName,
         game,
         createdAt,
-        fertiliser: pot.fertiliser?.name as never,
+        fertiliser: pot.fertiliser?.name,
         prngArgs: { farmId, counter },
       });
       result.set(potId, {
@@ -253,14 +257,14 @@ export function batchGreenhouseYields(args: {
 
 export function batchWoodYields(args: {
   game: GameState;
-  treeName: string;
+  treeName: TreeName;
   trees: Array<{ nodeId: string; tree: Tree }>;
   farmId: number;
 }): YieldMap {
   const { game, treeName, trees, farmId } = args;
   const result: YieldMap = new Map();
 
-  const activityKey = `${treeName === "Tree" ? "Basic Tree" : treeName} Chopped`;
+  const activityKey: FarmActivityName = `${treeName === "Tree" ? "Basic Tree" : treeName} Chopped`;
   const initialCounter = farmActivity(game)[activityKey] ?? 0;
   let counter = initialCounter;
   const itemId = lookupId(treeName);
@@ -299,6 +303,10 @@ export function batchWoodYields(args: {
 // --- Stone / Iron / Gold -------------------------------------------
 // All have AOE returns.
 
+// All three upstream rock-yield fns share these args; stone has `id`
+// required while iron/gold don't accept it. Wrappers below drop the
+// `id` for the latter two so a single batch loop can call any of them
+// through this signature without a cast.
 type RockYieldUpstream = (args: {
   game: GameState;
   rock: Rock;
@@ -306,14 +314,18 @@ type RockYieldUpstream = (args: {
   farmId: number;
   counter: number;
   itemId: number;
-  id?: string;
-}) => { amount: unknown; aoe?: unknown; boostsUsed?: unknown };
+  id: string;
+}) => {
+  amount: number | { toNumber: () => number };
+  aoe?: AOE;
+  boostsUsed?: { name: BoostName; value: string }[];
+};
 
 function batchRockYields(
   upstreamFn: RockYieldUpstream,
   args: {
     game: GameState;
-    rockName: string;
+    rockName: RockName;
     rocks: Array<{ nodeId: string; rock: Rock; createdAt: number }>;
     farmId: number;
   },
@@ -350,10 +362,7 @@ function batchRockYields(
         ),
       });
       if (upstream?.aoe) {
-        workingGame = {
-          ...workingGame,
-          aoe: upstream.aoe,
-        } as GameState;
+        workingGame = { ...workingGame, aoe: upstream.aoe };
       }
     } catch {
       result.set(nodeId, { amount: 1, boosts: [] });
@@ -363,12 +372,20 @@ function batchRockYields(
   return result;
 }
 
+// Iron / gold ignore `id` — wrapping them drops the field before the
+// upstream call so we can share `RockYieldUpstream` across all three.
+const stoneYieldFn: RockYieldUpstream = upstreamGetStoneDropAmount;
+const ironYieldFn: RockYieldUpstream = ({ id: _id, ...rest }) =>
+  upstreamGetIronDropAmount(rest);
+const goldYieldFn: RockYieldUpstream = ({ id: _id, ...rest }) =>
+  upstreamGetGoldDropAmount(rest);
+
 export const batchStoneYields = (args: Parameters<typeof batchRockYields>[1]) =>
-  batchRockYields(upstreamGetStoneDropAmount as RockYieldUpstream, args);
+  batchRockYields(stoneYieldFn, args);
 export const batchIronYields = (args: Parameters<typeof batchRockYields>[1]) =>
-  batchRockYields(upstreamGetIronDropAmount as RockYieldUpstream, args);
+  batchRockYields(ironYieldFn, args);
 export const batchGoldYields = (args: Parameters<typeof batchRockYields>[1]) =>
-  batchRockYields(upstreamGetGoldDropAmount as RockYieldUpstream, args);
+  batchRockYields(goldYieldFn, args);
 
 // --- Crimstone ------------------------------------------------------
 // No PRNG counter (yield function doesn't take prngArgs). Per node:
