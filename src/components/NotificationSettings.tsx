@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Button, Checkbox, Label } from "./ui/index.ts";
+import { Button, Checkbox, Radio, Label, SectionHeader } from "./ui/index.ts";
 import {
   canSubscribe,
   getPermissionState,
@@ -246,20 +246,21 @@ export function NotificationSettings({ farmId }: Props) {
 
   return (
     <div className="flex flex-col gap-1 text-sm">
-      <p>
-        Get a push notification when timers on your farm are ready — even while
-        the app is closed.
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Label type={enabled ? "default" : "warning"}>
-          {enabled ? "Enabled" : "Disabled"}
-        </Label>
-        {permission === "denied" ? (
-          <Label type="danger">Permission denied</Label>
-        ) : null}
-      </div>
-      {enabled ? (
-        <>
+      <section className="flex flex-col gap-2">
+        <SectionHeader>Notifications</SectionHeader>
+        <p>
+          Get a push notification when timers on your farm are ready — even
+          while the app is closed.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Label type={enabled ? "success" : "warning"}>
+            {enabled ? "Enabled" : "Disabled"}
+          </Label>
+          {permission === "denied" ? (
+            <Label type="danger">Permission denied</Label>
+          ) : null}
+        </div>
+        {enabled ? (
           <div className="flex flex-col gap-2">
             <span className="text-xs">Notify me about:</span>
             <ul className="scrollable flex flex-col gap-2 overflow-auto max-h-44 px-2">
@@ -284,29 +285,51 @@ export function NotificationSettings({ farmId }: Props) {
               })}
             </ul>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs">When tapped, open:</span>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="notification-target"
+        ) : null}
+      </section>
+      {enabled ? (
+        <>
+          <section className="flex flex-col gap-2">
+            <SectionHeader>When opened</SectionHeader>
+            <div
+              role="button"
+              tabIndex={busy ? -1 : 0}
+              onClick={() => void onChangeTarget("overview")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void onChangeTarget("overview");
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Radio
                 checked={target === "overview"}
                 onChange={() => void onChangeTarget("overview")}
                 disabled={busy}
               />
               <span>Overview (this app)</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="notification-target"
+            </div>
+            <div
+              role="button"
+              tabIndex={busy ? -1 : 0}
+              onClick={() => void onChangeTarget("play")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void onChangeTarget("play");
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Radio
                 checked={target === "play"}
                 onChange={() => void onChangeTarget("play")}
                 disabled={busy}
               />
               <span>Main game (sunflower-land.com/play)</span>
-            </label>
-          </div>
+            </div>
+          </section>
           <Button onClick={onTest} disabled={busy}>
             Send test notification
           </Button>

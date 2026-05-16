@@ -1,6 +1,9 @@
 export { OuterPanel, InnerPanel } from "./Panel.tsx";
 export { Button } from "./Button.tsx";
+export { ButtonPanel } from "./ButtonPanel.tsx";
 export { Checkbox } from "./Checkbox.tsx";
+export { Radio } from "./Radio.tsx";
 export { Label } from "./Label.tsx";
 export type { LabelType } from "./Label.tsx";
 export { Modal } from "./Modal.tsx";
+export { SectionHeader } from "./SectionHeader.tsx";
