@@ -230,10 +230,10 @@ async function handleProxyFarm(env: Env, id: string): Promise<Response> {
       { headers: { "x-api-key": key } },
     );
   } catch (err) {
+    console.error("Failed to fetch upstream farm data", { farmId: id, err });
     return json(
       {
         error: "Bad Gateway",
-        message: err instanceof Error ? err.message : String(err),
       },
       { status: 502 },
     );
