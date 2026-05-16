@@ -6,17 +6,20 @@ import { DonationAddress } from "../components/DonationAddress.tsx";
 import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
+import { IdlePanel } from "../components/IdlePanel.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
+import { buildIdleEntries } from "../lib/idle.ts";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import {
   BUMPKIN_SECTION_ID,
   DELIVERIES_COINS_SECTION_ID,
   DELIVERIES_FLOWER_SECTION_ID,
   DELIVERIES_TICKETS_SECTION_ID,
+  IDLE_SECTION_ID,
   NEXT_UP_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
@@ -35,7 +38,7 @@ import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import {
   extractAndAggregate,
   CATEGORY_ORDER,
-  COOKING_BUILDING_CATEGORIES,
+  PLACEMENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import { pullDoSnapshot } from "../notifications/snapshot.ts";
@@ -178,15 +181,16 @@ export function App() {
     return grouped;
   }, [timers]);
 
-  // Cooking buildings only show up if the player has actually placed
-  // one — otherwise we'd render a "Smoothie Shack: Not cooking" panel
+  // Cooking buildings + Aging Shed racks only show up if the player
+  // has actually placed the building — otherwise we'd render a
+  // "Smoothie Shack: Not cooking" / "Aging Rack: No fish aging" panel
   // (and a MobileNav chip) for a building they don't own. Other
   // categories (Crops, Animals, …) always render so the panel still
   // serves as a "you could be doing this" reminder when idle.
   const visibleCategories = useMemo(
     () =>
       CATEGORY_ORDER.filter((cat) => {
-        if (COOKING_BUILDING_CATEGORIES.includes(cat)) {
+        if (PLACEMENT_GATED_CATEGORIES.includes(cat)) {
           return (byCategory.get(cat) ?? []).length > 0;
         }
         return true;
@@ -225,6 +229,14 @@ export function App() {
       label: "Next up",
       icon: CHROME_ICONS.timer,
     });
+    const hasIdle = buildIdleEntries(data.farm, byCategory, now).length > 0;
+    if (hasIdle) {
+      out.push({
+        id: IDLE_SECTION_ID,
+        label: "Idle",
+        icon: CHROME_ICONS.sleep,
+      });
+    }
     const groups = getActiveDeliveryGroups(data.farm, now);
     if (groups.coins.length > 0) {
       out.push({
@@ -256,7 +268,7 @@ export function App() {
       });
     }
     return out;
-  }, [data, now, timers, visibleCategories]);
+  }, [data, now, timers, visibleCategories, byCategory]);
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -373,6 +385,9 @@ export function App() {
           {data ? <BumpkinSummaryPanel data={data} /> : null}
           {data ? <ReadyPanel timers={timers} now={now} /> : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
+          {data ? (
+            <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
+          ) : null}
           {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
           {data
             ? visibleCategories.map((cat) => (

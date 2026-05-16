@@ -84,6 +84,18 @@ export {
 // already itemised.
 export { getCookingAmount } from "features/game/events/landExpansion/collectRecipe";
 export { getProcessedResourceAmount } from "features/game/events/landExpansion/collectProcessedResource";
+// Per-building queue / capacity caps used by the IdlePanel to compute
+// "X slots free". `hasVipAccess` gates the larger cap for cooking and
+// fish processing; `getBoostedAnimalCapacity` accounts for skill /
+// collectible / wearable bonuses on hen house / barn capacity.
+export { MAX_COOKING_SLOTS } from "features/game/events/landExpansion/cook";
+export { MAX_FISH_PROCESSING_SLOTS } from "features/game/events/landExpansion/processResource";
+export { MAX_QUEUE_SIZE as MAX_CROP_MACHINE_QUEUE_SIZE } from "features/game/events/landExpansion/supplyCropMachine";
+export { hasVipAccess } from "features/game/lib/vipAccess";
+export { getBoostedAnimalCapacity } from "features/game/events/landExpansion/buyAnimal";
+export { getMaxFermentationSlots } from "features/game/types/fermentation";
+export { getMaxSpiceRackSlots } from "features/game/types/spiceRack";
+export { getAgingSlotCount } from "features/game/types/aging";
 // Composters — `rollWormAmount` deterministically predicts the
 // worm yield at collect time (same PRNG seed the server uses), and
 // `composterDetails` maps each composter to its worm type
