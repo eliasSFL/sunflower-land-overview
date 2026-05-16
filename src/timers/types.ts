@@ -15,7 +15,9 @@ export type Category =
   | "Bakery"
   | "Fish Market"
   | "Composters"
-  | "Aging Shed"
+  | "Aging Rack"
+  | "Fermentation Rack"
+  | "Spice Rack"
   | "Crafting Box";
 
 // Each cooking / processing building is its own top-level category so
@@ -32,6 +34,23 @@ export const COOKING_BUILDING_CATEGORIES: readonly Category[] = [
   "Fish Market",
 ];
 
+// The Aging Shed building contains three independent racks. Each rack
+// is its own category so it flows as its own panel + MobileNav chip,
+// matching how cooking buildings are split.
+export const AGING_RACK_CATEGORIES: readonly Category[] = [
+  "Aging Rack",
+  "Fermentation Rack",
+  "Spice Rack",
+];
+
+// Categories that should only render when the underlying building is
+// actually placed — used by App.tsx to filter `visibleCategories` so
+// players don't see chips / panels for buildings they don't own.
+export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
+  ...COOKING_BUILDING_CATEGORIES,
+  ...AGING_RACK_CATEGORIES,
+];
+
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
   "Fruit Patches",
@@ -44,7 +63,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Animals",
   ...COOKING_BUILDING_CATEGORIES,
   "Composters",
-  "Aging Shed",
+  ...AGING_RACK_CATEGORIES,
   "Crafting Box",
 ];
 

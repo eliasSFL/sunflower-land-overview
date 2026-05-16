@@ -26,6 +26,8 @@ export type {
 export {
   CATEGORY_ORDER,
   COOKING_BUILDING_CATEGORIES,
+  AGING_RACK_CATEGORIES,
+  PLACEMENT_GATED_CATEGORIES,
   statusOf,
 } from "./types.ts";
 export { aggregateTimers } from "./aggregate.ts";

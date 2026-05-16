@@ -38,7 +38,7 @@ import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import {
   extractAndAggregate,
   CATEGORY_ORDER,
-  COOKING_BUILDING_CATEGORIES,
+  PLACEMENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import { pullDoSnapshot } from "../notifications/snapshot.ts";
@@ -181,15 +181,16 @@ export function App() {
     return grouped;
   }, [timers]);
 
-  // Cooking buildings only show up if the player has actually placed
-  // one — otherwise we'd render a "Smoothie Shack: Not cooking" panel
+  // Cooking buildings + Aging Shed racks only show up if the player
+  // has actually placed the building — otherwise we'd render a
+  // "Smoothie Shack: Not cooking" / "Aging Rack: No fish aging" panel
   // (and a MobileNav chip) for a building they don't own. Other
   // categories (Crops, Animals, …) always render so the panel still
   // serves as a "you could be doing this" reminder when idle.
   const visibleCategories = useMemo(
     () =>
       CATEGORY_ORDER.filter((cat) => {
-        if (COOKING_BUILDING_CATEGORIES.includes(cat)) {
+        if (PLACEMENT_GATED_CATEGORIES.includes(cat)) {
           return (byCategory.get(cat) ?? []).length > 0;
         }
         return true;

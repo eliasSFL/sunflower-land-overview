@@ -20,7 +20,12 @@ const CATEGORY_ICON_NAME: Record<Category, string> = {
   Bakery: "Bakery",
   "Fish Market": "Fish Market",
   Composters: "Compost Bin",
-  "Aging Shed": "Aging Shed",
+  // Each Aging Shed rack uses a representative output item rather than
+  // the shared building icon, so the three racks read as distinct at a
+  // glance in the section header / MobileNav strip.
+  "Aging Rack": "Aged Anchovy",
+  "Fermentation Rack": "Fermented Broccoli",
+  "Spice Rack": "Refined Salt",
   "Crafting Box": "Crafting Box",
   Resources: "Wood",
   Salt: "Salt",

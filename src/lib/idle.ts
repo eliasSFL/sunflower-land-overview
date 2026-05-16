@@ -101,23 +101,38 @@ function craftingBoxFree(state: GameState, now: number): number {
   return free;
 }
 
-function agingShedFree(state: GameState): number {
+type AgingRack = { category: Category; free: number };
+
+function agingShedRacks(state: GameState): AgingRack[] {
   const placed = (state.buildings?.["Aging Shed"] ?? []) as PlacedItem[];
-  if (placed.length === 0) return 0;
+  if (placed.length === 0) return [];
   const shed = state.agingShed;
-  if (!shed) return 0;
+  if (!shed) return [];
   const level = shed.level ?? 0;
-  const aging = shed.racks?.aging?.length ?? 0;
-  const fermentation = shed.racks?.fermentation?.length ?? 0;
-  const spice = shed.racks?.spice?.length ?? 0;
-  const agingMax = getAgingSlotCount(level);
-  const fermMax = getMaxFermentationSlots(level);
-  const spiceMax = getMaxSpiceRackSlots(level);
-  return (
-    Math.max(0, agingMax - aging) +
-    Math.max(0, fermMax - fermentation) +
-    Math.max(0, spiceMax - spice)
-  );
+  return [
+    {
+      category: "Aging Rack",
+      free: Math.max(
+        0,
+        getAgingSlotCount(level) - (shed.racks?.aging?.length ?? 0),
+      ),
+    },
+    {
+      category: "Fermentation Rack",
+      free: Math.max(
+        0,
+        getMaxFermentationSlots(level) -
+          (shed.racks?.fermentation?.length ?? 0),
+      ),
+    },
+    {
+      category: "Spice Rack",
+      free: Math.max(
+        0,
+        getMaxSpiceRackSlots(level) - (shed.racks?.spice?.length ?? 0),
+      ),
+    },
+  ];
 }
 
 function animalBuildingFree(
@@ -241,12 +256,13 @@ export function buildIdleEntries(
     });
   }
 
-  // Aging Shed: sum free slots across all three racks.
-  const agingFree = agingShedFree(state);
-  if (agingFree > 0) {
+  // Aging Shed: one entry per rack so each shows up as its own row,
+  // matching the per-rack categories in the main timer view.
+  for (const rack of agingShedRacks(state)) {
+    if (rack.free <= 0) continue;
     out.push({
-      category: "Aging Shed",
-      message: `${agingFree} rack ${pluralise(agingFree, "slot")} free`,
+      category: rack.category,
+      message: `${rack.free} ${pluralise(rack.free, "slot")} free`,
     });
   }
 

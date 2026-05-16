@@ -11,12 +11,14 @@ import {
   type SpiceRackJob,
   type SpiceRackRecipeName,
 } from "../game/index.ts";
-import type { Timer, TimerContext, TimerSlot } from "./types.ts";
+import type { Category, Timer, TimerContext, TimerSlot } from "./types.ts";
 
-// One card per Aging Shed rack — three cards total when the building
-// is placed:
-//   • Aging Rack       — fish + salt → "Aged <fish>" (Prime Aged PRNG
-//                        flip rolled at collect; we don't predict it)
+// One Timer per Aging Shed rack — three total when the building is
+// placed. Each rack is its own top-level Category so the layout flows
+// them as independent panels (mirrors how cooking buildings are
+// split):
+//   • Aging Rack        — fish + salt → "Aged <fish>" (Prime Aged PRNG
+//                         flip rolled at collect; we don't predict it)
 //   • Fermentation Rack — recipe → recipe.outputs (first entry)
 //   • Spice Rack        — recipe → recipe.outputs (first entry)
 // Each card's `slots` field carries every in-flight job in that rack
@@ -90,7 +92,7 @@ function spiceSlotEntry(job: SpiceRackJob): TimerSlot | undefined {
 
 type RackCard = {
   rackKey: "aging" | "fermentation" | "spice";
-  label: string;
+  category: Category;
   idleText: string;
   slots: TimerSlot[];
 };
@@ -101,23 +103,23 @@ function buildRackCard(rack: RackCard): Timer {
   if (sortedSlots.length === 0) {
     return {
       id: `agingShed:${rack.rackKey}:idle`,
-      category: "Aging Shed",
-      label: rack.label,
+      category: rack.category,
+      label: rack.category,
       icon: buildingIcon,
       readyAt: 0,
       idle: true,
       idleText: rack.idleText,
-      aggregationKey: `Aging Shed|${rack.rackKey}`,
+      aggregationKey: `${rack.category}|${rack.rackKey}`,
     };
   }
   return {
     id: `agingShed:${rack.rackKey}:active`,
-    category: "Aging Shed",
-    label: rack.label,
+    category: rack.category,
+    label: rack.category,
     icon: buildingIcon,
     readyAt: sortedSlots[0].readyAt,
     slots: sortedSlots,
-    aggregationKey: `Aging Shed|${rack.rackKey}`,
+    aggregationKey: `${rack.category}|${rack.rackKey}`,
   };
 }
 
@@ -152,19 +154,19 @@ export function extractAgingShedTimers(
   return [
     buildRackCard({
       rackKey: "aging",
-      label: "Aging Rack",
+      category: "Aging Rack",
       idleText: "No fish aging",
       slots: agingSlots,
     }),
     buildRackCard({
       rackKey: "fermentation",
-      label: "Fermentation Rack",
+      category: "Fermentation Rack",
       idleText: "Not fermenting",
       slots: fermentationSlots,
     }),
     buildRackCard({
       rackKey: "spice",
-      label: "Spice Rack",
+      category: "Spice Rack",
       idleText: "Not spicing",
       slots: spiceSlots,
     }),
