@@ -32,7 +32,7 @@ anonymous.
 
 **In scope:**
 
-- The Cloudflare Worker (`src/worker/`, `vite.worker.config.ts`) — auth,
+- The Cloudflare Worker (`src/api/`, `vite.worker.config.ts`) — auth,
   secret handling, request routing, push subscription storage.
 - The SPA (`src/`) — XSS, leakage of farm IDs or push credentials,
   client-side handling of API responses.
