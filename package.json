@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "postinstall": "git submodule update --init --recursive",
+    "postinstall": "git submodule update --init --recursive --depth 1",
     "dev": "vite --host",
     "worker": "vite build --config vite.worker.config.ts --watch",
     "wrangler": "wrangler dev",
