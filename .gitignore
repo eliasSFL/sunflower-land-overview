@@ -38,3 +38,4 @@ dist-worker
 # tsc-emitted declarations for files referenced by the composite project
 # from outside its rootDir (e.g. src/game/stubs/* redirected via paths).
 src/**/*.d.ts
+.github/rulesets/master.json
