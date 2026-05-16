@@ -265,7 +265,7 @@ export function App() {
         {/* Banner header — repeating pixel-art grass tile, mirrors the
             in-game Marketplace / Flower Dashboard chrome. */}
         <header
-          className="relative mb-2 flex min-h-22 items-center justify-between rounded-sm py-2"
+          className="relative mb-2 flex min-h-22 flex-col gap-1 rounded-sm py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0"
           style={{
             backgroundImage: `url(${BANNER_URL})`,
             backgroundRepeat: "repeat",
@@ -281,14 +281,14 @@ export function App() {
               Live timers for your farm
             </p>
           </div>
-          {/* Build hash + last-refreshed time + stale-version nag, top
-              right. `text-right` keeps the stack flush to the right
-              edge. `shrink-0` prevents the right column from squeezing
-              the title; concise mobile labels keep its width modest. */}
-          <div className="z-10 flex shrink-0 flex-col items-end gap-1 pr-3 text-right sm:pr-4">
+          {/* Build hash + last-refreshed time + stale-version nag.
+              On mobile this stacks below the title (single column flow);
+              on sm+ it sits in the top-right corner of the header.
+              `shrink-0` prevents it from squeezing the title at sm+. */}
+          <div className="z-10 flex shrink-0 flex-col items-start gap-1 pl-3 sm:items-end sm:pl-0 sm:pr-4 sm:text-right">
             {shortSha ? (
               <span className="text-xs text-white text-shadow">
-                <span className="hidden sm:inline">Version: </span>
+                <span>Version: </span>
                 <a
                   href={commitUrl}
                   target="_blank"
@@ -305,7 +305,7 @@ export function App() {
                 className="whitespace-nowrap text-xs text-white text-shadow"
                 title={new Date(lastFetchedAt).toLocaleString()}
               >
-                <span className="hidden sm:inline">Refreshed </span>
+                <span>Refreshed </span>
                 {formatRefreshedAgo(lastFetchedAt, now)}
               </span>
             ) : null}
@@ -326,10 +326,7 @@ export function App() {
                 className="cursor-pointer whitespace-nowrap text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
                 title="A newer build is deployed — click to reload"
               >
-                <span className="sm:hidden">Update available</span>
-                <span className="hidden sm:inline">
-                  New version available · click to refresh
-                </span>
+                New version available · click to refresh
               </span>
             ) : null}
           </div>

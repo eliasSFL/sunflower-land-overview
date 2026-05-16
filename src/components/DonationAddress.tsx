@@ -58,7 +58,7 @@ export function DonationAddress({ address, head = 6, tail = 4 }: Props) {
         title={`Copy donation address: ${address}`}
         className="cursor-pointer whitespace-nowrap text-sm text-white text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
       >
-        <span className="hidden no-underline sm:inline">Donate: </span>
+        <span className="no-underline">Donate: </span>
         <span className="sm:hidden">{truncate(address, head, tail)}</span>
         <span className="hidden sm:inline">{address}</span>
       </span>
