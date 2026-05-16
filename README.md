@@ -6,6 +6,7 @@
 A community tool that shows **live timers** for your Sunflower Land farm — crops, fruit, greenhouse, cooking, composters, animals, beehives, deliveries, and bounties — all in one place.
 
 > ⚠️ **Personal project by a Sunflower Land team member.** Not officially endorsed, supported, or maintained by Sunflower Land. Data is read from the official public Community API.
+>
 > 🌻 **Try it live:** _TBD — replace this line with the public deployment URL before launch._
 
 ## Features
