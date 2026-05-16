@@ -32,4 +32,11 @@
   "vars": {
     "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
   },
+  "ratelimits": [
+    {
+      "name": "PUSH_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
 }

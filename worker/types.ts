@@ -26,6 +26,10 @@ export interface Env {
   // POST /push/sweep). Sent by the caller in the `x-admin-secret`
   // header; absence on the env fails the check closed.
   ADMIN_SECRET: string;
+  // Per-IP-per-path rate limiter applied at the top of fetch() to
+  // every /push/* and /api/* request. Configured in wrangler.jsonc
+  // under `ratelimits`: 60 requests per 60s, namespace_id "1001".
+  PUSH_RATE_LIMITER: RateLimit;
 }
 
 // PushSubscriptionJSON shape (browser PushSubscription.toJSON()).

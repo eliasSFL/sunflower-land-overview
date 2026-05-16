@@ -185,6 +185,33 @@ export default {
     const url = new URL(request.url);
     const method = request.method;
 
+    // Per-IP-per-path rate limit on every dynamic route. Static
+    // assets (anything not under /push/* or /api/*) pass through
+    // and are served by env.ASSETS at the end of this handler.
+    // 60 req / 60s is far above legitimate user traffic but burns
+    // out scripts immediately. The PWA's fetch helpers surface 429
+    // through the regular `res.ok` branch, so no client changes are
+    // needed.
+    if (
+      url.pathname.startsWith("/push/") ||
+      url.pathname.startsWith("/api/")
+    ) {
+      const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+      const { success } = await env.PUSH_RATE_LIMITER.limit({
+        key: `${ip}:${url.pathname}`,
+      });
+      if (!success) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+            "retry-after": "60",
+          },
+        });
+      }
+    }
+
     // Farm proxy.
     const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
     if (farmMatch && method === "GET") {
