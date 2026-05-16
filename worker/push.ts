@@ -69,10 +69,42 @@ export async function sendOne(
   }
 }
 
+// Cap on parallel web-push subrequests per chunk. Cloudflare Workers
+// allows up to 1000 subrequests per invocation on paid plans, but in
+// practice MAX_SUBSCRIPTIONS_PER_FARM (currently 10) limits per-farm
+// fan-out far below that. Chunking is the right shape regardless —
+// caps memory + concurrency on any future high-fanout call site.
+const SEND_CHUNK = 25;
+
 export async function sendAll(
   env: Env,
   subscriptions: StoredSubscription[],
   payload: PushPayload,
 ): Promise<PushResult[]> {
-  return Promise.all(subscriptions.map((s) => sendOne(env, s, payload)));
+  const out: PushResult[] = [];
+  for (let i = 0; i < subscriptions.length; i += SEND_CHUNK) {
+    const chunk = subscriptions.slice(i, i + SEND_CHUNK);
+    const settled = await Promise.allSettled(
+      chunk.map((s) => sendOne(env, s, payload)),
+    );
+    for (let j = 0; j < settled.length; j++) {
+      const r = settled[j];
+      // sendOne never throws — WebPushError is caught and wrapped.
+      // A rejection here would only fire on a programming bug; fall
+      // back to a synthetic non-gone error so the index lines up with
+      // the input array (callers use the order to attribute results
+      // to subscriptions).
+      out.push(
+        r.status === "fulfilled"
+          ? r.value
+          : {
+              ok: false,
+              gone: false,
+              endpoint: chunk[j].endpoint,
+              error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+            },
+      );
+    }
+  }
+  return out;
 }

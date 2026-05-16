@@ -13,6 +13,12 @@ const MAX_BACKOFF_MS = 60_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Module-scoped lock so a manual /push/sweep can't double-fire with
+// the cron tick (both call this same `sweep`). Module scope =
+// per-isolate; isolates running in parallel is rare and the work is
+// idempotent, so this is good enough.
+let sweepInFlight = false;
+
 // Legacy `POST /community/getFarms` returns farms keyed by id with the
 // GameState fields spread directly into each value (plus isBlacklisted),
 // NOT the `{ farm, id, … }` envelope shape that `GET /community/farms/{id}`
@@ -79,6 +85,19 @@ async function fetchBatch(
 // 40k subscribers → 400 batches × ~1 s each = ~7 min worst case, well
 // inside the 25-min wall-clock budget per sweep tick.
 export async function sweep(env: Env): Promise<void> {
+  if (sweepInFlight) {
+    console.log("coordinator: sweep already in flight, skipping");
+    return;
+  }
+  sweepInFlight = true;
+  try {
+    await sweepImpl(env);
+  } finally {
+    sweepInFlight = false;
+  }
+}
+
+async function sweepImpl(env: Env): Promise<void> {
   const startedAt = Date.now();
 
   if (!env.SFL_COMMUNITY_API_KEY) {

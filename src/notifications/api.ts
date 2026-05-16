@@ -61,7 +61,10 @@ export async function postTest(body: {
 // PWA, so the DO can re-fetch its own snapshot and re-schedule timer
 // fires immediately instead of waiting for the next 10-min coordinator
 // sweep. Caller should swallow errors — this is best-effort.
-export async function postRefresh(body: { farmId: number }): Promise<Response> {
+export async function postRefresh(body: {
+  farmId: number;
+  endpoint: string;
+}): Promise<Response> {
   return fetch("/push/refresh", {
     method: "POST",
     headers: JSON_HEADERS,

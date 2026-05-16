@@ -23,6 +23,24 @@ function formatAmount(n: number): string {
   return parseFloat(n.toFixed(2)).toString();
 }
 
+// Skip the upstream fetch in `refreshFromUpstream` if our snapshot is
+// fresher than this. Limits how often a single farm's clients can drive
+// real upstream traffic via /push/refresh.
+const REFRESH_TTL_MS = 30_000;
+
+// On a "wasEmpty" subscribe, skip the warm upstream fetch if we already
+// have a recent snapshot. Sub→unsub→sub loops would otherwise refire
+// upstream every cycle. The coordinator's *\/10 * cron catches genuinely
+// new farms within ≤10 min.
+const WARM_FETCH_TTL_MS = 5 * 60 * 1000;
+
+// Hard cap on stored subscriptions per farm. A pathological caller
+// could otherwise drive both DO state and per-fire push fan-out
+// unboundedly. 10 is loose enough for a family on multiple devices,
+// tight enough to neutralize abuse. Re-subscribing the same endpoint
+// is dedup'd before this check.
+const MAX_SUBSCRIPTIONS_PER_FARM = 10;
+
 type State = {
   farmId: number | null;
   subscriptions: StoredSubscription[];
@@ -71,7 +89,7 @@ export class FarmPushDO extends Agent<Env, State> {
       case "/test":
         return this.handleTest(request);
       case "/refresh":
-        return this.handleRefresh();
+        return this.handleRefresh(request);
       case "/onSnapshot":
         return this.handleOnSnapshot(request);
       case "/state":
@@ -101,6 +119,19 @@ export class FarmPushDO extends Agent<Env, State> {
     const others = prevSubs.filter(
       (s) => s.endpoint !== body.subscription.endpoint,
     );
+
+    // Cap distinct endpoints per farm. Re-subscribing the same
+    // endpoint doesn't count (it's filtered into `others` above).
+    if (others.length >= MAX_SUBSCRIPTIONS_PER_FARM) {
+      return Response.json(
+        {
+          error: "Too many devices subscribed for this farm",
+          max: MAX_SUBSCRIPTIONS_PER_FARM,
+        },
+        { status: 429 },
+      );
+    }
+
     const stored: StoredSubscription = {
       ...body.subscription,
       mutedCategories: body.mutedCategories,
@@ -116,10 +147,14 @@ export class FarmPushDO extends Agent<Env, State> {
     // Idempotent INSERT OR IGNORE — always run so the D1 registry
     // self-heals across deploys or schema changes.
     await addOptIn(this.env, body.farmId).catch(() => {});
-    if (wasEmpty) {
-      // The warm fetch is best-effort — failure just means the player
-      // waits until the next coordinator sweep (≤10 min) for their
-      // first push schedule.
+
+    // Warm-fetch only when transitioning from zero subs AND we don't
+    // already have a recent snapshot. The TTL prevents sub→unsub→sub
+    // loops from refiring upstream every cycle; the coordinator's
+    // 10-min cron catches genuinely-new farms.
+    const snap = this.state.snapshot;
+    const snapAgeMs = snap ? Date.now() - snap.fetchedAt : Infinity;
+    if (wasEmpty && snapAgeMs > WARM_FETCH_TTL_MS) {
       await this.refreshFromUpstream().catch(() => {});
     }
 
@@ -195,9 +230,25 @@ export class FarmPushDO extends Agent<Env, State> {
     return this.dispatchPush(payload, [target]);
   }
 
-  private async handleRefresh(): Promise<Response> {
+  // Scoped to a stored subscription. Without this, anyone who knows a
+  // farmId could drive upstream fetches via the proxy — small cost per
+  // call, but cheap to amplify by rotating ids across IPs. Same
+  // ownership-proof shape as /test.
+  private async handleRefresh(request: Request): Promise<Response> {
+    const body = (await request.json().catch(() => null)) as {
+      endpoint?: string;
+    } | null;
+    if (!body?.endpoint) {
+      return Response.json({ error: "Missing endpoint" }, { status: 400 });
+    }
     if (this.state.farmId === null) {
       return Response.json({ error: "No farm" }, { status: 400 });
+    }
+    const known = this.state.subscriptions.some(
+      (s) => s.endpoint === body.endpoint,
+    );
+    if (!known) {
+      return Response.json({ error: "Unknown endpoint" }, { status: 404 });
     }
     const ok = await this.refreshFromUpstream();
     return Response.json({ ok, fetchedAt: this.state.snapshot?.fetchedAt });
@@ -284,9 +335,17 @@ export class FarmPushDO extends Agent<Env, State> {
 
   // Mint a key + fetch this farm + apply. Used at subscribe-time and
   // by /refresh. Returns true on success.
+  //
+  // Short-circuits when the existing snapshot is fresher than
+  // REFRESH_TTL_MS, returning true without an upstream call. Caller
+  // already has effectively the data it would get back.
   private async refreshFromUpstream(): Promise<boolean> {
     if (this.state.farmId === null || !this.env.SFL_COMMUNITY_API_KEY) {
       return false;
+    }
+    const snap = this.state.snapshot;
+    if (snap && Date.now() - snap.fetchedAt < REFRESH_TTL_MS) {
+      return true;
     }
     const key = await mintFarmKey(
       this.state.farmId,

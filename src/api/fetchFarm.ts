@@ -1,5 +1,6 @@
 import { makeGame, type GameState } from "../game/index.ts";
 import { postRefresh } from "../notifications/api.ts";
+import { getExistingSubscription } from "../notifications/subscribe.ts";
 
 export type FarmResponse = {
   farm: GameState;
@@ -106,8 +107,18 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   // Best-effort ping so the DO catches up immediately instead of
   // waiting for the next coordinator sweep. Swallow errors — the
   // sweep is the safety net.
+  //
+  // /push/refresh now requires the caller's subscription endpoint
+  // (ownership proof against drive-by upstream amplification). When
+  // no subscription exists there's nothing to refresh anyway — no DO
+  // is scheduling pushes for this device.
   if (typeof raw.id === "number") {
-    void postRefresh({ farmId: raw.id }).catch(() => {});
+    const farmId = raw.id;
+    void getExistingSubscription()
+      .then((sub) => {
+        if (sub) void postRefresh({ farmId, endpoint: sub.endpoint });
+      })
+      .catch(() => {});
   }
 
   return { ...raw, farm: makeGame(raw.farm) };

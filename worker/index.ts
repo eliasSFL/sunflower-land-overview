@@ -120,12 +120,14 @@ async function handlePushRefresh(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const body = await readJson<{ farmId?: number }>(request);
-  if (!body || typeof body.farmId !== "number") {
-    return json({ error: "Missing farmId" }, { status: 400 });
+  const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
+  if (!body || typeof body.farmId !== "number" || !body.endpoint) {
+    return json({ error: "Missing farmId or endpoint" }, { status: 400 });
   }
   return doStub(env, body.farmId).fetch("https://do/refresh", {
     method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ endpoint: body.endpoint }),
   });
 }
 
@@ -187,20 +189,32 @@ export default {
     const url = new URL(request.url);
     const method = request.method;
 
-    // Per-IP-per-path rate limit on every dynamic route. Static
+    // Per-IP-per-route rate limit on every dynamic route. Static
     // assets (anything not under /push/* or /api/*) pass through
     // and are served by env.ASSETS at the end of this handler.
     // 60 req / 60s is far above legitimate user traffic but burns
     // out scripts immediately. The PWA's fetch helpers surface 429
     // through the regular `res.ok` branch, so no client changes are
     // needed.
+    //
+    // The key is bucketed by *route* not full pathname: paths that
+    // embed a farm id (`/api/farms/{id}`, `/push/state/{id}`) would
+    // otherwise grant each id its own 60/min budget per IP — which
+    // for `/api/farms/{id}` amplifies into ~unlimited upstream
+    // proxy traffic by rotating ids.
     if (
       url.pathname.startsWith("/push/") ||
       url.pathname.startsWith("/api/")
     ) {
+      let routeKey: string;
+      if (url.pathname.startsWith("/api/farms/")) routeKey = "/api/farms";
+      else if (url.pathname.startsWith("/push/state/"))
+        routeKey = "/push/state";
+      else routeKey = url.pathname;
+
       const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
       const { success } = await env.PUSH_RATE_LIMITER.limit({
-        key: `${ip}:${url.pathname}`,
+        key: `${ip}:${routeKey}`,
       });
       if (!success) {
         return new Response(JSON.stringify({ error: "Too many requests" }), {
