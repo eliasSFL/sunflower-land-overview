@@ -87,18 +87,17 @@ function cropMachineFree(state: GameState): number {
 }
 
 function craftingBoxFree(state: GameState, now: number): number {
+  // The box is a single-instance building, but its queue lives on
+  // top-level `state.craftingBox.queue` rather than on the placed
+  // building (unlike cooking buildings). See startCrafting.ts which
+  // reads `copy.craftingBox.queue` to gate `availableSlots`.
   const instances = (state.buildings?.["Crafting Box"] ?? []) as PlacedItem[];
-  if (instances.length === 0) return 0;
-  const maxPerBuilding = hasVipAccess({ game: state, now })
+  if (!instances.some((b) => !!b.coordinates)) return 0;
+  const maxSlots = hasVipAccess({ game: state, now })
     ? MAX_CRAFTING_BOX_SLOTS_VIP
     : MAX_CRAFTING_BOX_SLOTS_FREE;
-  let free = 0;
-  for (const inst of instances) {
-    if (!inst.coordinates) continue;
-    const used = inst.crafting?.length ?? 0;
-    free += Math.max(0, maxPerBuilding - used);
-  }
-  return free;
+  const used = state.craftingBox?.queue?.length ?? 0;
+  return Math.max(0, maxSlots - used);
 }
 
 type AgingRack = { category: Category; free: number };
