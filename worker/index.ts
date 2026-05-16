@@ -43,6 +43,20 @@ function doStub(env: Env, farmId: number) {
   return env.FARM_PUSH_DO.get(env.FARM_PUSH_DO.idFromName(String(farmId)));
 }
 
+// Only real Web Push services. A stored endpoint we'll never be able
+// to deliver to (or, worse, that points at attacker-controlled
+// infrastructure) becomes permanent DO + D1 bloat — the prune path
+// in push.ts only fires on 404/410 from the push service itself.
+function isAllowedPushHost(host: string): boolean {
+  return (
+    host === "fcm.googleapis.com" ||
+    host === "updates.push.services.mozilla.com" ||
+    host === "web.push.apple.com" ||
+    host.endsWith(".push.apple.com") ||
+    host.endsWith(".notify.windows.com")
+  );
+}
+
 async function handlePushSubscribe(
   request: Request,
   env: Env,
@@ -50,6 +64,31 @@ async function handlePushSubscribe(
   const body = await readJson<SubscribeBody>(request);
   if (!body || typeof body.farmId !== "number") {
     return json({ error: "Missing farmId" }, { status: 400 });
+  }
+  const endpoint = body.subscription?.endpoint;
+  if (typeof endpoint !== "string" || endpoint.length === 0) {
+    return json({ error: "Missing subscription.endpoint" }, { status: 400 });
+  }
+  let endpointUrl: URL;
+  try {
+    endpointUrl = new URL(endpoint);
+  } catch {
+    return json({ error: "Malformed subscription.endpoint" }, { status: 400 });
+  }
+  // Require https + default port — push services don't accept http,
+  // and connections to non-default ports on these hosts will fail with
+  // an error that isn't 404/410, so the resulting bogus subscription
+  // would never get pruned by push.ts and would sit in DO state until
+  // TTL vacuum. Real browser-issued subscriptions always use the
+  // default port.
+  if (endpointUrl.protocol !== "https:") {
+    return json({ error: "Endpoint must be https" }, { status: 400 });
+  }
+  if (endpointUrl.port !== "") {
+    return json({ error: "Endpoint must use default port" }, { status: 400 });
+  }
+  if (!isAllowedPushHost(endpointUrl.hostname)) {
+    return json({ error: "Endpoint host not allowed" }, { status: 400 });
   }
   return doStub(env, body.farmId).fetch("https://do/subscribe", {
     method: "POST",

@@ -58,17 +58,53 @@ export type FarmResponseRaw = {
   isBlacklisted?: boolean;
 };
 
+// Discriminated result. The subscribe path needs to distinguish
+// "farm does not exist" from "upstream temporarily unhappy" so that
+// we only persist opt-in for farms that really exist.
+//
+// BE behaviour ([api/community/getFarm.ts](../sunflower-land/sunflower-land-api/src/api/community/getFarm.ts)):
+//   200 → exists (blacklisted included, flagged in payload)
+//   404 → invalid format or farm not found
+//   401 → API key rejected. The BE's [verifyCommunityKey](../sunflower-land/sunflower-land-api/src/services/communityApiKey.ts)
+//         decodes the key payload to a farmId and loadFarm()'s it;
+//         null farm ⇒ 401. Since we mint with a signature the BE will
+//         accept, any 401 here is the encoded-farmId check failing —
+//         treat as not_found.
+//   429   → BE per-IP throttle on our egress IPs. Transient.
+//   ≥500  → upstream error. Transient.
+export type GetFarmResult =
+  | { ok: true; raw: FarmResponseRaw }
+  | {
+      ok: false;
+      reason: "not_found" | "upstream_error" | "network" | "parse";
+      status: number;
+    };
+
 export async function getFarm(
   farmId: number,
   apiKey: string,
-): Promise<FarmResponseRaw | null> {
-  const res = await fetch(`${UPSTREAM}/community/farms/${farmId}`, {
-    headers: { "x-api-key": apiKey },
-  });
-  if (!res.ok) return null;
+): Promise<GetFarmResult> {
+  let res: Response;
   try {
-    return (await res.json()) as FarmResponseRaw;
+    res = await fetch(`${UPSTREAM}/community/farms/${farmId}`, {
+      headers: { "x-api-key": apiKey },
+    });
   } catch {
-    return null;
+    return { ok: false, reason: "network", status: 0 };
+  }
+  if (res.status === 404 || res.status === 401) {
+    return { ok: false, reason: "not_found", status: res.status };
+  }
+  if (res.status === 429 || res.status >= 500) {
+    return { ok: false, reason: "upstream_error", status: res.status };
+  }
+  if (!res.ok) {
+    return { ok: false, reason: "upstream_error", status: res.status };
+  }
+  try {
+    const raw = (await res.json()) as FarmResponseRaw;
+    return { ok: true, raw };
+  } catch {
+    return { ok: false, reason: "parse", status: res.status };
   }
 }

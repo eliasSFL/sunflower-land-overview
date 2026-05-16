@@ -41,6 +41,13 @@ const WARM_FETCH_TTL_MS = 5 * 60 * 1000;
 // is dedup'd before this check.
 const MAX_SUBSCRIPTIONS_PER_FARM = 10;
 
+// Idle subscriptions self-vacuum after this long without observed
+// activity (subscribe, /push/state pull, /push/refresh, successful
+// push delivery). Real players either keep the PWA open occasionally
+// or receive successful pushes — anything quieter than this is
+// effectively churned and we recycle the D1 row + DO state.
+const OPT_IN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 type State = {
   farmId: number | null;
   subscriptions: StoredSubscription[];
@@ -60,6 +67,11 @@ type State = {
   // Guards against at-least-once alarm retries within the OS's tag
   // dedup window. GC'd inline in fireTimer.
   notified: Record<string, number>;
+  // Last time this DO observed any activity. Optional because DOs
+  // deployed before this field existed will hot-load without it;
+  // `handleOnSnapshot` falls back to `snapshot.fetchedAt` and grants
+  // a single TTL of grace.
+  lastActivityAt?: number;
 };
 
 // One Durable Object per farmId. Responsibilities:
@@ -115,7 +127,6 @@ export class FarmPushDO extends Agent<Env, State> {
     }
 
     const prevSubs = this.state.subscriptions ?? [];
-    const wasEmpty = prevSubs.length === 0;
     const others = prevSubs.filter(
       (s) => s.endpoint !== body.subscription.endpoint,
     );
@@ -132,6 +143,51 @@ export class FarmPushDO extends Agent<Env, State> {
       );
     }
 
+    // Prove the farm exists upstream before we persist anything. Skip
+    // the upstream call when a recent snapshot already exists — its
+    // presence is proof enough (second-device-on-same-farm path).
+    // Without this gate, any caller can permanently bloat D1 + DO
+    // state + the periodic sweep by enrolling arbitrary farmIds.
+    const snap = this.state.snapshot;
+    const snapAgeMs = snap ? Date.now() - snap.fetchedAt : Infinity;
+    const haveFreshSnapshot = snapAgeMs < WARM_FETCH_TTL_MS;
+
+    if (!haveFreshSnapshot) {
+      if (!this.env.SFL_COMMUNITY_API_KEY) {
+        return Response.json(
+          { error: "Server not configured" },
+          { status: 503 },
+        );
+      }
+      const key = await mintFarmKey(
+        body.farmId,
+        this.env.SFL_COMMUNITY_API_KEY,
+      );
+      const result = await getFarm(body.farmId, key);
+      if (!result.ok) {
+        if (result.reason === "not_found") {
+          return Response.json({ error: "Unknown farm" }, { status: 404 });
+        }
+        // upstream_error / network / parse — fail closed so callers
+        // retry rather than us tentatively persisting and hoping the
+        // sweep cleans up.
+        return new Response(
+          JSON.stringify({ error: "Upstream unavailable" }),
+          {
+            status: 503,
+            headers: {
+              "content-type": "application/json",
+              "retry-after": "30",
+            },
+          },
+        );
+      }
+      // Hot the snapshot now so the persist below sees an up-to-date
+      // `state.snapshot` and so any client follow-up `/push/state`
+      // doesn't hit a cold DO.
+      await this.applySnapshot(result.raw);
+    }
+
     const stored: StoredSubscription = {
       ...body.subscription,
       mutedCategories: body.mutedCategories,
@@ -142,21 +198,12 @@ export class FarmPushDO extends Agent<Env, State> {
       subscriptions: [...others, stored],
       scheduled: this.state.scheduled ?? {},
       notified: this.state.notified ?? {},
+      lastActivityAt: Date.now(),
     });
 
     // Idempotent INSERT OR IGNORE — always run so the D1 registry
     // self-heals across deploys or schema changes.
     await addOptIn(this.env, body.farmId).catch(() => {});
-
-    // Warm-fetch only when transitioning from zero subs AND we don't
-    // already have a recent snapshot. The TTL prevents sub→unsub→sub
-    // loops from refiring upstream every cycle; the coordinator's
-    // 10-min cron catches genuinely-new farms.
-    const snap = this.state.snapshot;
-    const snapAgeMs = snap ? Date.now() - snap.fetchedAt : Infinity;
-    if (wasEmpty && snapAgeMs > WARM_FETCH_TTL_MS) {
-      await this.refreshFromUpstream().catch(() => {});
-    }
 
     return Response.json({ ok: true }, { status: 201 });
   }
@@ -251,6 +298,7 @@ export class FarmPushDO extends Agent<Env, State> {
       return Response.json({ error: "Unknown endpoint" }, { status: 404 });
     }
     const ok = await this.refreshFromUpstream();
+    if (ok) this.touchActivity();
     return Response.json({ ok, fetchedAt: this.state.snapshot?.fetchedAt });
   }
 
@@ -261,6 +309,24 @@ export class FarmPushDO extends Agent<Env, State> {
     if (!body || typeof body.id !== "number") {
       return Response.json({ error: "Invalid body" }, { status: 400 });
     }
+    // TTL vacuum. The coordinator hands every opted-in farm a fresh
+    // snapshot on each sweep; if this DO has gone OPT_IN_TTL_MS
+    // without observing any activity (subscribe, /push/state, /push/
+    // refresh, or successful push delivery) we self-evict instead of
+    // applying. Legacy DOs missing `lastActivityAt` fall back to the
+    // snapshot's freshness, then to `now` — granting one TTL of grace
+    // that gets persisted by touchActivity below.
+    const last =
+      this.state.lastActivityAt ?? this.state.snapshot?.fetchedAt ?? Date.now();
+    if (Date.now() - last > OPT_IN_TTL_MS) {
+      await this.cleanup();
+      return Response.json({ vacuumed: true });
+    }
+    if (this.state.lastActivityAt === undefined) {
+      // Persist the grace period observation so we don't keep
+      // re-deriving the fallback from snapshot.fetchedAt every sweep.
+      this.touchActivity();
+    }
     await this.applySnapshot(body);
     return Response.json({ ok: true });
   }
@@ -269,6 +335,10 @@ export class FarmPushDO extends Agent<Env, State> {
     const url = new URL(request.url);
     const since = Number(url.searchParams.get("since") ?? "0");
     const snap = this.state.snapshot;
+    // A live PWA polling /push/state counts as activity regardless of
+    // whether we hand back a new payload — `notModified` still proves
+    // the client is around.
+    this.touchActivity();
     if (!snap) return Response.json({ notModified: true });
     if (snap.fetchedAt <= since) {
       return Response.json({ notModified: true });
@@ -277,6 +347,10 @@ export class FarmPushDO extends Agent<Env, State> {
       raw: snap.raw,
       fetchedAt: snap.fetchedAt,
     });
+  }
+
+  private touchActivity(): void {
+    this.setState({ ...this.state, lastActivityAt: Date.now() });
   }
 
   // ─── Scheduled callback ───────────────────────────────────────────
@@ -351,9 +425,9 @@ export class FarmPushDO extends Agent<Env, State> {
       this.state.farmId,
       this.env.SFL_COMMUNITY_API_KEY,
     );
-    const raw = await getFarm(this.state.farmId, key);
-    if (!raw) return false;
-    await this.applySnapshot(raw);
+    const result = await getFarm(this.state.farmId, key);
+    if (!result.ok) return false;
+    await this.applySnapshot(result.raw);
     return true;
   }
 
@@ -485,6 +559,7 @@ export class FarmPushDO extends Agent<Env, State> {
     targets: StoredSubscription[] = this.state.subscriptions,
   ): Promise<Response> {
     const results = await sendAll(this.env, targets, payload);
+    const sent = results.filter((r) => r.ok).length;
     const dead = new Set(
       results
         .filter((r): r is Extract<typeof r, { gone: true }> => !r.ok && r.gone)
@@ -497,22 +572,33 @@ export class FarmPushDO extends Agent<Env, State> {
       this.setState({ ...this.state, subscriptions: remaining });
       if (remaining.length === 0) await this.cleanup();
     }
+    // Successful delivery proves a real device is on the other end —
+    // refresh the TTL. Pruning-only fan-outs (every result was 404/
+    // 410) don't count: that's evidence of churn, not activity.
+    if (sent > 0) this.touchActivity();
     return Response.json({
-      sent: results.filter((r) => r.ok).length,
+      sent,
       pruned: dead.size,
       total: results.length,
     });
   }
 
   // Stop scheduling and remove ourselves from the registry. Called
-  // when the last subscription is removed or 404/410-pruned away.
+  // when the last subscription is removed, 404/410-pruned away, or
+  // TTL-vacuumed from handleOnSnapshot.
+  //
+  // Resets `snapshotUpdatedAt` so a future resubscribe — which re-runs
+  // applySnapshot — doesn't trip the "same updatedAt, skip reschedule"
+  // short-circuit and leave the DO with zero fires for ready timers.
   private async cleanup(): Promise<void> {
     for (const fire of Object.values(this.state.scheduled ?? {})) {
       await this.cancelSchedule(fire.scheduleId).catch(() => {});
     }
     this.setState({
       ...this.state,
+      subscriptions: [],
       scheduled: {},
+      snapshotUpdatedAt: undefined,
     });
     if (this.state.farmId !== null) {
       await removeOptIn(this.env, this.state.farmId).catch(() => {});
