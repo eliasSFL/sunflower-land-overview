@@ -24,7 +24,7 @@ const CATEGORY_ICON_NAME: Record<Category, string> = {
   // the shared building icon, so the three racks read as distinct at a
   // glance in the section header / MobileNav strip.
   "Aging Rack": "Aged Anchovy",
-  "Fermentation Rack": "Fermented Broccoli",
+  "Fermentation Rack": "Pickled Broccoli",
   "Spice Rack": "Refined Salt",
   "Crafting Box": "Crafting Box",
   Resources: "Wood",
