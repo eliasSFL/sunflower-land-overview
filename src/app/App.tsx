@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
+import { DonationAddress } from "../components/DonationAddress.tsx";
 import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
@@ -43,6 +44,10 @@ import * as storage from "../lib/storage.ts";
 const GITHUB_REPO =
   (import.meta.env.VITE_GITHUB_REPO as string | undefined) ??
   "eliasSFL/sunflower-land-overview";
+
+const DONATION_ADDRESS = (
+  import.meta.env.VITE_DONATION_ADDRESS as string | undefined
+)?.trim();
 
 const FARM_ID_KEY = "sfl-overview:farm-id";
 const REFRESH_COOLDOWN_MS = 60_000;
@@ -268,11 +273,11 @@ export function App() {
             imageRendering: "pixelated",
           }}
         >
-          <div className="z-10 min-w-0 flex-1 pl-3 sm:pl-4">
-            <p className="text-base sm:text-lg text-white text-shadow">
+          <div className="z-10 min-w-0 flex flex-col pl-3 sm:pl-4">
+            <p className="text-base text-white text-shadow">
               Sunflower Land Overview
             </p>
-            <p className="hidden text-xs text-white text-shadow sm:block">
+            <p className="text-xs text-white text-shadow">
               Live timers for your farm
             </p>
           </div>
@@ -303,6 +308,9 @@ export function App() {
                 <span className="hidden sm:inline">Refreshed </span>
                 {formatRefreshedAgo(lastFetchedAt, now)}
               </span>
+            ) : null}
+            {DONATION_ADDRESS ? (
+              <DonationAddress address={DONATION_ADDRESS} />
             ) : null}
             {isStale ? (
               <span
