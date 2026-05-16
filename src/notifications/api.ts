@@ -46,7 +46,10 @@ export async function postCategories(body: {
   });
 }
 
-export async function postTest(body: { farmId: number }): Promise<Response> {
+export async function postTest(body: {
+  farmId: number;
+  endpoint: string;
+}): Promise<Response> {
   return fetch("/push/test", {
     method: "POST",
     headers: JSON_HEADERS,

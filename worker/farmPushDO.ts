@@ -69,7 +69,7 @@ export class FarmPushDO extends Agent<Env, State> {
       case "/categories":
         return this.handleCategories(request);
       case "/test":
-        return this.handleTest();
+        return this.handleTest(request);
       case "/refresh":
         return this.handleRefresh();
       case "/onSnapshot":
@@ -169,9 +169,22 @@ export class FarmPushDO extends Agent<Env, State> {
     return Response.json({ ok: true });
   }
 
-  private async handleTest(): Promise<Response> {
-    if (this.state.subscriptions.length === 0) {
-      return Response.json({ sent: 0 });
+  // Scoped to a single subscription so a test only buzzes the device
+  // that asked for it. The endpoint also acts as a weak ownership
+  // proof: a stranger who knows just the farmId can't fan out test
+  // pushes to every device on that farm.
+  private async handleTest(request: Request): Promise<Response> {
+    const body = (await request.json().catch(() => null)) as {
+      endpoint?: string;
+    } | null;
+    if (!body?.endpoint) {
+      return Response.json({ error: "Missing endpoint" }, { status: 400 });
+    }
+    const target = this.state.subscriptions.find(
+      (s) => s.endpoint === body.endpoint,
+    );
+    if (!target) {
+      return Response.json({ error: "Unknown endpoint" }, { status: 404 });
     }
     const payload: PushPayload = {
       title: "Sunflower Land Overview",
@@ -179,7 +192,7 @@ export class FarmPushDO extends Agent<Env, State> {
       tag: "sfl-overview:test",
       url: "/",
     };
-    return this.dispatchPush(payload);
+    return this.dispatchPush(payload, [target]);
   }
 
   private async handleRefresh(): Promise<Response> {

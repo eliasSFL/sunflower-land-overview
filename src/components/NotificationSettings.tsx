@@ -159,7 +159,12 @@ export function NotificationSettings({ farmId }: Props) {
     setError(undefined);
     setTestStatus(undefined);
     try {
-      const res = await postTest({ farmId });
+      const sub = await getExistingSubscription();
+      if (!sub) {
+        setError("No active subscription on this device.");
+        return;
+      }
+      const res = await postTest({ farmId, endpoint: sub.endpoint });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         setError(body.error ?? `Test failed: ${res.status}`);

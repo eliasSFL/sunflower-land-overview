@@ -105,12 +105,14 @@ async function handlePushCategories(
 }
 
 async function handlePushTest(request: Request, env: Env): Promise<Response> {
-  const body = await readJson<{ farmId?: number }>(request);
-  if (!body || typeof body.farmId !== "number") {
-    return json({ error: "Missing farmId" }, { status: 400 });
+  const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
+  if (!body || typeof body.farmId !== "number" || !body.endpoint) {
+    return json({ error: "Missing farmId or endpoint" }, { status: 400 });
   }
   return doStub(env, body.farmId).fetch("https://do/test", {
     method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ endpoint: body.endpoint }),
   });
 }
 
