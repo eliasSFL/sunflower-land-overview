@@ -3,6 +3,9 @@ import type { Category } from "../timers/types.ts";
 
 const ENABLED_KEY = "sfl-overview:notifications:enabled";
 const MUTED_CATEGORIES_KEY = "sfl-overview:notifications:mutedCategories";
+const NOTIFICATION_TARGET_KEY = "sfl-overview:notifications:target";
+
+export type NotificationTarget = "overview" | "play";
 
 export function loadEnabled(): boolean {
   return load<boolean>(ENABLED_KEY) ?? false;
@@ -24,4 +27,16 @@ export function loadMutedCategories(): Category[] {
 export function saveMutedCategories(value: Category[]): void {
   if (value.length === 0) clear(MUTED_CATEGORIES_KEY);
   else save(MUTED_CATEGORIES_KEY, value);
+}
+
+// Default is "overview" — preserves the existing behavior for users
+// who never touch this setting. Per-device (this storage isn't
+// synced across devices, and the server stores it per-subscription).
+export function loadNotificationTarget(): NotificationTarget {
+  const v = load<string>(NOTIFICATION_TARGET_KEY);
+  return v === "play" ? "play" : "overview";
+}
+export function saveNotificationTarget(value: NotificationTarget): void {
+  if (value === "overview") clear(NOTIFICATION_TARGET_KEY);
+  else save(NOTIFICATION_TARGET_KEY, value);
 }

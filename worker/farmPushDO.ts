@@ -11,11 +11,22 @@ import type {
   StoredSubscription,
   SubscribeBody,
   CategoriesBody,
+  TargetBody,
+  NotificationTarget,
   PushPayload,
   PendingFire,
   FirePayload,
   SnapshotEnvelope,
 } from "./types.ts";
+
+// Click-target URLs. "overview" stays in the PWA on the current
+// origin; "play" jumps to the main game.
+const PLAY_URL = "https://sunflower-land.com/play";
+
+function clickUrl(target: NotificationTarget | undefined, farmId: number | null): string {
+  if (target === "play") return PLAY_URL;
+  return `/?farmId=${farmId ?? ""}`;
+}
 
 // Round yield amounts to 2 decimal places, strip trailing zeros so
 // notification bodies don't show JS float garbage like "4.8000000002".
@@ -98,6 +109,8 @@ export class FarmPushDO extends Agent<Env, State> {
         return this.handleUnsubscribe(request);
       case "/categories":
         return this.handleCategories(request);
+      case "/target":
+        return this.handleNotificationTarget(request);
       case "/test":
         return this.handleTest(request);
       case "/refresh":
@@ -191,6 +204,7 @@ export class FarmPushDO extends Agent<Env, State> {
     const stored: StoredSubscription = {
       ...body.subscription,
       mutedCategories: body.mutedCategories,
+      notificationTarget: body.notificationTarget,
     };
     this.setState({
       ...this.state,
@@ -251,6 +265,32 @@ export class FarmPushDO extends Agent<Env, State> {
     return Response.json({ ok: true });
   }
 
+  // Per-device click target. Same endpoint-as-weak-ownership shape as
+  // /categories — the caller has to know its own push endpoint.
+  private async handleNotificationTarget(request: Request): Promise<Response> {
+    const body = (await request.json().catch(() => null)) as TargetBody | null;
+    if (
+      !body?.endpoint ||
+      typeof body.farmId !== "number" ||
+      (body.notificationTarget !== "overview" &&
+        body.notificationTarget !== "play")
+    ) {
+      return Response.json({ error: "Invalid body" }, { status: 400 });
+    }
+    const subs = this.state.subscriptions ?? [];
+    let matched = false;
+    const next = subs.map((s) => {
+      if (s.endpoint !== body.endpoint) return s;
+      matched = true;
+      return { ...s, notificationTarget: body.notificationTarget };
+    });
+    if (!matched) {
+      return Response.json({ error: "Unknown endpoint" }, { status: 404 });
+    }
+    this.setState({ ...this.state, subscriptions: next });
+    return Response.json({ ok: true });
+  }
+
   // Scoped to a single subscription so a test only buzzes the device
   // that asked for it. The endpoint also acts as a weak ownership
   // proof: a stranger who knows just the farmId can't fan out test
@@ -272,7 +312,7 @@ export class FarmPushDO extends Agent<Env, State> {
       title: "Sunflower Land Overview",
       body: "Test notification — your device is set up for ready-timer pushes.",
       tag: "sfl-overview:test",
-      url: "/",
+      url: clickUrl(target.notificationTarget, this.state.farmId),
     };
     return this.dispatchPush(payload, [target]);
   }
@@ -376,15 +416,35 @@ export class FarmPushDO extends Agent<Env, State> {
       : this.state.subscriptions;
 
     if (targets.length > 0) {
-      const pushPayload: PushPayload = {
+      // Split by per-device click target. Each group gets its own URL
+      // baked into the payload; dispatchPush handles 404/410 pruning
+      // independently per call and the second call sees state updated
+      // by the first.
+      const overviewSubs: StoredSubscription[] = [];
+      const playSubs: StoredSubscription[] = [];
+      for (const s of targets) {
+        if (s.notificationTarget === "play") playSubs.push(s);
+        else overviewSubs.push(s);
+      }
+      const basePayload = {
         title: payload.title,
         body: payload.body,
         tag: fireKey,
         icon: payload.icon ?? "/icons/sfl_overview-192.webp",
         badge: "/icons/sfl_overview-badge-96.webp",
-        url: `/?farmId=${this.state.farmId ?? ""}`,
       };
-      await this.dispatchPush(pushPayload, targets);
+      if (overviewSubs.length > 0) {
+        await this.dispatchPush(
+          { ...basePayload, url: clickUrl("overview", this.state.farmId) },
+          overviewSubs,
+        );
+      }
+      if (playSubs.length > 0) {
+        await this.dispatchPush(
+          { ...basePayload, url: clickUrl("play", this.state.farmId) },
+          playSubs,
+        );
+      }
     }
 
     // Garbage-collect notified entries older than 24h.

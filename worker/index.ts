@@ -143,6 +143,38 @@ async function handlePushCategories(
   });
 }
 
+async function handlePushTarget(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = await readJson<{
+    farmId?: number;
+    endpoint?: string;
+    notificationTarget?: string;
+  }>(request);
+  if (
+    !body ||
+    typeof body.farmId !== "number" ||
+    !body.endpoint ||
+    (body.notificationTarget !== "overview" &&
+      body.notificationTarget !== "play")
+  ) {
+    return json(
+      { error: "Missing farmId, endpoint, or notificationTarget" },
+      { status: 400 },
+    );
+  }
+  return doStub(env, body.farmId).fetch("https://do/target", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      farmId: body.farmId,
+      endpoint: body.endpoint,
+      notificationTarget: body.notificationTarget,
+    }),
+  });
+}
+
 async function handlePushTest(request: Request, env: Env): Promise<Response> {
   const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
   if (!body || typeof body.farmId !== "number" || !body.endpoint) {
@@ -287,6 +319,9 @@ export default {
     }
     if (url.pathname === "/push/categories" && method === "POST") {
       return handlePushCategories(request, env);
+    }
+    if (url.pathname === "/push/target" && method === "POST") {
+      return handlePushTarget(request, env);
     }
     if (url.pathname === "/push/test" && method === "POST") {
       return handlePushTest(request, env);

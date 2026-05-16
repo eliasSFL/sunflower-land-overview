@@ -18,6 +18,7 @@ import {
   postSubscribe,
   postUnsubscribe,
   postCategories,
+  postNotificationTarget,
   postTest,
 } from "../notifications/api.ts";
 import {
@@ -26,6 +27,9 @@ import {
   clearEnabled,
   loadMutedCategories,
   saveMutedCategories,
+  loadNotificationTarget,
+  saveNotificationTarget,
+  type NotificationTarget,
 } from "../notifications/prefs.ts";
 import { CATEGORY_ORDER, type Category } from "../timers/types.ts";
 import { getCategoryIcon } from "./categoryIcon.ts";
@@ -41,6 +45,9 @@ export function NotificationSettings({ farmId }: Props) {
   const [enabled, setEnabled] = useState<boolean>(() => loadEnabled());
   const [muted, setMuted] = useState<Set<Category>>(
     () => new Set(loadMutedCategories()),
+  );
+  const [target, setTarget] = useState<NotificationTarget>(() =>
+    loadNotificationTarget(),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -116,6 +123,7 @@ export function NotificationSettings({ farmId }: Props) {
         farmId,
         subscription: sub.toJSON() as PushSubscriptionJSON,
         mutedCategories: [...muted],
+        notificationTarget: target,
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -182,6 +190,29 @@ export function NotificationSettings({ farmId }: Props) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Optimistically flip the destination, persist, then sync the
+  // server. The DO pulls this per-fire when building the push
+  // payload's url, so the change applies to the next push.
+  async function onChangeTarget(next: NotificationTarget) {
+    setTarget(next);
+    saveNotificationTarget(next);
+    const sub = await getExistingSubscription();
+    if (!sub) return;
+    try {
+      const res = await postNotificationTarget({
+        farmId,
+        endpoint: sub.endpoint,
+        notificationTarget: next,
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? `Update failed: ${res.status}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
     }
   }
 
@@ -252,6 +283,29 @@ export function NotificationSettings({ farmId }: Props) {
                 );
               })}
             </ul>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs">When tapped, open:</span>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="notification-target"
+                checked={target === "overview"}
+                onChange={() => void onChangeTarget("overview")}
+                disabled={busy}
+              />
+              <span>Overview (this app)</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="notification-target"
+                checked={target === "play"}
+                onChange={() => void onChangeTarget("play")}
+                disabled={busy}
+              />
+              <span>Main game (sunflower-land.com/play)</span>
+            </label>
           </div>
           <Button onClick={onTest} disabled={busy}>
             Send test notification

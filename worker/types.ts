@@ -35,6 +35,11 @@ export interface Env {
 // PushSubscriptionJSON shape (browser PushSubscription.toJSON()).
 // Repeated here because @cloudflare/workers-types doesn't ship the
 // browser's `PushSubscriptionJSON` interface.
+// Where a tapped notification should land. "overview" (default) keeps
+// the user in this PWA; "play" jumps to sunflower-land.com/play. Per
+// device — phone and desktop can disagree.
+export type NotificationTarget = "overview" | "play";
+
 export type StoredSubscription = {
   endpoint: string;
   expirationTime: number | null;
@@ -48,13 +53,17 @@ export type StoredSubscription = {
   // Strings rather than the typed `Category` union so a stale stored
   // record from an older app version doesn't break parsing.
   mutedCategories?: string[];
+  // Where the notification click should open. Absent ≡ "overview"
+  // (legacy subs default to the existing behavior).
+  notificationTarget?: NotificationTarget;
 };
 
 // Wire shape for /push/subscribe request bodies.
 export type SubscribeBody = {
   farmId: number;
-  subscription: Omit<StoredSubscription, "mutedCategories">;
+  subscription: Omit<StoredSubscription, "mutedCategories" | "notificationTarget">;
   mutedCategories?: string[];
+  notificationTarget?: NotificationTarget;
 };
 
 // Wire shape for /push/categories — updates the mute list on an
@@ -63,6 +72,15 @@ export type CategoriesBody = {
   farmId: number;
   endpoint: string;
   mutedCategories: string[];
+};
+
+// Wire shape for /push/target — updates the notification click
+// destination on an existing subscription. Same shape as
+// CategoriesBody; separate endpoint keeps the prefs orthogonal.
+export type TargetBody = {
+  farmId: number;
+  endpoint: string;
+  notificationTarget: NotificationTarget;
 };
 
 // Wire shape for the JSON payload pushed to the SW. Mirrors what the

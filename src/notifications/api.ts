@@ -1,10 +1,13 @@
 // Fetch helpers for the Worker's /push/* routes. No auth header — the
 // Worker mints its own per-farm community key from the master secret.
 
+export type NotificationTarget = "overview" | "play";
+
 export type SubscribeBody = {
   farmId: number;
   subscription: PushSubscriptionJSON;
   mutedCategories?: string[];
+  notificationTarget?: NotificationTarget;
 };
 
 const JSON_HEADERS = { "content-type": "application/json" } as const;
@@ -40,6 +43,18 @@ export async function postCategories(body: {
   mutedCategories: string[];
 }): Promise<Response> {
   return fetch("/push/categories", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function postNotificationTarget(body: {
+  farmId: number;
+  endpoint: string;
+  notificationTarget: NotificationTarget;
+}): Promise<Response> {
+  return fetch("/push/target", {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),

@@ -53,37 +53,56 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Allowed cross-origin click destinations. Internal URLs (same origin
+// as the SW) bypass this list — they're treated as paths.
+const ALLOWED_EXTERNAL_ORIGINS = new Set(["https://sunflower-land.com"]);
+
+type ClickTarget =
+  | { kind: "internal"; path: string }
+  | { kind: "external"; url: string };
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  // Defense in depth: parse the push payload's url against our own
-  // origin and keep only the pathname. Anything cross-origin or
-  // unparseable falls back to "/".
   const raw = (event.notification.data as { url?: string } | null)?.url;
-  let normalizedPath = "/";
+  let target: ClickTarget = { kind: "internal", path: "/" };
   if (typeof raw === "string") {
     try {
       const u = new URL(raw, self.location.origin);
       if (u.origin === self.location.origin) {
-        normalizedPath = u.pathname + u.search + u.hash;
+        target = {
+          kind: "internal",
+          path: u.pathname + u.search + u.hash,
+        };
+      } else if (ALLOWED_EXTERNAL_ORIGINS.has(u.origin)) {
+        target = { kind: "external", url: u.toString() };
       }
+      // anything else: keep default "/"
     } catch {
       // unparseable url → keep default "/"
     }
   }
   event.waitUntil(
     (async () => {
+      if (target.kind === "external") {
+        // clients.matchAll is same-origin only, so we can't focus an
+        // existing tab on the external origin — always open a new
+        // window and let the OS / browser dedupe.
+        await self.clients.openWindow(target.url);
+        return;
+      }
+      const path = target.path;
       const all = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
       });
       for (const client of all) {
         const url = new URL(client.url);
-        if (url.pathname === normalizedPath || normalizedPath === "/") {
+        if (url.pathname === path || path === "/") {
           await client.focus();
           return;
         }
       }
-      await self.clients.openWindow(normalizedPath);
+      await self.clients.openWindow(path);
     })(),
   );
 });
