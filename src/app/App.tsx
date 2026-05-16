@@ -52,6 +52,16 @@ const DONATION_ADDRESS = (
 const FARM_ID_KEY = "sfl-overview:farm-id";
 const REFRESH_COOLDOWN_MS = 60_000;
 
+// Bypass the HTTP cache by changing the URL — browsers won't serve a
+// cached response for a URL they haven't seen. `location.reload(true)`
+// no longer works in modern browsers, and there's no JS API for the
+// Ctrl+Shift+R behaviour.
+function hardReload(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("_", String(Date.now()));
+  window.location.replace(url.toString());
+}
+
 const BANNER_URL = BANNER_URLS.marketplace;
 
 // Short "Refreshed X ago" label for the header. Updates each render
@@ -316,11 +326,11 @@ export function App() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() => window.location.reload()}
+                onClick={hardReload}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    window.location.reload();
+                    hardReload();
                   }
                 }}
                 className="cursor-pointer whitespace-nowrap text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
