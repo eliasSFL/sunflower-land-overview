@@ -104,8 +104,11 @@ function craftingBoxFree(state: GameState, now: number): number {
 type AgingRack = { category: Category; free: number };
 
 function agingShedRacks(state: GameState): AgingRack[] {
-  const placed = (state.buildings?.["Aging Shed"] ?? []) as PlacedItem[];
-  if (placed.length === 0) return [];
+  // Mirror the placement check in agingShed.ts: a shed listed under
+  // `buildings["Aging Shed"]` without `coordinates` is mid-move / not
+  // on the land and shouldn't count as engaged.
+  const placedItems = (state.buildings?.["Aging Shed"] ?? []) as PlacedItem[];
+  if (!placedItems.some((b) => !!b.coordinates)) return [];
   const shed = state.agingShed;
   if (!shed) return [];
   const level = shed.level ?? 0;
@@ -246,9 +249,16 @@ export function buildIdleEntries(
     });
   }
 
-  // Composters: each composter holds one job — count idle Timers.
+  // Composters: each composter holds one job — sum the `count` of
+  // every idle row. Composter rows aren't merged today (each instance
+  // has its own aggregationKey, so count is always 1), but reading
+  // `count` is the conventional way to consume aggregated timers and
+  // stays correct if upstream ever shares keys across instances.
   const composters = byCategory.get("Composters") ?? [];
-  const idleComposters = composters.filter((t) => t.idle).length;
+  const idleComposters = composters.reduce(
+    (total, t) => total + (t.idle ? t.count : 0),
+    0,
+  );
   if (idleComposters > 0) {
     out.push({
       category: "Composters",
