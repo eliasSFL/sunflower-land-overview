@@ -1,8 +1,20 @@
 # Sunflower Land Overview
 
+[![CI](https://github.com/eliasSFL/sunflower-land-overview/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/eliasSFL/sunflower-land-overview/actions/workflows/pr-validation.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A community tool that shows **live timers** for your Sunflower Land farm — crops, fruit, greenhouse, cooking, composters, animals, beehives, deliveries, and bounties — all in one place.
 
-> Not affiliated with Sunflower Land. Data is read from the official public Community API.
+> ⚠️ **Personal project by a Sunflower Land team member.** Not officially endorsed, supported, or maintained by Sunflower Land. Data is read from the official public Community API.
+> 🌻 **Try it live:** _TBD — replace this line with the public deployment URL before launch._
+
+## Features
+
+- **Live timers** across every major farm activity — crops, fruit, greenhouse, cooking, composters, animals, beehives, deliveries, bounties.
+- **Push notifications** — opt in by category and get pinged the moment something's ready.
+- **Multi-farm friendly** — switch between farms you maintain.
+- **Auto-refresh** — timers update on their own; a floating button forces an immediate fetch.
+- **Key-less in the browser** — the SPA never holds an API key, so there's no surface to leak from your device.
 
 ## Usage
 
@@ -10,7 +22,35 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 2. Timers refresh automatically; the floating refresh button forces an immediate fetch.
 3. Optional: open Settings → **Notifications** to subscribe to push notifications when timers come due, and pick which categories you want to be notified about.
 
-Your farm ID is stored in `localStorage` on your device only. The browser never sends an API key — the Worker mints a per-farm community key from a master secret on the server side.
+### Data handling
+
+- Your Farm ID is stored in `localStorage` on **your device only**.
+- If you opt into push notifications, the subscription endpoint is stored server-side so the Worker can deliver them; it's removed when you unsubscribe.
+- The browser **never sends an API key**. The Cloudflare Worker mints a per-farm community key from a server-side HMAC secret on every request.
+- For security reports see [SECURITY.md](SECURITY.md).
+
+## How it works
+
+A quick map for the curious:
+
+1. **SPA** — Vite + React 19 + TypeScript + Tailwind v4. A service worker via `vite-plugin-pwa` handles push delivery and notification clicks ([`src/sw.ts`](src/sw.ts)).
+2. **Cloudflare Worker** sits between the SPA and the Sunflower Land Community API. It signs API requests with a server-side HMAC secret, holds per-farm state in a Durable Object, and tracks push opt-ins in a D1 table.
+3. **Cron sweep** — a 10-minute cron in the Worker checks for timers coming due and sends Web Push notifications to opted-in devices.
+4. **Game logic bridge** — the [`sunflower-land/`](https://github.com/sunflower-land/sunflower-land) repo is included as a git submodule and bumped daily by [an automated workflow](.github/workflows/bump-sunflower-land-submodule.yml). The dashboard's yield and timer math is computed by calling upstream functions directly, so estimates stay correct as the game changes — see [the contributor rule](CONTRIBUTING.md#never-replicate-functions-from-the-submodule).
+
+## Contributing
+
+PRs welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Short version:
+
+- **Bug fixes** of any size — open a PR directly.
+- **New features** that fit the dashboard vision — issue first for non-trivial work.
+- **Never replicate game logic** from the `sunflower-land/` submodule into our code. Call upstream functions directly. This is the project's most important rule.
+
+Community guidelines are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For casual chat about the tool, find the [Sunflower Land Discord](https://discord.gg/sunflowerland).
+
+## Security
+
+Found a vulnerability? Please report it privately. See [SECURITY.md](SECURITY.md) for the reporting process and what's in scope.
 
 ## Run locally
 
@@ -90,13 +130,10 @@ npm run build      # builds both the SPA (dist/) and the Worker (dist-worker/)
 npm run preview    # build + `wrangler dev` against the built bundle
 ```
 
-## Stack
-
-- Vite + React + TypeScript (SPA)
-- Tailwind CSS v4
-- Cloudflare Worker with a Durable Object per farm + a D1-backed opt-in registry and a 10-minute cron sweep for push notification scheduling. See [`worker/`](worker/).
-- `vite-plugin-pwa` with a hand-rolled service worker ([`src/sw.ts`](src/sw.ts)) for `push` + `notificationclick` handlers.
-
 ## Adding new timers
 
-Each category has its own extractor in [`src/timers/`](src/timers/) (e.g. [`crops.ts`](src/timers/crops.ts), [`beehives.ts`](src/timers/beehives.ts)). Add a function that returns `Timer[]` and wire it into [`src/timers/index.ts`](src/timers/index.ts); the UI will pick it up via `CATEGORY_ORDER` automatically. See [`CLAUDE.md`](CLAUDE.md) for the rule about calling upstream helpers directly rather than re-implementing yield math.
+Each category has its own extractor in [`src/timers/`](src/timers/) (e.g. [`crops.ts`](src/timers/crops.ts), [`beehives.ts`](src/timers/beehives.ts)). Add a function that returns `Timer[]` and wire it into [`src/timers/index.ts`](src/timers/index.ts); the UI will pick it up via `CATEGORY_ORDER` automatically. See [CONTRIBUTING.md](CONTRIBUTING.md#never-replicate-functions-from-the-submodule) for the rule about calling upstream helpers directly rather than re-implementing yield math.
+
+## License
+
+[MIT](LICENSE). This license covers only the code in this repository; the [`sunflower-land/`](sunflower-land/) submodule is governed by its own separate terms.

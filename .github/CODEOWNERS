@@ -1,0 +1,22 @@
+# CODEOWNERS for sunflower-land-overview
+#
+# Auto-requests review on every PR. Syntax is gitignore-style, with one
+# important difference: the *last* matching pattern wins. So put the
+# broad default first and specific overrides below it.
+#
+# When a co-maintainer joins, override specific paths below the default.
+# Suggested patterns to add at that point:
+#
+#   /.github/                — CI workflows and protection rulesets
+#   /src/api/                — Cloudflare Worker (handles MASTER_SECRET)
+#   /src/sw.ts               — service worker (push notifications)
+#   /src/notifications/      — push subscription handling
+#   /src/game/ /src/timers/  — upstream-game bridge (see CONTRIBUTING.md
+#                              "Never replicate functions from the submodule")
+#   /wrangler.jsonc /vite.worker.config.ts — Worker build/runtime config
+#   /LICENSE /SECURITY.md /CODE_OF_CONDUCT.md /CONTRIBUTING.md
+#                            — governance; keep owner approval explicit
+#
+# Until then, one owner is enough.
+
+* @eliasSFL
