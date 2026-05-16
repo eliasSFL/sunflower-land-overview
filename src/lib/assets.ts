@@ -46,6 +46,8 @@ export const CHROME_ICONS = {
   progress_bar_border: `${CDN}/ui/progress/progress_bar_border.png`,
   // Next-Up panel chip on the mobile nav.
   timer: submoduleAsset("icons/timer.gif"),
+  // Idle panel chip on the mobile nav — "Zzz" sleep sprite.
+  sleep: submoduleAsset("icons/sleep.webp"),
   // Floating settings button + modal close. `settings_disc` is the
   // gray disc-with-gear used by the main game's HUD; bundled because
   // it isn't on the CDN. `empty_disc` is the same disc with no glyph,

@@ -6,17 +6,20 @@ import { DonationAddress } from "../components/DonationAddress.tsx";
 import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
+import { IdlePanel } from "../components/IdlePanel.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
+import { buildIdleEntries } from "../lib/idle.ts";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import {
   BUMPKIN_SECTION_ID,
   DELIVERIES_COINS_SECTION_ID,
   DELIVERIES_FLOWER_SECTION_ID,
   DELIVERIES_TICKETS_SECTION_ID,
+  IDLE_SECTION_ID,
   NEXT_UP_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
@@ -225,6 +228,14 @@ export function App() {
       label: "Next up",
       icon: CHROME_ICONS.timer,
     });
+    const hasIdle = buildIdleEntries(data.farm, byCategory, now).length > 0;
+    if (hasIdle) {
+      out.push({
+        id: IDLE_SECTION_ID,
+        label: "Idle",
+        icon: CHROME_ICONS.sleep,
+      });
+    }
     const groups = getActiveDeliveryGroups(data.farm, now);
     if (groups.coins.length > 0) {
       out.push({
@@ -256,7 +267,7 @@ export function App() {
       });
     }
     return out;
-  }, [data, now, timers, visibleCategories]);
+  }, [data, now, timers, visibleCategories, byCategory]);
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -373,6 +384,9 @@ export function App() {
           {data ? <BumpkinSummaryPanel data={data} /> : null}
           {data ? <ReadyPanel timers={timers} now={now} /> : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
+          {data ? (
+            <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
+          ) : null}
           {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
           {data
             ? visibleCategories.map((cat) => (

@@ -14,6 +14,7 @@ export function sectionId(category: Category): string {
 export const BUMPKIN_SECTION_ID = "section-bumpkin";
 export const READY_SECTION_ID = "section-ready";
 export const NEXT_UP_SECTION_ID = "section-next-up";
+export const IDLE_SECTION_ID = "section-idle";
 export const DELIVERIES_COINS_SECTION_ID = "section-deliveries-coins";
 export const DELIVERIES_FLOWER_SECTION_ID = "section-deliveries-flower";
 export const DELIVERIES_TICKETS_SECTION_ID = "section-deliveries-tickets";
