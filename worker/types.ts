@@ -22,6 +22,10 @@ export interface Env {
   // mailto: address used as the JWT subject in VAPID-signed pushes.
   // Plain var (not a secret) — see wrangler.jsonc.
   VAPID_SUBJECT: string;
+  // Shared secret gating admin-only endpoints (currently just
+  // POST /push/sweep). Sent by the caller in the `x-admin-secret`
+  // header; absence on the env fails the check closed.
+  ADMIN_SECRET: string;
 }
 
 // PushSubscriptionJSON shape (browser PushSubscription.toJSON()).

@@ -216,7 +216,18 @@ export default {
     // cron-managed schedule appears to skip a tick. Idempotent: the
     // sweep just refetches each opted-in farm and re-applies its
     // snapshot to its DO. Output streams to `wrangler tail`.
+    //
+    // Gated by ADMIN_SECRET because each call fans out to every
+    // opted-in farm — left unauthenticated it's a trivial cost-
+    // amplification + upstream-DoS vector. Fails closed when the
+    // secret is unset so a fresh deploy can't be exploited.
     if (url.pathname === "/push/sweep" && method === "POST") {
+      if (
+        !env.ADMIN_SECRET ||
+        request.headers.get("x-admin-secret") !== env.ADMIN_SECRET
+      ) {
+        return json({ error: "Forbidden" }, { status: 403 });
+      }
       ctx.waitUntil(
         sweep(env).catch((err) => {
           console.error(

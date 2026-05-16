@@ -18,3 +18,10 @@ VAPID_PRIVATE=
 # Options → API Key in the game) — mintFarmKey detects that shape and
 # uses it as-is, restricted to that one farm.
 SFL_COMMUNITY_API_KEY=
+
+# Shared secret required in the `x-admin-secret` header for the
+# admin-only POST /push/sweep endpoint (manual Coordinator sweep
+# trigger). Generate with `openssl rand -hex 32`. Production uses
+# a Cloudflare dashboard secret. Leave blank locally if you don't
+# need to test manual sweeps — the route fails closed.
+ADMIN_SECRET=
