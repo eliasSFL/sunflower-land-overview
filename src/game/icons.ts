@@ -19,7 +19,10 @@ import type {
   InventoryItemName,
   SeasonalEventName,
 } from "./types.ts";
-import { isCollectible as isItemCollectible } from "./index.ts";
+// Imported directly from upstream rather than through `./index.ts` to
+// avoid an icons.ts ↔ index.ts cycle (index.ts re-exports getItemIcon
+// from icons.ts, so it can't also be the source for isCollectible here).
+import { isCollectible as isItemCollectible } from "features/game/events/landExpansion/garbageSold";
 
 const BUD_DOMAIN =
   import.meta.env.VITE_NETWORK === "mainnet" ? "buds" : "testnet-buds";
