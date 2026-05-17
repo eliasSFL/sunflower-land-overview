@@ -56,9 +56,7 @@ function formatAmount(n: number): string {
 //
 // The fireKey embeds `readyAt` so multiple ripening waves for the
 // same aggregation key get distinct dedup keys.
-function instancesFor(
-  t: AggregatedTimer,
-): Omit<PendingFire, "scheduleId">[] {
+function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
   const aggKey = t.aggregationKey ?? t.id;
   const out: Omit<PendingFire, "scheduleId">[] = [];
 
