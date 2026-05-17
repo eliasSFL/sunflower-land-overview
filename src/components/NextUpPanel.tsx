@@ -194,8 +194,7 @@ function RowList({ id, title, rows, now, expandable }: RowListProps) {
           let visibilityClass = "flex";
           if (!expanded) {
             if (idx >= DESKTOP_VISIBLE) visibilityClass = "hidden";
-            else if (idx >= MOBILE_VISIBLE)
-              visibilityClass = "hidden sm:flex";
+            else if (idx >= MOBILE_VISIBLE) visibilityClass = "hidden sm:flex";
           }
           return (
             <li
