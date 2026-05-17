@@ -213,14 +213,24 @@ async function handlePushRefresh(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
+  const body = await readJson<{
+    farmId?: number;
+    endpoint?: string;
+    snapshot?: string;
+  }>(request);
   if (!body || typeof body.farmId !== "number" || !body.endpoint) {
     return json({ error: "Missing farmId or endpoint" }, { status: 400 });
   }
+  // Forward the SPA's just-fetched body to the DO so it can apply
+  // directly. The DO still verifies endpoint membership and matches
+  // raw.id to its own farmId before trusting the payload.
   return doStub(env, body.farmId).fetch("https://do/refresh", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ endpoint: body.endpoint }),
+    body: JSON.stringify({
+      endpoint: body.endpoint,
+      snapshot: body.snapshot,
+    }),
   });
 }
 

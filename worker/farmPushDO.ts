@@ -357,6 +357,7 @@ export class FarmPushDO extends Agent<Env, State> {
   private async handleRefresh(request: Request): Promise<Response> {
     const body = (await request.json().catch(() => null)) as {
       endpoint?: string;
+      snapshot?: string;
     } | null;
     if (!body?.endpoint) {
       return Response.json({ error: "Missing endpoint" }, { status: 400 });
@@ -369,6 +370,38 @@ export class FarmPushDO extends Agent<Env, State> {
     );
     if (!known) {
       return Response.json({ error: "Unknown endpoint" }, { status: 404 });
+    }
+    // Prefer the SPA-forwarded snapshot when present: skips the
+    // upstream fetch entirely (no per-IP throttle pressure) and
+    // crucially avoids `refreshFromUpstream`'s 30s short-circuit,
+    // which used to silently no-op cross-device refreshes and leave
+    // /push/state serving stale snapshots to other devices.
+    // Verify raw.id matches our farmId so a valid-endpoint caller
+    // can't poison this DO with another farm's payload.
+    if (typeof body.snapshot === "string" && body.snapshot.length > 0) {
+      type RawShape = { farm?: unknown; id?: number };
+      let raw: RawShape | null = null;
+      try {
+        raw = JSON.parse(body.snapshot) as RawShape;
+      } catch {
+        raw = null;
+      }
+      if (
+        raw &&
+        typeof raw === "object" &&
+        raw.id === this.state.farmId &&
+        raw.farm &&
+        typeof raw.farm === "object"
+      ) {
+        await this.applySnapshot(raw as SnapshotEnvelope["raw"]);
+        this.touchActivity();
+        return Response.json({
+          ok: true,
+          fetchedAt: this.state.snapshot?.fetchedAt,
+        });
+      }
+      // Malformed / wrong farm — fall through to the upstream-fetch
+      // path so the refresh still does something useful.
     }
     const ok = await this.refreshFromUpstream();
     if (ok) this.touchActivity();

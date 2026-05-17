@@ -155,11 +155,18 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   // (ownership proof against drive-by upstream amplification). When
   // no subscription exists there's nothing to refresh anyway — no DO
   // is scheduling pushes for this device.
+  //
+  // Forward the raw body we just received so the DO can apply it
+  // directly — no second upstream fetch, no per-IP throttle pressure,
+  // and crucially no 30s short-circuit window during which a
+  // refresh on another device leaves this DO snapshot stale. Cross-
+  // device sync via /push/state then always sees fresh data.
   if (typeof raw.id === "number") {
     const farmId = raw.id;
     void getExistingSubscription()
       .then((sub) => {
-        if (sub) void postRefresh({ farmId, endpoint: sub.endpoint });
+        if (sub)
+          void postRefresh({ farmId, endpoint: sub.endpoint, snapshot: text });
       })
       .catch(() => {});
   }
