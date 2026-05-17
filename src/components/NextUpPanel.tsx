@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
@@ -15,12 +15,11 @@ import { InnerPanel, Label } from "./ui/index.ts";
 // cares about which recipe is dropping next, not which building owns
 // it. Idle timers are skipped.
 //
-// Limit: render up to 10 rows; hide rows 5–9 below `sm` (true full-
-// width mobile stack) so phones see a tight 5-row widget. Once the
-// Farm ID sidebar appears at `sm+`, show the full list — even at 1
-// timer column the sidebar has room for it.
+// Limit: render every row. Below `sm` (true full-width mobile stack)
+// only the first 5 are visible by default; a "Show all" toggle reveals
+// the rest. Once the Farm ID sidebar appears at `sm+`, show the full
+// list — even at 1 timer column the sidebar has room for it.
 
-const MAX_ROWS = 10;
 const MOBILE_VISIBLE = 5;
 // Rows with the same (source, item) that come ready within this window
 // of an already-shown row are collapsed — keeps multiple Salt nodes (or
@@ -131,10 +130,7 @@ type Props = {
 
 export function ReadyPanel({ timers, now }: Props) {
   const rows = useMemo(
-    () =>
-      buildRows(timers)
-        .filter((r) => r.readyAt <= now)
-        .slice(0, MAX_ROWS),
+    () => buildRows(timers).filter((r) => r.readyAt <= now),
     [timers, now],
   );
   if (rows.length === 0) return null;
@@ -143,10 +139,7 @@ export function ReadyPanel({ timers, now }: Props) {
 
 export function NextUpPanel({ timers, now }: Props) {
   const rows = useMemo(
-    () =>
-      buildRows(timers)
-        .filter((r) => r.readyAt > now)
-        .slice(0, MAX_ROWS),
+    () => buildRows(timers).filter((r) => r.readyAt > now),
     [timers, now],
   );
   if (rows.length === 0) return null;
@@ -163,6 +156,8 @@ type RowListProps = {
 };
 
 function RowList({ id, title, rows, now }: RowListProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hiddenCount = Math.max(0, rows.length - MOBILE_VISIBLE);
   return (
     <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
@@ -172,8 +167,9 @@ function RowList({ id, title, rows, now }: RowListProps) {
         {rows.map((row, idx) => {
           const status = statusOf(row.readyAt, now);
           // Hide rows past the mobile cap until the Farm ID column has
-          // settled into a sidebar (lg+).
-          const hideOnMobile = idx >= MOBILE_VISIBLE;
+          // settled into a sidebar (lg+), unless the user has expanded
+          // the list on mobile.
+          const hideOnMobile = !expanded && idx >= MOBILE_VISIBLE;
           return (
             <li
               key={row.key}
@@ -209,6 +205,15 @@ function RowList({ id, title, rows, now }: RowListProps) {
           );
         })}
       </ul>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs underline opacity-70 hover:opacity-100 self-center cursor-pointer sm:hidden"
+        >
+          {expanded ? "Show less" : `Show ${hiddenCount} more`}
+        </button>
+      ) : null}
     </InnerPanel>
   );
 }
