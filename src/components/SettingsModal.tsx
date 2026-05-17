@@ -71,6 +71,17 @@ export function SettingsModal({
       <section className="flex flex-col gap-2">
         <SectionHeader>Farm</SectionHeader>
         <ActiveFarmPanel data={data} onSwitch={() => setSwitching(true)} />
+        <Button
+          onClick={() =>
+            window.open(
+              "https://sunflower-land.com/play",
+              "_blank",
+              "noopener,noreferrer",
+            )
+          }
+        >
+          Open main game
+        </Button>
       </section>
       <NotificationSettings farmId={data.id} />
     </Modal>
