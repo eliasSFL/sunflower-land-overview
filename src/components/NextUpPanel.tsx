@@ -19,15 +19,15 @@ const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
 // it. Idle timers are skipped.
 //
 // Limits:
-// - Ready panel renders every ready row; below `sm` only the first 5
-//   are visible by default and a "Show N more" toggle reveals the rest.
+// - Ready panel renders every ready row; only the first 5 are visible
+//   on mobile (`< sm`) and the first 10 on desktop (`sm+`). A
+//   "Show more" toggle with a rotating chevron reveals the rest.
 // - Next up panel keeps the original cap of 10 rows total with rows
 //   5–9 hidden below `sm` (no toggle) so phones see a tight widget.
-// Once the Farm ID sidebar appears at `sm+`, both lists are shown in
-// full — even at 1 timer column the sidebar has room for it.
 
 const MAX_ROWS = 10;
 const MOBILE_VISIBLE = 5;
+const DESKTOP_VISIBLE = 10;
 // Rows with the same (source, item) that come ready within this window
 // of an already-shown row are collapsed — keeps multiple Salt nodes (or
 // multiple identical cooking slots) from monopolising the feed when
@@ -147,7 +147,7 @@ export function ReadyPanel({ timers, now }: Props) {
       title="Ready"
       rows={rows}
       now={now}
-      mobileExpandable
+      expandable
     />
   );
 }
@@ -171,14 +171,18 @@ type RowListProps = {
   title: string;
   rows: Row[];
   now: number;
-  mobileExpandable?: boolean;
+  expandable?: boolean;
 };
 
-function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
+function RowList({ id, title, rows, now, expandable }: RowListProps) {
   const [expanded, setExpanded] = useState(false);
-  const hiddenCount = mobileExpandable
-    ? Math.max(0, rows.length - MOBILE_VISIBLE)
-    : 0;
+  // Below `sm` only the first 5 rows render; at `sm+` only the first
+  // 10. When the user expands, the caps are dropped on both
+  // breakpoints. NextUpPanel doesn't pass `expandable`, so its rows
+  // can't be expanded — but it slices to 10 upstream, so the desktop
+  // cap is a no-op there.
+  const hasMobileOverflow = expandable && rows.length > MOBILE_VISIBLE;
+  const hasDesktopOverflow = expandable && rows.length > DESKTOP_VISIBLE;
   return (
     <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
@@ -187,14 +191,15 @@ function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
       <ul className="flex flex-col gap-1">
         {rows.map((row, idx) => {
           const status = statusOf(row.readyAt, now);
-          // Hide rows past the mobile cap until the Farm ID column has
-          // settled into a sidebar (lg+), unless the user has expanded
-          // the list on mobile.
-          const hideOnMobile = !expanded && idx >= MOBILE_VISIBLE;
+          let visibilityClass = "flex";
+          if (!expanded) {
+            if (idx >= DESKTOP_VISIBLE) visibilityClass = "hidden";
+            else if (idx >= MOBILE_VISIBLE) visibilityClass = "hidden sm:flex";
+          }
           return (
             <li
               key={row.key}
-              className={`flex items-center justify-between gap-2 ${hideOnMobile ? "hidden sm:flex" : ""}`}
+              className={`${visibilityClass} items-center justify-between gap-2`}
             >
               <span className="flex items-center gap-1 min-w-0">
                 {row.icon ? (
@@ -226,11 +231,11 @@ function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
           );
         })}
       </ul>
-      {hiddenCount > 0 ? (
+      {hasMobileOverflow ? (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1 self-center text-xs opacity-70 hover:opacity-100 cursor-pointer sm:hidden"
+          className={`flex items-center gap-1 self-center text-xs opacity-70 hover:opacity-100 cursor-pointer ${hasDesktopOverflow ? "" : "sm:hidden"}`}
         >
           <span>{expanded ? "Hide" : "Show more"}</span>
           <img
