@@ -95,14 +95,30 @@ async function handlePushSubscribe(
   // matching stored subscription, so they're transitively gated by
   // this — a denied farm can never get a subscription stored to begin
   // with.
-  const access = await fetchAndCheckAccess(env, body.farmId);
+  //
+  // Both this access check and the DO's own warm-fetch hit the BE's
+  // `community-get-farm` endpoint, which throttles per `cf-connecting-
+  // ip`. Without forwarding, every Worker subscribe shares one egress
+  // bucket on the BE and a small burst flips it into 429 → "Upstream
+  // unavailable". Forwarding here scopes the bucket per-player.
+  const clientIp = request.headers.get("cf-connecting-ip") ?? undefined;
+  const access = await fetchAndCheckAccess(env, body.farmId, clientIp);
   if (!access.ok) {
     return json({ error: access.error }, { status: access.status });
   }
+  // Forward the access-check body to the DO so it can apply the
+  // snapshot directly and skip its own (otherwise redundant) upstream
+  // fetch. The DO is only reachable through this entrypoint, so the
+  // injected `__accessSnapshot` field can be trusted — a hand-crafted
+  // client POST can't reach the DO without passing the access gate
+  // above. The DO also re-checks `raw.id === body.farmId` as a belt.
   return doStub(env, body.farmId).fetch("https://do/subscribe", {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "content-type": "application/json",
+      ...(clientIp ? { "x-client-ip": clientIp } : {}),
+    },
+    body: JSON.stringify({ ...body, __accessSnapshot: access.rawBody }),
   });
 }
 

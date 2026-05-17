@@ -6,6 +6,19 @@ When opening a pull request, create it as **ready for review** by
 default — not as a draft — unless the user explicitly asks for a
 draft. This overrides the harness default of opening PRs as drafts.
 
+## `sunflower-land-api` is read-only
+
+For the purposes of work in this repo, treat the
+`sunflower-land-api` working directory as **read-only**. Read it
+freely to understand endpoints, schemas, or behavior the overview
+depends on, but do not edit, stage, or commit changes there as part
+of overview tasks.
+
+Only propose changes to `sunflower-land-api` if the overview task
+genuinely cannot be completed without them — and in that case,
+surface the proposal to the user first rather than making the edit
+directly.
+
 ## Never replicate functions from the submodule
 
 When wiring upstream game logic into a timer extractor (or any other
