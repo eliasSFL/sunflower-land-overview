@@ -64,8 +64,14 @@ export function loadCachedFarm(
     if (!parsed?.v?.farm) return undefined;
     const data = { ...parsed.v, farm: makeGame(parsed.v.farm) };
     // Re-check access on every cache read — if the cohort tightens in
-    // code, a previously-approved farm should stop auto-loading.
-    if (!hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS")) {
+    // code (or the farm gets blacklisted upstream and we hand-edit the
+    // cached payload), a previously-approved farm should stop
+    // auto-loading.
+    if (
+      !hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS", {
+        isBlacklisted: data.isBlacklisted,
+      })
+    ) {
       return undefined;
     }
     return { data, fetchedAt: parsed.at };
@@ -127,7 +133,11 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
 
   // Gate before caching / pinging the DO — denied farms shouldn't
   // occupy localStorage or schedule push notifications.
-  if (!hasOverviewAccess(hydrated.farm, "LIMITED_ONLY_ACCESS")) {
+  if (
+    !hasOverviewAccess(hydrated.farm, "LIMITED_ONLY_ACCESS", {
+      isBlacklisted: hydrated.isBlacklisted,
+    })
+  ) {
     throw new AccessDeniedError();
   }
 
