@@ -7,7 +7,7 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 
 > ⚠️ **Personal project by a Sunflower Land team member.** Not officially endorsed, supported, or maintained by Sunflower Land. Data is read from the official public Community API.
 >
-> 🌻 **Try it live:** _TBD — replace this line with the public deployment URL before launch._
+> 🌻 **Try it live:** https://sfl-overview.com/
 
 <p align="center">
   <img src="docs/screenshots/sunflower-land-overview.png" alt="Sunflower Land Overview dashboard showing crop, delivery, greenhouse, animal, and fishing timers" />
