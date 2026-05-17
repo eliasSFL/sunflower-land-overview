@@ -80,7 +80,7 @@ export function SettingsModal({
             )
           }
         >
-          Open main game
+          Open Sunflower Land
         </Button>
       </section>
       <NotificationSettings farmId={data.id} />
