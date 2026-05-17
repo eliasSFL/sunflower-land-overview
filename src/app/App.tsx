@@ -8,6 +8,7 @@ import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
 import { IdlePanel } from "../components/IdlePanel.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
+import { PwaInstallPanel } from "../components/PwaInstallPanel.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
@@ -404,6 +405,7 @@ export function App() {
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
             </InnerPanel>
           ) : null}
+          {data ? <PwaInstallPanel /> : null}
           {data ? <BumpkinSummaryPanel data={data} /> : null}
           {data ? <ReadyPanel timers={timers} now={now} /> : null}
           {data ? <NextUpPanel timers={timers} now={now} /> : null}
