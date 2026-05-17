@@ -377,9 +377,8 @@ export function App() {
             <InnerPanel className="flex flex-col gap-3">
               {accessDenied ? (
                 <p className="text-sm">
-                  Your farm isn't on the access list yet. We're rolling this
-                  out to a small group of players first — please check back
-                  later.
+                  Your farm isn't on the access list yet. We're rolling this out
+                  to a small group of players first — please check back later.
                 </p>
               ) : (
                 <p className="text-sm">

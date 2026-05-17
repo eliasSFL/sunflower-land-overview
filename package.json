@@ -15,7 +15,8 @@
     "deploy": "npm run build && wrangler deploy",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "tsc": "tsc -b"
   },
   "dependencies": {
     "agents": "^0.12.4",
