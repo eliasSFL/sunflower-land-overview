@@ -14,7 +14,7 @@
 // Phase 2 will add: scheduled() handler for the cron-driven Coordinator
 // sweep, GET /push/state for snapshot pulls, POST /push/refresh.
 
-import { mintFarmKey } from "./communityApi.ts";
+import { fetchAndCheckAccess } from "./access.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
 
@@ -89,6 +89,15 @@ async function handlePushSubscribe(
   }
   if (!isAllowedPushHost(endpointUrl.hostname)) {
     return json({ error: "Endpoint host not allowed" }, { status: 400 });
+  }
+  // Cohort gate before any D1 / DO write. Other push endpoints
+  // (`/refresh`, `/categories`, `/target`, `/test`) already require a
+  // matching stored subscription, so they're transitively gated by
+  // this — a denied farm can never get a subscription stored to begin
+  // with.
+  const access = await fetchAndCheckAccess(env, body.farmId);
+  if (!access.ok) {
+    return json({ error: access.error }, { status: access.status });
   }
   return doStub(env, body.farmId).fetch("https://do/subscribe", {
     method: "POST",
@@ -209,40 +218,18 @@ async function handlePushState(
   return doStub(env, farmId).fetch(url.toString());
 }
 
-const UPSTREAM = "https://api.sunflower-land.com";
-
 async function handleProxyFarm(env: Env, id: string): Promise<Response> {
   if (!/^\d+$/.test(id)) {
     return json({ error: "Invalid farm id" }, { status: 400 });
   }
-  if (!env.SFL_COMMUNITY_API_KEY) {
-    return json(
-      { error: "Server not configured (SFL_COMMUNITY_API_KEY missing)" },
-      { status: 503 },
-    );
+  const result = await fetchAndCheckAccess(env, Number(id));
+  if (!result.ok) {
+    return json({ error: result.error }, { status: result.status });
   }
-  const farmId = Number(id);
-  const key = await mintFarmKey(farmId, env.SFL_COMMUNITY_API_KEY);
-  let upstream: Response;
-  try {
-    upstream = await fetch(
-      `${UPSTREAM}/community/farms/${encodeURIComponent(id)}`,
-      { headers: { "x-api-key": key } },
-    );
-  } catch (err) {
-    console.error("Failed to fetch upstream farm data", { farmId: id, err });
-    return json(
-      {
-        error: "Bad Gateway",
-      },
-      { status: 502 },
-    );
-  }
-  return new Response(upstream.body, {
-    status: upstream.status,
+  return new Response(result.rawBody, {
+    status: result.status,
     headers: {
-      "content-type":
-        upstream.headers.get("content-type") ?? "application/json",
+      "content-type": result.contentType ?? "application/json",
       "cache-control": "no-store",
     },
   });

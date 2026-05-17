@@ -1,4 +1,5 @@
 import { makeGame, type GameState } from "../game/index.ts";
+import { hasOverviewAccess } from "../lib/access.ts";
 import { postRefresh } from "../notifications/api.ts";
 import { getExistingSubscription } from "../notifications/subscribe.ts";
 
@@ -17,6 +18,17 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
     this.body = body;
+  }
+}
+
+// Thrown by `fetchFarm` / surfaced by `loadCachedFarm` (returns undefined)
+// when the farm isn't in the current access cohort. Distinct from
+// `ApiError` so callers can render a friendly "check back later" message
+// instead of treating it as a network/server failure.
+export class AccessDeniedError extends Error {
+  constructor(message = "Farm is not on the access list yet") {
+    super(message);
+    this.name = "AccessDeniedError";
   }
 }
 
@@ -50,10 +62,13 @@ export function loadCachedFarm(
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as { v: FarmResponse; at: number };
     if (!parsed?.v?.farm) return undefined;
-    return {
-      data: { ...parsed.v, farm: makeGame(parsed.v.farm) },
-      fetchedAt: parsed.at,
-    };
+    const data = { ...parsed.v, farm: makeGame(parsed.v.farm) };
+    // Re-check access on every cache read — if the cohort tightens in
+    // code, a previously-approved farm should stop auto-loading.
+    if (!hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS")) {
+      return undefined;
+    }
+    return { data, fetchedAt: parsed.at };
   } catch {
     return undefined;
   }
@@ -82,6 +97,12 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
     } else if (typeof parsed === "string" && parsed.length > 0) {
       message = parsed;
     }
+    // Worker enforces the cohort gate too — surfaces denial as 403
+    // with `error: "access_denied"`. Re-throw as the dedicated error
+    // so the UI's denial branch fires instead of a generic message.
+    if (res.status === 403 && message === "access_denied") {
+      throw new AccessDeniedError();
+    }
     throw new ApiError(res.status, message, parsed);
   }
 
@@ -102,6 +123,14 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   // instances. Upstream helpers (animal boost gates, etc.) call `.gt(0)`
   // / `.add()` on these — they'd crash on the raw JSON numbers.
   const raw = parsed as FarmResponse;
+  const hydrated = { ...raw, farm: makeGame(raw.farm) };
+
+  // Gate before caching / pinging the DO — denied farms shouldn't
+  // occupy localStorage or schedule push notifications.
+  if (!hasOverviewAccess(hydrated.farm, "LIMITED_ONLY_ACCESS")) {
+    throw new AccessDeniedError();
+  }
+
   saveCachedFarm(trimmedId, raw);
 
   // Best-effort ping so the DO catches up immediately instead of
@@ -121,5 +150,5 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
       .catch(() => {});
   }
 
-  return { ...raw, farm: makeGame(raw.farm) };
+  return hydrated;
 }

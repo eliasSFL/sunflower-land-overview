@@ -259,3 +259,20 @@ export type {
   CropCompostName,
   GreenhouseCompostName,
 } from "./types.ts";
+
+export {
+  adminFeatureFlag,
+  hasFeatureAccess,
+  hasTimeBasedFeatureAccess,
+  type FeatureName,
+  type TimeBasedFeatureName,
+  usernameFeatureFlag,
+  betaFeatureFlag,
+  timePeriodFeatureFlag,
+  betaTimePeriodFeatureFlag,
+  TIME_BASED_FEATURE_FLAG_WINDOWS,
+  TIME_BASED_FEATURE_FLAGS,
+  FEATURE_FLAGS,
+  type FeatureFlag,
+} from "lib/flags"; // upstream path
+export { TEAM_USERNAMES, MANAGER_IDS } from "lib/access";

@@ -31,6 +31,7 @@ import {
   fetchFarm,
   loadCachedFarm,
   ApiError,
+  AccessDeniedError,
   type FarmResponse,
 } from "../api/fetchFarm.ts";
 import { useNow } from "../hooks/useNow.ts";
@@ -95,6 +96,7 @@ export function App() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [accessDenied, setAccessDenied] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>(
     () => initialCache?.fetchedAt,
   );
@@ -141,6 +143,7 @@ export function App() {
     }
     setLoading(true);
     setError(undefined);
+    setAccessDenied(false);
     const p = (async () => {
       try {
         const resp = await fetchFarm(id);
@@ -149,7 +152,19 @@ export function App() {
         storage.save(FARM_ID_KEY, id);
         setLastFetchedAt(Date.now());
       } catch (e) {
-        if (e instanceof ApiError) {
+        if (e instanceof AccessDeniedError) {
+          // Clear any previously-loaded farm so the denial panel surfaces
+          // immediately — without this, a stale `data` from an earlier
+          // successful load keeps the dashboard rendered. Also drop
+          // `lastFetchedAt` (the 60s cooldown would otherwise silently
+          // block re-submitting the previously-successful farm) and
+          // align `farmId` with the denied attempt so the re-mounted
+          // form's pre-fill matches the denial copy.
+          setData(undefined);
+          setLastFetchedAt(undefined);
+          setFarmId(id);
+          setAccessDenied(true);
+        } else if (e instanceof ApiError) {
           setError(`${e.status} — ${e.message}`);
         } else if (e instanceof Error) {
           setError(e.message);
@@ -370,10 +385,17 @@ export function App() {
         <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
           {!data ? (
             <InnerPanel className="flex flex-col gap-3">
-              <p className="text-sm">
-                Enter your Farm ID to see live timers. Your ID is the number
-                next to your name in the main game.
-              </p>
+              {accessDenied ? (
+                <p className="text-sm">
+                  Your farm isn't on the access list yet. We're rolling this out
+                  to a small group of players first — please check back later.
+                </p>
+              ) : (
+                <p className="text-sm">
+                  Enter your Farm ID to see live timers. Your ID is the number
+                  next to your name in the main game.
+                </p>
+              )}
               <FarmIdForm
                 initialFarmId={farmId}
                 onSubmit={load}
