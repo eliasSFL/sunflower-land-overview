@@ -72,6 +72,7 @@ export async function fetchAndCheckAccess(
   // back to AccessDeniedError. Keep this exact string in sync.
   if (
     !hasOverviewAccess(game, "LIMITED_ONLY_ACCESS", {
+      farmId,
       isBlacklisted: raw.isBlacklisted,
     })
   ) {

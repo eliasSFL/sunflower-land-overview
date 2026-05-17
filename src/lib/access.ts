@@ -1,6 +1,9 @@
 import { type GameState, TEAM_USERNAMES } from "../game/index.ts";
 
-export type FeatureFlagContext = { isBlacklisted?: boolean };
+export type FeatureFlagContext = {
+  farmId: number | string;
+  isBlacklisted?: boolean;
+};
 export type FeatureFlag = (
   game: GameState,
   ctx?: FeatureFlagContext,
@@ -42,12 +45,16 @@ const POPULATION_ESTIMATE = 744_180;
  */
 const sampledByFarm =
   (featureName: string, target: number): FeatureFlag =>
-  (game, ctx) => {
+  (_game, ctx) => {
     // Banned farms are filtered out of the cohort. POPULATION_ESTIMATE
     // includes banned farms, so the realised non-banned cohort is
     // slightly smaller than `target` (by the banned share).
     if (ctx?.isBlacklisted) return false;
-    const id = game.bumpkin?.id;
+    // Hashed on farmId, not bumpkin.id: bumpkins minted after the NFT
+    // sunset all share `bumpkin.id === 1`, so keying on it would collapse
+    // the majority of newer signups into one bucket (all in or all out
+    // as a block). farmId is unique per farm regardless of origin.
+    const id = ctx?.farmId;
     if (id === undefined) return false;
     return (
       fnv1a(`${featureName}:${id}`) / 0x100000000 < target / POPULATION_ESTIMATE
@@ -64,7 +71,7 @@ export const OVERVIEW_FEATURE_FLAGS = {
   BETA_ONLY_EXAMPLE: betaFeatureFlag,
   LIMITED_ONLY_ACCESS: (game, ctx) =>
     betaFeatureFlag(game, ctx) ||
-    sampledByFarm("LIMITED_ONLY_ACCESS", 250_000)(game, ctx),
+    sampledByFarm("LIMITED_ONLY_ACCESS", 10_000)(game, ctx),
 } satisfies Record<string, FeatureFlag>;
 
 export type OverviewFeatureName = keyof typeof OVERVIEW_FEATURE_FLAGS;
@@ -72,7 +79,7 @@ export type OverviewFeatureName = keyof typeof OVERVIEW_FEATURE_FLAGS;
 export const hasOverviewAccess = (
   game: GameState,
   name: OverviewFeatureName,
-  opts: { isBlacklisted?: boolean } = {},
+  opts: FeatureFlagContext,
 ) => {
   // Banned/blacklisted farms are denied every overview feature,
   // overriding the per-flag predicate — Beta Pass holders and the

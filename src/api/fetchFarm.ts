@@ -71,6 +71,7 @@ export function loadCachedFarm(
     // flip the cache to denied on the next read.
     if (
       !hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS", {
+        farmId,
         isBlacklisted: data.isBlacklisted,
       })
     ) {
@@ -137,6 +138,7 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   // occupy localStorage or schedule push notifications.
   if (
     !hasOverviewAccess(hydrated.farm, "LIMITED_ONLY_ACCESS", {
+      farmId: hydrated.id,
       isBlacklisted: hydrated.isBlacklisted,
     })
   ) {
