@@ -22,16 +22,22 @@ export type AccessFetchResult =
 export async function fetchAndCheckAccess(
   env: Env,
   farmId: number,
+  clientIp?: string,
 ): Promise<AccessFetchResult> {
   if (!env.SFL_COMMUNITY_API_KEY) {
     return { ok: false, status: 503, error: "Server not configured" };
   }
   const key = await mintFarmKey(farmId, env.SFL_COMMUNITY_API_KEY);
+  const headers: Record<string, string> = { "x-api-key": key };
+  // Forward the eyeball's IP so the BE's `community-get-farm` throttle
+  // can scope per-player instead of treating every subscribe as coming
+  // from our shared Worker egress IP. See worker/communityApi.ts.
+  if (clientIp) headers["x-forwarded-client-ip"] = clientIp;
   let upstream: Response;
   try {
     upstream = await fetch(
       `${UPSTREAM}/community/farms/${encodeURIComponent(String(farmId))}`,
-      { headers: { "x-api-key": key } },
+      { headers },
     );
   } catch (err) {
     console.error("Upstream farm fetch failed", { farmId, err });

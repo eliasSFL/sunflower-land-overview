@@ -80,31 +80,76 @@ export type GetFarmResult =
       status: number;
     };
 
+// Retry profile for transient upstream failures. Backs off with jitter
+// so a worker that hits a shared egress-IP throttle bucket doesn't
+// stampede the BE on retry. Total worst-case wall time stays well under
+// a Worker's subrequest budget so we don't risk a Worker timeout.
+const RETRY_DELAYS_MS: ReadonlyArray<readonly [number, number]> = [
+  [100, 250],
+  [400, 800],
+];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function getFarm(
   farmId: number,
   apiKey: string,
+  clientIp?: string,
 ): Promise<GetFarmResult> {
-  let res: Response;
-  try {
-    res = await fetch(`${UPSTREAM}/community/farms/${farmId}`, {
-      headers: { "x-api-key": apiKey },
-    });
-  } catch {
-    return { ok: false, reason: "network", status: 0 };
+  const headers: Record<string, string> = { "x-api-key": apiKey };
+  // The BE's `community-get-farm` throttle keys on `cf-connecting-ip`,
+  // which from the Worker's outbound fetch resolves to a shared egress
+  // IP — so back-to-back subscribes from different players blow the
+  // bucket. Forward the eyeball's IP so the BE can scope the throttle
+  // per-player when the API key validates. `x-forwarded-client-ip` is
+  // a custom name so we don't collide with any CF-managed header.
+  if (clientIp) headers["x-forwarded-client-ip"] = clientIp;
+
+  // 1 try + RETRY_DELAYS_MS.length retries on 429/5xx/network. 404/401
+  // and parse failures are not retried — they're deterministic given
+  // the inputs.
+  const maxAttempts = RETRY_DELAYS_MS.length + 1;
+  let lastTransient: GetFarmResult = {
+    ok: false,
+    reason: "network",
+    status: 0,
+  };
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(`${UPSTREAM}/community/farms/${farmId}`, { headers });
+    } catch {
+      lastTransient = { ok: false, reason: "network", status: 0 };
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay) await sleep(jitter(delay[0], delay[1]));
+      continue;
+    }
+    if (res.status === 404 || res.status === 401) {
+      return { ok: false, reason: "not_found", status: res.status };
+    }
+    if (res.status === 429 || res.status >= 500) {
+      lastTransient = {
+        ok: false,
+        reason: "upstream_error",
+        status: res.status,
+      };
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay) await sleep(jitter(delay[0], delay[1]));
+      continue;
+    }
+    if (!res.ok) {
+      return { ok: false, reason: "upstream_error", status: res.status };
+    }
+    try {
+      const raw = (await res.json()) as FarmResponseRaw;
+      return { ok: true, raw };
+    } catch {
+      return { ok: false, reason: "parse", status: res.status };
+    }
   }
-  if (res.status === 404 || res.status === 401) {
-    return { ok: false, reason: "not_found", status: res.status };
-  }
-  if (res.status === 429 || res.status >= 500) {
-    return { ok: false, reason: "upstream_error", status: res.status };
-  }
-  if (!res.ok) {
-    return { ok: false, reason: "upstream_error", status: res.status };
-  }
-  try {
-    const raw = (await res.json()) as FarmResponseRaw;
-    return { ok: true, raw };
-  } catch {
-    return { ok: false, reason: "parse", status: res.status };
-  }
+  return lastTransient;
+}
+
+function jitter(minMs: number, maxMs: number): number {
+  return minMs + Math.floor(Math.random() * (maxMs - minMs));
 }

@@ -130,9 +130,9 @@ export class FarmPushDO extends Agent<Env, State> {
   // ─── HTTP handlers ────────────────────────────────────────────────
 
   private async handleSubscribe(request: Request): Promise<Response> {
-    const body = (await request
-      .json()
-      .catch(() => null)) as SubscribeBody | null;
+    const body = (await request.json().catch(() => null)) as
+      | (SubscribeBody & { __accessSnapshot?: string })
+      | null;
     if (
       !body?.subscription?.endpoint ||
       !body.subscription.keys?.p256dh ||
@@ -159,9 +159,39 @@ export class FarmPushDO extends Agent<Env, State> {
       );
     }
 
+    // The worker entrypoint already fetched the farm payload as part of
+    // its cohort gate (worker/access.ts). Apply that body here so the
+    // freshness short-circuit below skips our own redundant `getFarm`
+    // call — cuts BE load per first-time subscribe from 2 calls to 1
+    // and is the primary fix for the "Upstream unavailable" 429s caused
+    // by sharing one egress IP across all players. The DO is only
+    // reachable via that entrypoint, so the snapshot is trusted; we
+    // still verify `raw.id === body.farmId` to prevent a forwarded
+    // payload for a different farm from polluting this DO's state.
+    if (typeof body.__accessSnapshot === "string" && body.__accessSnapshot) {
+      try {
+        const raw = JSON.parse(body.__accessSnapshot) as {
+          farm?: unknown;
+          id?: number;
+        };
+        if (
+          raw &&
+          typeof raw === "object" &&
+          raw.id === body.farmId &&
+          raw.farm &&
+          typeof raw.farm === "object"
+        ) {
+          await this.applySnapshot(raw as SnapshotEnvelope["raw"]);
+        }
+      } catch {
+        // Malformed — fall through to the upstream-fetch path below.
+      }
+    }
+
     // Prove the farm exists upstream before we persist anything. Skip
     // the upstream call when a recent snapshot already exists — its
-    // presence is proof enough (second-device-on-same-farm path).
+    // presence is proof enough (second-device-on-same-farm path, or
+    // the entrypoint-forwarded snapshot we just applied above).
     // Without this gate, any caller can permanently bloat D1 + DO
     // state + the periodic sweep by enrolling arbitrary farmIds.
     const snap = this.state.snapshot;
@@ -179,7 +209,10 @@ export class FarmPushDO extends Agent<Env, State> {
         body.farmId,
         this.env.SFL_COMMUNITY_API_KEY,
       );
-      const result = await getFarm(body.farmId, key);
+      // Forwarded from the worker entrypoint so the BE's per-IP
+      // throttle scopes per-player instead of per-Worker-egress-IP.
+      const clientIp = request.headers.get("x-client-ip") ?? undefined;
+      const result = await getFarm(body.farmId, key, clientIp);
       if (!result.ok) {
         if (result.reason === "not_found") {
           return Response.json({ error: "Unknown farm" }, { status: 404 });
