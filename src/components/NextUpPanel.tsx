@@ -9,6 +9,7 @@ import { NEXT_UP_SECTION_ID, READY_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 
 const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
+const CHEVRON_UP = CHROME_ICONS.chevron_up;
 
 // Compact "next ready" feed shown under the Farm ID panel. Fills the
 // dead space on desktop while staying useful on mobile.
@@ -232,12 +233,12 @@ function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
           onClick={() => setExpanded((v) => !v)}
           className="flex items-center gap-1 self-center text-xs opacity-70 hover:opacity-100 cursor-pointer sm:hidden"
         >
-          <span>{expanded ? "Show less" : `Show ${hiddenCount} more`}</span>
+          <span>{expanded ? "Hide" : "Show more"}</span>
           <img
-            src={CHEVRON_DOWN}
+            src={expanded ? CHEVRON_UP : CHEVRON_DOWN}
             alt=""
             aria-hidden
-            className={`h-auto w-5 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className="h-auto w-5 shrink-0"
             style={{ imageRendering: "pixelated" }}
           />
         </button>
