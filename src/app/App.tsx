@@ -155,8 +155,14 @@ export function App() {
         if (e instanceof AccessDeniedError) {
           // Clear any previously-loaded farm so the denial panel surfaces
           // immediately — without this, a stale `data` from an earlier
-          // successful load keeps the dashboard rendered.
+          // successful load keeps the dashboard rendered. Also drop
+          // `lastFetchedAt` (the 60s cooldown would otherwise silently
+          // block re-submitting the previously-successful farm) and
+          // align `farmId` with the denied attempt so the re-mounted
+          // form's pre-fill matches the denial copy.
           setData(undefined);
+          setLastFetchedAt(undefined);
+          setFarmId(id);
           setAccessDenied(true);
         } else if (e instanceof ApiError) {
           setError(`${e.status} — ${e.message}`);
