@@ -61,9 +61,14 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
   const out: Omit<PendingFire, "scheduleId">[] = [];
 
   if (t.slots && t.slots.length > 0) {
-    for (const s of t.slots) {
+    // Include the slot index so two batches in the same rack with the
+    // same item + readyAt (e.g. starting two identical aging shed
+    // recipes simultaneously) don't collide on fireKey and drop one
+    // of the fires. Cooking aggKeys already include slotIdx so the
+    // index is redundant there but harmless.
+    t.slots.forEach((s, i) => {
       out.push({
-        fireKey: `${aggKey}#${s.item}@${s.readyAt}`,
+        fireKey: `${aggKey}#${s.item}@${s.readyAt}#${i}`,
         readyAt: s.readyAt,
         title: `${s.item} ready`,
         body: `${t.label} · ${t.category}`,
@@ -71,7 +76,7 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
         category: t.category,
         count: 1,
       });
-    }
+    });
     return out;
   }
 
@@ -707,7 +712,7 @@ export class FarmPushDO extends Agent<Env, State> {
     //
     // Skip the short-circuit on the subscribe path so seeding always
     // gets a chance to populate `notified` for currently-ready items.
-    const upstreamUpdatedAt = (raw as { updatedAt?: string }).updatedAt;
+    const upstreamUpdatedAt = raw.updatedAt;
     if (
       !seedAlreadyReady &&
       upstreamUpdatedAt !== undefined &&

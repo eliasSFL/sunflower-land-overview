@@ -128,6 +128,10 @@ export type FirePayload = Omit<PendingFire, "scheduleId">;
 // Raw farm response from upstream, plus when we observed it. Shape
 // mirrors `src/api/fetchFarm.ts:FarmResponse` so the snapshot can flow
 // straight into the SPA's localStorage cache without massaging.
+// `updatedAt` is present on coordinator-fed snapshots (lifted out of
+// the batch endpoint's farm payload by worker/coordinator.ts) and lets
+// applySnapshot short-circuit the reschedule diff when nothing changed
+// upstream. Absent on single-farm GETs.
 export type SnapshotEnvelope = {
   raw: {
     farm: unknown;
@@ -135,6 +139,7 @@ export type SnapshotEnvelope = {
     nft_id?: number;
     nftId?: number;
     isBlacklisted?: boolean;
+    updatedAt?: string;
   };
   fetchedAt: number;
 };
