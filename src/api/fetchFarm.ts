@@ -97,6 +97,12 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
     } else if (typeof parsed === "string" && parsed.length > 0) {
       message = parsed;
     }
+    // Worker enforces the cohort gate too — surfaces denial as 403
+    // with `error: "access_denied"`. Re-throw as the dedicated error
+    // so the UI's denial branch fires instead of a generic message.
+    if (res.status === 403 && message === "access_denied") {
+      throw new AccessDeniedError();
+    }
     throw new ApiError(res.status, message, parsed);
   }
 
