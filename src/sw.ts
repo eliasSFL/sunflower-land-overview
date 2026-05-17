@@ -57,6 +57,14 @@ self.addEventListener("push", (event) => {
 // as the SW) bypass this list — they're treated as paths.
 const ALLOWED_EXTERNAL_ORIGINS = new Set(["https://sunflower-land.com"]);
 
+// Same-origin bounce page used to launch the destination PWA on
+// external clicks. Chrome's clients.openWindow() opens cross-origin
+// URLs in a plain browser tab even when the user has the target PWA
+// installed; going through a same-origin redirect turns the next
+// step into a standard top-level navigation, which IS routed through
+// the browser's installed-PWA scope check.
+const LAUNCH_PATH = "/launch.html";
+
 type ClickTarget =
   | { kind: "internal"; path: string }
   | { kind: "external"; url: string };
@@ -86,8 +94,12 @@ self.addEventListener("notificationclick", (event) => {
       if (target.kind === "external") {
         // clients.matchAll is same-origin only, so we can't focus an
         // existing tab on the external origin — always open a new
-        // window and let the OS / browser dedupe.
-        await self.clients.openWindow(target.url);
+        // window and let the OS / browser dedupe. The URL goes in the
+        // fragment so the launch page is still a cache hit for
+        // /launch.html (precache match ignores fragments but not
+        // arbitrary query params).
+        const launchUrl = `${LAUNCH_PATH}#to=${encodeURIComponent(target.url)}`;
+        await self.clients.openWindow(launchUrl);
         return;
       }
       const path = target.path;
