@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#181425" />
+    <title>Opening Sunflower Land…</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #181425;
+        color: #fff;
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px;
+        text-align: center;
+      }
+      a {
+        color: #ffd54a;
+      }
+    </style>
+    <script>
+      // Bounce-through page invoked by the service worker's
+      // notificationclick handler when a notification targets an
+      // external origin (sunflower-land.com).
+      //
+      // Why this exists: in Chromium, clients.openWindow() with a
+      // cross-origin URL always opens a regular browser tab — it
+      // bypasses the destination PWA's launch handler, so users with
+      // the Sunflower Land PWA installed lose the in-app experience.
+      // Going through a same-origin page turns the next step into a
+      // standard top-level navigation, which DOES go through the
+      // browser's "URL is in an installed PWA's scope" detection and
+      // launches the PWA when present.
+      //
+      // The target URL is passed in the fragment so the SW's precache
+      // route still matches /launch.html exactly (query params would
+      // miss the cache).
+      (function () {
+        var ALLOWED_ORIGINS = ["https://sunflower-land.com"];
+        function bail() {
+          try {
+            window.location.replace("/");
+          } catch (e) {
+            /* ignore */
+          }
+        }
+        try {
+          var raw = window.location.hash || "";
+          if (raw.charAt(0) === "#") raw = raw.slice(1);
+          var params = new URLSearchParams(raw);
+          var to = params.get("to");
+          if (!to) {
+            bail();
+            return;
+          }
+          var u = new URL(to);
+          if (ALLOWED_ORIGINS.indexOf(u.origin) === -1) {
+            bail();
+            return;
+          }
+          window.location.replace(u.toString());
+        } catch (err) {
+          bail();
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="wrap">
+      <p>Opening Sunflower Land…</p>
+      <noscript>
+        <p>
+          JavaScript is required to continue.
+          <a href="https://sunflower-land.com/play">Open the game</a>
+          or <a href="/">return to the overview</a>.
+        </p>
+      </noscript>
+    </div>
+  </body>
+</html>
