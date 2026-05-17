@@ -213,14 +213,24 @@ async function handlePushRefresh(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const body = await readJson<{ farmId?: number; endpoint?: string }>(request);
+  const body = await readJson<{
+    farmId?: number;
+    endpoint?: string;
+    snapshot?: string;
+  }>(request);
   if (!body || typeof body.farmId !== "number" || !body.endpoint) {
     return json({ error: "Missing farmId or endpoint" }, { status: 400 });
   }
+  // Forward the SPA's just-fetched body to the DO so it can apply
+  // directly. The DO still verifies endpoint membership and matches
+  // raw.id to its own farmId before trusting the payload.
   return doStub(env, body.farmId).fetch("https://do/refresh", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ endpoint: body.endpoint }),
+    body: JSON.stringify({
+      endpoint: body.endpoint,
+      snapshot: body.snapshot,
+    }),
   });
 }
 
@@ -242,7 +252,25 @@ async function handleProxyFarm(env: Env, id: string): Promise<Response> {
   if (!result.ok) {
     return json({ error: result.error }, { status: result.status });
   }
-  return new Response(result.rawBody, {
+  // Stamp a server-trusted freshness marker on the proxy response.
+  // The SPA forwards this body verbatim through /push/refresh; the
+  // DO uses `__proxyFetchedAt` to reject any forwarded snapshot
+  // that's older than the DO's current snapshot, closing a state-
+  // rollback window (malicious subscriber replaying an old body, or
+  // out-of-order delivery between devices). Unparsable JSON is
+  // returned unstamped — the DO then falls through to its
+  // upstream-fetch path.
+  let stamped = result.rawBody;
+  try {
+    const parsed = JSON.parse(result.rawBody) as Record<string, unknown>;
+    if (parsed && typeof parsed === "object") {
+      parsed.__proxyFetchedAt = Date.now();
+      stamped = JSON.stringify(parsed);
+    }
+  } catch {
+    // Leave rawBody alone; downstream will fall through.
+  }
+  return new Response(stamped, {
     status: result.status,
     headers: {
       "content-type": result.contentType ?? "application/json",

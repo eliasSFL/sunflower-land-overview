@@ -73,12 +73,20 @@ export async function postTest(body: {
 }
 
 // Fire-and-forget hint to the DO that the player just refreshed in the
-// PWA, so the DO can re-fetch its own snapshot and re-schedule timer
-// fires immediately instead of waiting for the next 10-min coordinator
-// sweep. Caller should swallow errors — this is best-effort.
+// PWA, so the DO can re-schedule timer fires immediately instead of
+// waiting for the next 10-min coordinator sweep. Caller should swallow
+// errors — this is best-effort.
+//
+// `snapshot` carries the raw farm payload the SPA just received from
+// `/api/farms/{id}`, so the DO can apply it directly without a second
+// upstream fetch. This avoids the BE per-IP throttle on the shared
+// Worker egress IP and removes the cross-device staleness window that
+// existed when the DO refetched on its own (and short-circuited if it
+// had a snapshot < 30s old). Omitted ⇒ DO falls back to refetching.
 export async function postRefresh(body: {
   farmId: number;
   endpoint: string;
+  snapshot?: string;
 }): Promise<Response> {
   return fetch("/push/refresh", {
     method: "POST",

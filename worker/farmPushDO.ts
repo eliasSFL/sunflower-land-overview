@@ -357,6 +357,7 @@ export class FarmPushDO extends Agent<Env, State> {
   private async handleRefresh(request: Request): Promise<Response> {
     const body = (await request.json().catch(() => null)) as {
       endpoint?: string;
+      snapshot?: string;
     } | null;
     if (!body?.endpoint) {
       return Response.json({ error: "Missing endpoint" }, { status: 400 });
@@ -369,6 +370,57 @@ export class FarmPushDO extends Agent<Env, State> {
     );
     if (!known) {
       return Response.json({ error: "Unknown endpoint" }, { status: 404 });
+    }
+    // Prefer the SPA-forwarded snapshot when present: skips the
+    // upstream fetch entirely (no per-IP throttle pressure) and
+    // crucially avoids `refreshFromUpstream`'s 30s short-circuit,
+    // which used to silently no-op cross-device refreshes and leave
+    // /push/state serving stale snapshots to other devices.
+    //
+    // Three trust checks before applying:
+    //   1. `raw.id === state.farmId` — a valid-endpoint caller can't
+    //      poison this DO with another farm's payload.
+    //   2. `raw.__proxyFetchedAt` (set server-side by handleProxyFarm
+    //      in worker/index.ts) is strictly newer than our current
+    //      snapshot's fetchedAt. Stops a malicious subscriber (or an
+    //      out-of-order legitimate delivery from a second device)
+    //      from rolling back DO state by replaying an old body, which
+    //      would un-schedule alarms held by other subscribers.
+    //   3. Falls through to refreshFromUpstream on any failure — the
+    //      caller still gets a real refresh, just at the cost of an
+    //      upstream fetch.
+    if (typeof body.snapshot === "string" && body.snapshot.length > 0) {
+      type RawShape = {
+        farm?: unknown;
+        id?: number;
+        __proxyFetchedAt?: number;
+      };
+      let raw: RawShape | null;
+      try {
+        raw = JSON.parse(body.snapshot) as RawShape;
+      } catch {
+        raw = null;
+      }
+      const lastFetchedAt = this.state.snapshot?.fetchedAt ?? 0;
+      if (
+        raw &&
+        typeof raw === "object" &&
+        raw.id === this.state.farmId &&
+        raw.farm &&
+        typeof raw.farm === "object" &&
+        typeof raw.__proxyFetchedAt === "number" &&
+        raw.__proxyFetchedAt > lastFetchedAt
+      ) {
+        await this.applySnapshot(raw as SnapshotEnvelope["raw"]);
+        this.touchActivity();
+        return Response.json({
+          ok: true,
+          fetchedAt: this.state.snapshot?.fetchedAt,
+        });
+      }
+      // Malformed / wrong farm / stale / unstamped — fall through to
+      // the upstream-fetch path so the refresh still does something
+      // useful (its own 30s gate then caps egress amplification).
     }
     const ok = await this.refreshFromUpstream();
     if (ok) this.touchActivity();
