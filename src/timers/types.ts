@@ -159,6 +159,13 @@ export type Timer = {
 export type AggregatedTimer = Omit<Timer, "boosts"> & {
   count: number;
   boosts?: AggregatedBoost[];
+  // Per-source `readyAt` values for every Timer merged into this
+  // aggregate, sorted ascending. Populated only when count > 1; the
+  // notification scheduler reads it to cluster ripening events into
+  // separate pushes (so e.g. zucchini ready at T and T+1h fire as
+  // two notifications rather than one). UI consumers ignore this
+  // field — they still read `count` and `readyAt` (= the earliest).
+  instances?: number[];
 };
 
 export type TimerContext = {

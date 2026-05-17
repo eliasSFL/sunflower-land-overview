@@ -156,13 +156,16 @@ async function sweepImpl(env: Env): Promise<void> {
 
     // Fan-out concurrently within a batch. Each entry's value is the
     // GameState fields spread directly (legacy /getFarms shape) — we
-    // re-wrap into the `{ farm, id, isBlacklisted }` envelope the DO's
-    // /onSnapshot route expects. Track per-DO failures so we don't
-    // mark them synced.
+    // re-wrap into the `{ farm, id, isBlacklisted, updatedAt }`
+    // envelope the DO's /onSnapshot route expects. `updatedAt` is
+    // lifted to the envelope top level so the DO's applySnapshot
+    // short-circuit (raw.updatedAt === state.snapshotUpdatedAt) can
+    // see it — otherwise it'd stay nested inside `gameState` after
+    // the spread and the short-circuit would never fire.
     const fanout = await Promise.allSettled(
       entries.map(async ([idStr, value]) => {
         const farmId = Number(idStr);
-        const { isBlacklisted, ...gameState } = value;
+        const { isBlacklisted, updatedAt, ...gameState } = value;
         const stub = env.FARM_PUSH_DO.get(env.FARM_PUSH_DO.idFromName(idStr));
         const r = await stub.fetch("https://do/onSnapshot", {
           method: "POST",
@@ -171,6 +174,7 @@ async function sweepImpl(env: Env): Promise<void> {
             farm: gameState,
             id: farmId,
             isBlacklisted: !!isBlacklisted,
+            updatedAt,
           }),
         });
         if (!r.ok) {
