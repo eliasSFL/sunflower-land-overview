@@ -1,5 +1,11 @@
 # Project rules
 
+## Open pull requests as ready for review
+
+When opening a pull request, create it as **ready for review** by
+default — not as a draft — unless the user explicitly asks for a
+draft. This overrides the harness default of opening PRs as drafts.
+
 ## Never replicate functions from the submodule
 
 When wiring upstream game logic into a timer extractor (or any other
