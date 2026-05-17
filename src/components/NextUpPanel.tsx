@@ -1,11 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { AggregatedTimer } from "../timers/index.ts";
 import { statusOf } from "../timers/index.ts";
 import type { AnimalResource, AnimalType } from "../game/index.ts";
+import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatRemaining, formatYield } from "../lib/format.ts";
 import { NEXT_UP_SECTION_ID, READY_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
+
+const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
 
 // Compact "next ready" feed shown under the Farm ID panel. Fills the
 // dead space on desktop while staying useful on mobile.
@@ -15,10 +18,13 @@ import { InnerPanel, Label } from "./ui/index.ts";
 // cares about which recipe is dropping next, not which building owns
 // it. Idle timers are skipped.
 //
-// Limit: render up to 10 rows; hide rows 5–9 below `sm` (true full-
-// width mobile stack) so phones see a tight 5-row widget. Once the
-// Farm ID sidebar appears at `sm+`, show the full list — even at 1
-// timer column the sidebar has room for it.
+// Limits:
+// - Ready panel renders every ready row; below `sm` only the first 5
+//   are visible by default and a "Show N more" toggle reveals the rest.
+// - Next up panel keeps the original cap of 10 rows total with rows
+//   5–9 hidden below `sm` (no toggle) so phones see a tight widget.
+// Once the Farm ID sidebar appears at `sm+`, both lists are shown in
+// full — even at 1 timer column the sidebar has room for it.
 
 const MAX_ROWS = 10;
 const MOBILE_VISIBLE = 5;
@@ -131,14 +137,19 @@ type Props = {
 
 export function ReadyPanel({ timers, now }: Props) {
   const rows = useMemo(
-    () =>
-      buildRows(timers)
-        .filter((r) => r.readyAt <= now)
-        .slice(0, MAX_ROWS),
+    () => buildRows(timers).filter((r) => r.readyAt <= now),
     [timers, now],
   );
   if (rows.length === 0) return null;
-  return <RowList id={READY_SECTION_ID} title="Ready" rows={rows} now={now} />;
+  return (
+    <RowList
+      id={READY_SECTION_ID}
+      title="Ready"
+      rows={rows}
+      now={now}
+      mobileExpandable
+    />
+  );
 }
 
 export function NextUpPanel({ timers, now }: Props) {
@@ -160,9 +171,14 @@ type RowListProps = {
   title: string;
   rows: Row[];
   now: number;
+  mobileExpandable?: boolean;
 };
 
-function RowList({ id, title, rows, now }: RowListProps) {
+function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hiddenCount = mobileExpandable
+    ? Math.max(0, rows.length - MOBILE_VISIBLE)
+    : 0;
   return (
     <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
@@ -172,8 +188,9 @@ function RowList({ id, title, rows, now }: RowListProps) {
         {rows.map((row, idx) => {
           const status = statusOf(row.readyAt, now);
           // Hide rows past the mobile cap until the Farm ID column has
-          // settled into a sidebar (lg+).
-          const hideOnMobile = idx >= MOBILE_VISIBLE;
+          // settled into a sidebar (lg+), unless the user has expanded
+          // the list on mobile.
+          const hideOnMobile = !expanded && idx >= MOBILE_VISIBLE;
           return (
             <li
               key={row.key}
@@ -209,6 +226,22 @@ function RowList({ id, title, rows, now }: RowListProps) {
           );
         })}
       </ul>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1 self-center text-xs opacity-70 hover:opacity-100 cursor-pointer sm:hidden"
+        >
+          <span>{expanded ? "Hide" : "Show more"}</span>
+          <img
+            src={CHEVRON_DOWN}
+            alt=""
+            aria-hidden
+            className={`h-auto w-5 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+            style={{ imageRendering: "pixelated" }}
+          />
+        </button>
+      ) : null}
     </InnerPanel>
   );
 }
