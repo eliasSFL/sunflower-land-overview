@@ -15,11 +15,15 @@ import { InnerPanel, Label } from "./ui/index.ts";
 // cares about which recipe is dropping next, not which building owns
 // it. Idle timers are skipped.
 //
-// Limit: render every row. Below `sm` (true full-width mobile stack)
-// only the first 5 are visible by default; a "Show all" toggle reveals
-// the rest. Once the Farm ID sidebar appears at `sm+`, show the full
-// list — even at 1 timer column the sidebar has room for it.
+// Limits:
+// - Ready panel renders every ready row; below `sm` only the first 5
+//   are visible by default and a "Show N more" toggle reveals the rest.
+// - Next up panel keeps the original cap of 10 rows total with rows
+//   5–9 hidden below `sm` (no toggle) so phones see a tight widget.
+// Once the Farm ID sidebar appears at `sm+`, both lists are shown in
+// full — even at 1 timer column the sidebar has room for it.
 
+const MAX_ROWS = 10;
 const MOBILE_VISIBLE = 5;
 // Rows with the same (source, item) that come ready within this window
 // of an already-shown row are collapsed — keeps multiple Salt nodes (or
@@ -134,12 +138,23 @@ export function ReadyPanel({ timers, now }: Props) {
     [timers, now],
   );
   if (rows.length === 0) return null;
-  return <RowList id={READY_SECTION_ID} title="Ready" rows={rows} now={now} />;
+  return (
+    <RowList
+      id={READY_SECTION_ID}
+      title="Ready"
+      rows={rows}
+      now={now}
+      mobileExpandable
+    />
+  );
 }
 
 export function NextUpPanel({ timers, now }: Props) {
   const rows = useMemo(
-    () => buildRows(timers).filter((r) => r.readyAt > now),
+    () =>
+      buildRows(timers)
+        .filter((r) => r.readyAt > now)
+        .slice(0, MAX_ROWS),
     [timers, now],
   );
   if (rows.length === 0) return null;
@@ -153,11 +168,14 @@ type RowListProps = {
   title: string;
   rows: Row[];
   now: number;
+  mobileExpandable?: boolean;
 };
 
-function RowList({ id, title, rows, now }: RowListProps) {
+function RowList({ id, title, rows, now, mobileExpandable }: RowListProps) {
   const [expanded, setExpanded] = useState(false);
-  const hiddenCount = Math.max(0, rows.length - MOBILE_VISIBLE);
+  const hiddenCount = mobileExpandable
+    ? Math.max(0, rows.length - MOBILE_VISIBLE)
+    : 0;
   return (
     <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
