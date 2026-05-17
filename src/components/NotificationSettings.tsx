@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button, Checkbox, Radio, Label, SectionHeader } from "./ui/index.ts";
 import {
@@ -36,9 +36,13 @@ import { getCategoryIcon } from "./categoryIcon.ts";
 
 type Props = {
   farmId: number;
+  // Optional inline badge rendered next to the Enabled/Disabled label.
+  // VipGate uses this to surface VIP/Trial/Grace status without
+  // NotificationSettings needing to know about subscription state.
+  badge?: ReactNode;
 };
 
-export function NotificationSettings({ farmId }: Props) {
+export function NotificationSettings({ farmId, badge }: Props) {
   const [permission, setPermission] = useState<PermissionState>(() =>
     getPermissionState(),
   );
@@ -259,6 +263,7 @@ export function NotificationSettings({ farmId }: Props) {
           {permission === "denied" ? (
             <Label type="danger">Permission denied</Label>
           ) : null}
+          {badge}
         </div>
         {enabled ? (
           <div className="flex flex-col gap-2">

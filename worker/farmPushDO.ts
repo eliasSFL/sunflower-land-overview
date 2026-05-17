@@ -4,6 +4,7 @@ import { Agent } from "agents";
 import { sendAll } from "./push.ts";
 import { getFarm, mintFarmKey } from "./communityApi.ts";
 import { addOptIn, removeOptIn } from "./registry.ts";
+import { isVipActive } from "./vip/state.ts";
 import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
 import type {
@@ -199,6 +200,14 @@ export class FarmPushDO extends Agent<Env, State> {
       // `state.snapshot` and so any client follow-up `/push/state`
       // doesn't hit a cold DO.
       await this.applySnapshot(result.raw);
+    }
+
+    // VIP gate. The Worker entry already checks this for /push/subscribe,
+    // but the DO is reachable directly via service bindings or future
+    // routing — re-check here so the subscription can't be persisted by
+    // a lapsed farm regardless of how the request arrived.
+    if (!(await isVipActive(this.env, body.farmId))) {
+      return Response.json({ error: "vip_required" }, { status: 402 });
     }
 
     const stored: StoredSubscription = {
@@ -404,6 +413,19 @@ export class FarmPushDO extends Agent<Env, State> {
     // (fireKey, readyAt). Alarms guarantee at-least-once; the OS `tag`
     // is a second line of defence client-side.
     if (this.state.notified[fireKey] === readyAt) return;
+
+    // VIP gate at the authoritative cutoff. Subscribe-time and DO
+    // /subscribe both gate up-front, but a farm that lapses between
+    // subscribing and the alarm firing must not keep receiving pushes.
+    // cleanup() cancels all remaining schedules and removes the D1
+    // opt-in row so the cron sweep stops feeding this farm.
+    if (
+      this.state.farmId !== null &&
+      !(await isVipActive(this.env, this.state.farmId))
+    ) {
+      await this.cleanup();
+      return;
+    }
 
     // Per-device mute filter. Older PendingFires don't carry a
     // category (`undefined`), so they bypass the filter and fire to

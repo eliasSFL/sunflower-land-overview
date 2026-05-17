@@ -4,6 +4,7 @@ import { Button, Modal, SectionHeader } from "./ui/index.ts";
 import { ActiveFarmPanel } from "./ActiveFarmPanel.tsx";
 import { FarmIdForm } from "./FarmIdForm.tsx";
 import { NotificationSettings } from "./NotificationSettings.tsx";
+import { VipGate } from "./vip/VipGate.tsx";
 import type { FarmResponse } from "../api/fetchFarm.ts";
 
 type Props = {
@@ -83,7 +84,11 @@ export function SettingsModal({
           Open Sunflower Land
         </Button>
       </section>
-      <NotificationSettings farmId={data.id} />
+      <VipGate farmId={data.id}>
+        {({ badge }) => (
+          <NotificationSettings farmId={data.id} badge={badge} />
+        )}
+      </VipGate>
     </Modal>
   );
 }

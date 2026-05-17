@@ -30,7 +30,44 @@ export interface Env {
   // every /push/* and /api/* request. Configured in wrangler.jsonc
   // under `ratelimits`: 60 requests per 60s, namespace_id "1001".
   PUSH_RATE_LIMITER: RateLimit;
+  // ─── VIP subscription bindings ────────────────────────────────────
+  // BIP-39 mnemonic. Root of the HD wallet from which per-farm USDC
+  // deposit addresses are derived (m/44'/60'/0'/0/<farmId>). Same
+  // private key generates the same address on Base and Polygon.
+  // Receive-only: the Worker never signs. Required for sweep tooling.
+  OVERVIEW_VIP_MASTER_SEED: string;
+  // HTTPS RPC endpoints used to fetch payment receipts. Alchemy /
+  // Infura / QuickNode work — anything that speaks JSON-RPC.
+  RPC_URL_BASE: string;
+  RPC_URL_POLYGON: string;
+  // USDC contract addresses, env-driven so flipping between mainnet
+  // and Sepolia/Amoy is config-only. Set to the *native* USDC on
+  // Polygon (0x3c499c...), NOT the bridged USDC.e (0x2791...).
+  USDC_ADDRESS_BASE: string;
+  USDC_ADDRESS_POLYGON: string;
+  // WalletConnect cloud project id. Surfaced to the SPA via
+  // GET /vip/config so it isn't baked into the build.
+  WALLETCONNECT_PROJECT_ID: string;
 }
+
+// Supported chains for VIP payment. Add new ones here + USDC address
+// var + RPC url and the rest of the pipeline picks them up.
+export type VipChain = "base" | "polygon";
+
+// Wire shape returned by GET /vip/status.
+export type VipStatus = {
+  farmId: number;
+  isVip: boolean;
+  inGrace: boolean;
+  expiresAt: number | null;
+  graceUntil: number | null;
+  trialUsedAt: number | null;
+  depositAddress: `0x${string}`;
+  chains: Record<
+    VipChain,
+    { usdc: `0x${string}`; minAmount: string; explorer: string }
+  >;
+};
 
 // PushSubscriptionJSON shape (browser PushSubscription.toJSON()).
 // Repeated here because @cloudflare/workers-types doesn't ship the

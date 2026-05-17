@@ -31,6 +31,11 @@
   },
   "vars": {
     "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
+    // USDC contract addresses. Env-driven so flipping to Sepolia/Amoy
+    // for testnet smoke-tests is a wrangler.jsonc change, not a deploy.
+    // Polygon: NATIVE USDC (0x3c499c...) — *not* bridged USDC.e.
+    "USDC_ADDRESS_BASE": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "USDC_ADDRESS_POLYGON": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
   },
   "ratelimits": [
     {

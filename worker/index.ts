@@ -17,6 +17,13 @@
 import { fetchAndCheckAccess } from "./access.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
+import {
+  handleVipConfig,
+  handleVipPayment,
+  handleVipStatus,
+  handleVipTrial,
+} from "./vip/routes.ts";
+import { isVipActive } from "./vip/state.ts";
 
 export { FarmPushDO } from "./farmPushDO.ts";
 
@@ -98,6 +105,12 @@ async function handlePushSubscribe(
   const access = await fetchAndCheckAccess(env, body.farmId);
   if (!access.ok) {
     return json({ error: access.error }, { status: access.status });
+  }
+  // VIP gate. Notifications are paid past the free trial. The DO also
+  // re-checks at fire time so already-scheduled alarms stop on lapse —
+  // this gate just prevents the initial subscription.
+  if (!(await isVipActive(env, body.farmId))) {
+    return json({ error: "vip_required" }, { status: 402 });
   }
   return doStub(env, body.farmId).fetch("https://do/subscribe", {
     method: "POST",
@@ -257,7 +270,11 @@ export default {
     // otherwise grant each id its own 60/min budget per IP — which
     // for `/api/farms/{id}` amplifies into ~unlimited upstream
     // proxy traffic by rotating ids.
-    if (url.pathname.startsWith("/push/") || url.pathname.startsWith("/api/")) {
+    if (
+      url.pathname.startsWith("/push/") ||
+      url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/vip/")
+    ) {
       let routeKey: string;
       if (url.pathname.startsWith("/api/farms/")) routeKey = "/api/farms";
       else if (url.pathname.startsWith("/push/state/"))
@@ -340,6 +357,20 @@ export default {
     if (stateMatch && method === "GET") {
       const since = Number(url.searchParams.get("since") ?? "0");
       return handlePushState(env, Number(stateMatch[1]), since);
+    }
+
+    // VIP routes.
+    if (url.pathname === "/vip/status" && method === "GET") {
+      return handleVipStatus(request, env);
+    }
+    if (url.pathname === "/vip/config" && method === "GET") {
+      return handleVipConfig(env);
+    }
+    if (url.pathname === "/vip/trial" && method === "POST") {
+      return handleVipTrial(request, env);
+    }
+    if (url.pathname === "/vip/payment" && method === "POST") {
+      return handleVipPayment(request, env);
     }
 
     return env.ASSETS.fetch(request);
