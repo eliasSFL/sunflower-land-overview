@@ -71,7 +71,7 @@ export function loadCachedFarm(
     // flip the cache to denied on the next read.
     if (
       !hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS", {
-        farmId,
+        farmId: data.id,
         isBlacklisted: data.isBlacklisted,
       })
     ) {

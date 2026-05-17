@@ -1,7 +1,7 @@
 import { type GameState, TEAM_USERNAMES } from "../game/index.ts";
 
 export type FeatureFlagContext = {
-  farmId: number | string;
+  farmId: number;
   isBlacklisted?: boolean;
 };
 export type FeatureFlag = (
