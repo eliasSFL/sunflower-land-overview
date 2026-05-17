@@ -64,7 +64,7 @@ export const OVERVIEW_FEATURE_FLAGS = {
   BETA_ONLY_EXAMPLE: betaFeatureFlag,
   LIMITED_ONLY_ACCESS: (game, ctx) =>
     betaFeatureFlag(game, ctx) ||
-    sampledByFarm("LIMITED_ONLY_ACCESS", 100_000)(game, ctx),
+    sampledByFarm("LIMITED_ONLY_ACCESS", 250_000)(game, ctx),
 } satisfies Record<string, FeatureFlag>;
 
 export type OverviewFeatureName = keyof typeof OVERVIEW_FEATURE_FLAGS;
