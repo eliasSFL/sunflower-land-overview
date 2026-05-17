@@ -274,5 +274,5 @@ export {
   TIME_BASED_FEATURE_FLAGS,
   FEATURE_FLAGS,
   type FeatureFlag,
-} from "lib/flags.ts"; // upstream path
+} from "lib/flags"; // upstream path
 export { TEAM_USERNAMES, MANAGER_IDS } from "lib/access";
