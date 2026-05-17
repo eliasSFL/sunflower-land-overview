@@ -65,12 +65,16 @@ export async function fetchAndCheckAccess(
     return { ok: false, status: 502, error: "Unexpected upstream shape" };
   }
 
-  const raw = parsed as { farm: unknown };
+  const raw = parsed as { farm: unknown; isBlacklisted?: boolean };
   const game = makeGame(raw.farm as Parameters<typeof makeGame>[0]);
 
   // `access_denied` is the sentinel the frontend's fetchFarm.ts maps
   // back to AccessDeniedError. Keep this exact string in sync.
-  if (!hasOverviewAccess(game, "LIMITED_ONLY_ACCESS")) {
+  if (
+    !hasOverviewAccess(game, "LIMITED_ONLY_ACCESS", {
+      isBlacklisted: raw.isBlacklisted,
+    })
+  ) {
     return { ok: false, status: 403, error: "access_denied" };
   }
 
