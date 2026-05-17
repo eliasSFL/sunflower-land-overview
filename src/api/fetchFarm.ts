@@ -63,6 +63,14 @@ export function loadCachedFarm(
     const parsed = JSON.parse(raw) as { v: FarmResponse; at: number };
     if (!parsed?.v?.farm) return undefined;
     const data = { ...parsed.v, farm: makeGame(parsed.v.farm) };
+    // Pre-PR caches predate the `isBlacklisted` field — refuse to use
+    // them so a freshly-banned farm can't auto-load via a stale cache
+    // that never carried the ban flag. The upstream community API
+    // always sends `isBlacklisted` (true or false), so any cache
+    // written from this PR onwards has the field.
+    if (data.isBlacklisted === undefined) {
+      return undefined;
+    }
     // Re-check access on every cache read — if the cohort tightens in
     // code (or the farm gets blacklisted upstream and we hand-edit the
     // cached payload), a previously-approved farm should stop
