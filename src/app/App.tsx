@@ -153,6 +153,10 @@ export function App() {
         setLastFetchedAt(Date.now());
       } catch (e) {
         if (e instanceof AccessDeniedError) {
+          // Clear any previously-loaded farm so the denial panel surfaces
+          // immediately — without this, a stale `data` from an earlier
+          // successful load keeps the dashboard rendered.
+          setData(undefined);
           setAccessDenied(true);
         } else if (e instanceof ApiError) {
           setError(`${e.status} — ${e.message}`);
