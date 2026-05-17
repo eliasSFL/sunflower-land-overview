@@ -48,6 +48,11 @@ function mergeBoosts(
 
 export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
   const groups = new Map<string, AggregatedTimer>();
+  // Per-group readyAts collected separately so we don't grow the
+  // AggregatedTimer's `instances` array until we know the group ended
+  // up with count > 1 (single-source groups leave the field undefined
+  // — see types.ts).
+  const readyAtsByKey = new Map<string, number[]>();
 
   for (const t of timers) {
     const key = t.aggregationKey ?? `${t.category}|${t.label}`;
@@ -63,11 +68,13 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         predictedYield: t.predictedYield ? { ...t.predictedYield } : undefined,
         boosts: mergeBoosts([], t.boosts),
       });
+      readyAtsByKey.set(key, [t.readyAt]);
       continue;
     }
 
     existing.count += 1;
     existing.readyAt = Math.min(existing.readyAt, t.readyAt);
+    readyAtsByKey.get(key)!.push(t.readyAt);
 
     if (t.predictedYield) {
       if (existing.predictedYield) {
@@ -83,9 +90,19 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
     existing.boosts = mergeBoosts(existing.boosts ?? [], t.boosts);
   }
 
-  // Drop empty boost arrays so card rendering can simply check truthiness.
-  for (const t of groups.values()) {
+  for (const [key, t] of groups) {
+    // Drop empty boost arrays so card rendering can simply check truthiness.
     if (t.boosts && t.boosts.length === 0) t.boosts = undefined;
+    // Attach per-instance readyAts for the DO scheduler (Bug 2 fix —
+    // lets the notification path schedule per-ripening-wave instead
+    // of one alarm at min(readyAt) per aggregation key). Single-
+    // source groups don't need it; the scheduler falls back to
+    // `readyAt`/`count` for those.
+    if (t.count > 1) {
+      const readyAts = readyAtsByKey.get(key)!;
+      readyAts.sort((a, b) => a - b);
+      t.instances = readyAts;
+    }
   }
 
   return [...groups.values()];

@@ -6,6 +6,8 @@ import { getFarm, mintFarmKey } from "./communityApi.ts";
 import { addOptIn, removeOptIn } from "./registry.ts";
 import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
+import { clusterReadyAts } from "../src/timers/cluster.ts";
+import type { AggregatedTimer } from "../src/timers/types.ts";
 import type {
   Env,
   StoredSubscription,
@@ -37,6 +39,81 @@ function formatAmount(n: number): string {
   return parseFloat(n.toFixed(2)).toString();
 }
 
+// Derive the list of (fireKey, payload) entries for one aggregated
+// timer. Three branches:
+//
+//   * `slots[]` present  → per-slot fires (cooking, aging, crafting).
+//     Each slot already has its own item identity and readyAt.
+//   * `instances[]` set  → multi-plot plant/animal/resource. Cluster
+//     adjacent readyAts within CLUSTER_WINDOW_MS so e.g. a player who
+//     plants 5 zucchini in one in-game session gets ONE "5× Zucchini
+//     ready" push instead of five back-to-back notifications. Yield
+//     amount is dropped from the body because the aggregate's
+//     `predictedYield.amount` is summed across ALL instances, not the
+//     cluster — surfacing it on a partial wave would be misleading.
+//   * Neither            → single-instance timer (beehives, lone
+//     plots). Keeps the prior yield headline format.
+//
+// The fireKey embeds `readyAt` so multiple ripening waves for the
+// same aggregation key get distinct dedup keys.
+function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
+  const aggKey = t.aggregationKey ?? t.id;
+  const out: Omit<PendingFire, "scheduleId">[] = [];
+
+  if (t.slots && t.slots.length > 0) {
+    // Include the slot index so two batches in the same rack with the
+    // same item + readyAt (e.g. starting two identical aging shed
+    // recipes simultaneously) don't collide on fireKey and drop one
+    // of the fires. Cooking aggKeys already include slotIdx so the
+    // index is redundant there but harmless.
+    t.slots.forEach((s, i) => {
+      out.push({
+        fireKey: `${aggKey}#${s.item}@${s.readyAt}#${i}`,
+        readyAt: s.readyAt,
+        title: `${s.item} ready`,
+        body: `${t.label} · ${t.category}`,
+        icon: s.icon ?? t.icon,
+        category: t.category,
+        count: 1,
+      });
+    });
+    return out;
+  }
+
+  if (t.instances && t.instances.length > 0) {
+    for (const c of clusterReadyAts(t.instances, CLUSTER_WINDOW_MS)) {
+      const prefix = c.count > 1 ? `${c.count}× ` : "";
+      out.push({
+        fireKey: `${aggKey}@${c.readyAt}`,
+        readyAt: c.readyAt,
+        title: `${t.label} ready`,
+        body: `${prefix}${t.label} · ${t.category}`,
+        icon: t.icon,
+        category: t.category,
+        count: c.count,
+      });
+    }
+    return out;
+  }
+
+  // Single-instance fallback: matches the pre-fix headline format so
+  // a lone beehive/plot still surfaces its predicted yield.
+  const prefix = t.count > 1 ? `${t.count}× ` : "";
+  const headline = t.predictedYield
+    ? `${prefix}${formatAmount(t.predictedYield.amount)} ${t.predictedYield.item}`
+    : `${prefix}${t.label}`;
+  out.push({
+    fireKey: `${aggKey}@${t.readyAt}`,
+    readyAt: t.readyAt,
+    title: `${t.label} ready`,
+    body: `${headline} · ${t.category}`,
+    icon: t.icon,
+    category: t.category,
+    count: t.count,
+  });
+  return out;
+}
+
 // Skip the upstream fetch in `refreshFromUpstream` if our snapshot is
 // fresher than this. Limits how often a single farm's clients can drive
 // real upstream traffic via /push/refresh.
@@ -61,6 +138,28 @@ const MAX_SUBSCRIPTIONS_PER_FARM = 10;
 // or receive successful pushes — anything quieter than this is
 // effectively churned and we recycle the D1 row + DO state.
 const OPT_IN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Sliding window for clustering per-instance ripening events into one
+// push. A player who plants several pots seconds apart gets one
+// "N× Item ready" notification per cluster; pots planted hours apart
+// get separate pushes. See src/timers/cluster.ts.
+const CLUSTER_WINDOW_MS = 60_000;
+
+// Soft cap on scheduled fires per DO. A whale farm with hundreds of
+// plots × multiple crops could otherwise balloon DO state past the
+// 128 KB per-value storage limit. Each PendingFire is ~200 bytes;
+// 200 entries = ~40 KB, well under the limit with headroom for the
+// rest of state. When exceeded, the earliest readyAts win and the
+// rest are dropped with a warning.
+const MAX_SCHEDULED_PER_DO = 200;
+
+// How long an entry in `notified` survives. Was 24h when the value
+// stored `readyAt` — too short for our seeded-on-subscribe entries
+// (which carry ancient readyAts and would GC out on the next fire,
+// then the next sweep would re-fire them). Now the value is
+// `recordedAt` and 7 days is enough for any genuinely un-harvested
+// crop to stay deduped without growing the map unbounded.
+const NOTIFIED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type State = {
   farmId: number | null;
@@ -181,7 +280,9 @@ export class FarmPushDO extends Agent<Env, State> {
           raw.farm &&
           typeof raw.farm === "object"
         ) {
-          await this.applySnapshot(raw as SnapshotEnvelope["raw"]);
+          await this.applySnapshot(raw as SnapshotEnvelope["raw"], {
+            seedAlreadyReady: true,
+          });
         }
       } catch {
         // Malformed — fall through to the upstream-fetch path below.
@@ -230,8 +331,10 @@ export class FarmPushDO extends Agent<Env, State> {
       }
       // Hot the snapshot now so the persist below sees an up-to-date
       // `state.snapshot` and so any client follow-up `/push/state`
-      // doesn't hit a cold DO.
-      await this.applySnapshot(result.raw);
+      // doesn't hit a cold DO. Seed already-ready instances so a fresh
+      // subscriber with a backlog of un-harvested crops doesn't get a
+      // wall of "Item ready" pushes on enable.
+      await this.applySnapshot(result.raw, { seedAlreadyReady: true });
     }
 
     const stored: StoredSubscription = {
@@ -485,10 +588,12 @@ export class FarmPushDO extends Agent<Env, State> {
   async fireTimer(payload: FirePayload): Promise<void> {
     const { fireKey, readyAt, category } = payload;
 
-    // Idempotency: drop if we've already pushed for this exact
-    // (fireKey, readyAt). Alarms guarantee at-least-once; the OS `tag`
-    // is a second line of defence client-side.
-    if (this.state.notified[fireKey] === readyAt) return;
+    // Idempotency: drop if we've already pushed (or silently seeded)
+    // for this fireKey. The fireKey now embeds readyAt, so presence
+    // alone is sufficient — no need to compare values. Alarms
+    // guarantee at-least-once; the OS `tag` is a second line of
+    // defence client-side.
+    if (fireKey in (this.state.notified ?? {})) return;
 
     // Per-device mute filter. Older PendingFires don't carry a
     // category (`undefined`), so they bypass the filter and fire to
@@ -532,13 +637,17 @@ export class FarmPushDO extends Agent<Env, State> {
       }
     }
 
-    // Garbage-collect notified entries older than 24h.
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    // Garbage-collect notified entries older than NOTIFIED_TTL_MS.
+    // Value is the wall-clock time we recorded the entry (NOT the
+    // fire's readyAt — readyAt can be ancient for seeded entries).
+    const now = Date.now();
+    const cutoff = now - NOTIFIED_TTL_MS;
     const nextNotified: Record<string, number> = {};
-    for (const [k, at] of Object.entries(this.state.notified ?? {})) {
-      if (at > cutoff) nextNotified[k] = at;
+    for (const [k, recordedAt] of Object.entries(this.state.notified ?? {})) {
+      if (recordedAt > cutoff) nextNotified[k] = recordedAt;
     }
-    nextNotified[fireKey] = readyAt;
+    nextNotified[fireKey] = now;
+    void readyAt;
 
     // Drop the spent entry from `scheduled` — its alarm has fired.
     const { [fireKey]: _spent, ...rest } = this.state.scheduled ?? {};
@@ -579,7 +688,19 @@ export class FarmPushDO extends Agent<Env, State> {
   // Hydrate the raw payload, run the timer extractor, and diff against
   // existing schedules. Cancels obsolete fires, adds new ones, leaves
   // unchanged ones alone.
-  private async applySnapshot(raw: SnapshotEnvelope["raw"]): Promise<void> {
+  //
+  // `seedAlreadyReady`: when true, any instance with readyAt <= now is
+  // silently recorded in `notified` instead of firing immediately.
+  // Only the subscribe path passes this — it prevents enabling
+  // notifications on a farm with a backlog of un-harvested ready
+  // crops from producing a wall of "Item ready" pushes. All other
+  // callers (refresh / coordinator sweep) pass false so genuinely-
+  // newly-observed ready items still fire (Bug 1 fix).
+  private async applySnapshot(
+    raw: SnapshotEnvelope["raw"],
+    opts?: { seedAlreadyReady?: boolean },
+  ): Promise<void> {
+    const seedAlreadyReady = opts?.seedAlreadyReady ?? false;
     const now = Date.now();
     const farmId = raw.id;
 
@@ -588,8 +709,12 @@ export class FarmPushDO extends Agent<Env, State> {
     // schedule diff would produce identical results. Skip the heavy
     // work and just bump `fetchedAt` so `/push/state` still serves
     // the snapshot to callers who haven't seen this version yet.
-    const upstreamUpdatedAt = (raw as { updatedAt?: string }).updatedAt;
+    //
+    // Skip the short-circuit on the subscribe path so seeding always
+    // gets a chance to populate `notified` for currently-ready items.
+    const upstreamUpdatedAt = raw.updatedAt;
     if (
+      !seedAlreadyReady &&
       upstreamUpdatedAt !== undefined &&
       upstreamUpdatedAt === this.state.snapshotUpdatedAt
     ) {
@@ -607,40 +732,48 @@ export class FarmPushDO extends Agent<Env, State> {
     // Build the fresh fire-key map.
     type FreshFire = Omit<PendingFire, "scheduleId">;
     const fresh = new Map<string, FreshFire>();
+    const notified = { ...(this.state.notified ?? {}) };
+    let seededCount = 0;
+
     for (const t of aggregated) {
       if (t.idle) continue;
-      const aggKey = t.aggregationKey ?? t.id;
-      const countPrefix = t.count > 1 ? `${t.count}× ` : "";
-      if (t.slots && t.slots.length > 0) {
-        // Multi-slot building (cooking, crafting, aging). One fire per
-        // slot, tagged with slot item + readyAt so OS dedup is precise.
-        for (const s of t.slots) {
-          if (s.readyAt <= now) continue;
-          const fireKey = `${aggKey}#${s.item}@${s.readyAt}`;
-          fresh.set(fireKey, {
-            fireKey,
-            readyAt: s.readyAt,
-            title: `${s.item} ready`,
-            body: `${t.label} · ${t.category}`,
-            icon: s.icon ?? t.icon,
-            category: t.category,
-          });
+      for (const inst of instancesFor(t)) {
+        // Dedup: a previous fire (or seed) already covered this exact
+        // ripening event. The new fireKey embeds readyAt so a presence
+        // check is sufficient — no need to compare values.
+        if (inst.fireKey in notified) continue;
+
+        if (inst.readyAt <= now) {
+          if (seedAlreadyReady) {
+            // Silent seed — record without scheduling. Next fire/sweep
+            // observing the same fireKey will dedup against this.
+            notified[inst.fireKey] = now;
+            seededCount += 1;
+            continue;
+          }
+          // Bug 1 fix: don't drop already-ready instances. Schedule
+          // with delay=1 so the OS fires the push on the next alarm
+          // tick. The `notified` dedup above guards re-fires across
+          // future sweeps.
         }
-      } else {
-        if (t.readyAt <= now) continue;
-        const label = t.label;
-        const headline = t.predictedYield
-          ? `${countPrefix}${formatAmount(t.predictedYield.amount)} ${t.predictedYield.item}`
-          : `${countPrefix}${label}`;
-        fresh.set(aggKey, {
-          fireKey: aggKey,
-          readyAt: t.readyAt,
-          title: `${label} ready`,
-          body: `${headline} · ${t.category}`,
-          icon: t.icon,
-          category: t.category,
-        });
+        fresh.set(inst.fireKey, inst);
       }
+    }
+
+    // Storage cap: keep the earliest readyAts if the player has more
+    // than the DO can comfortably store. Realistic farms stay well
+    // under this. Logging the overflow surfaces whales for future
+    // tuning rather than failing silently.
+    if (fresh.size > MAX_SCHEDULED_PER_DO) {
+      const sorted = [...fresh.entries()].sort(
+        (a, b) => a[1].readyAt - b[1].readyAt,
+      );
+      const kept = new Map(sorted.slice(0, MAX_SCHEDULED_PER_DO));
+      console.warn(
+        `farmPushDO(${farmId}): scheduled cap hit (${fresh.size} > ${MAX_SCHEDULED_PER_DO}); dropping ${fresh.size - MAX_SCHEDULED_PER_DO} latest`,
+      );
+      fresh.clear();
+      for (const [k, v] of kept) fresh.set(k, v);
     }
 
     // Diff against existing schedule. `?? {}` covers DOs that
@@ -654,14 +787,17 @@ export class FarmPushDO extends Agent<Env, State> {
       // The alarm callback receives a frozen copy of `f` at schedule
       // time, so if our formatter or icon-URL logic changes between
       // versions, existing alarms keep firing with the old payload
-      // unless we explicitly recreate them.
+      // unless we explicitly recreate them. `count` is included so a
+      // cluster gaining/losing members reschedules with the right
+      // headline even when readyAt happens to match.
       const unchanged =
         next !== undefined &&
         next.readyAt === fire.readyAt &&
         next.title === fire.title &&
         next.body === fire.body &&
         next.icon === fire.icon &&
-        next.category === fire.category;
+        next.category === fire.category &&
+        next.count === fire.count;
       if (!unchanged) {
         await this.cancelSchedule(fire.scheduleId).catch(() => {});
         // Don't carry over.
@@ -690,6 +826,7 @@ export class FarmPushDO extends Agent<Env, State> {
       snapshot: { raw, fetchedAt: now },
       snapshotUpdatedAt: upstreamUpdatedAt,
       scheduled: nextScheduled,
+      notified: seededCount > 0 ? notified : this.state.notified,
     });
   }
 

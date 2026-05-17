@@ -111,6 +111,12 @@ export type PendingFire = {
   // Optional so PendingFire records persisted before this field was
   // introduced still load — those simply fire to everyone.
   category?: string;
+  // Cluster size for aggregated multi-instance fires (e.g. 5 zucchini
+  // ripening within one window → count=5). Optional — single-instance
+  // fires omit it. Tracked here so the `unchanged` diff check in
+  // applySnapshot reschedules when a cluster's membership changes
+  // even if its `readyAt` doesn't move.
+  count?: number;
   scheduleId: string;
 };
 
@@ -122,6 +128,10 @@ export type FirePayload = Omit<PendingFire, "scheduleId">;
 // Raw farm response from upstream, plus when we observed it. Shape
 // mirrors `src/api/fetchFarm.ts:FarmResponse` so the snapshot can flow
 // straight into the SPA's localStorage cache without massaging.
+// `updatedAt` is present on coordinator-fed snapshots (lifted out of
+// the batch endpoint's farm payload by worker/coordinator.ts) and lets
+// applySnapshot short-circuit the reschedule diff when nothing changed
+// upstream. Absent on single-farm GETs.
 export type SnapshotEnvelope = {
   raw: {
     farm: unknown;
@@ -129,6 +139,7 @@ export type SnapshotEnvelope = {
     nft_id?: number;
     nftId?: number;
     isBlacklisted?: boolean;
+    updatedAt?: string;
   };
   fetchedAt: number;
 };
