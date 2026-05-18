@@ -244,11 +244,19 @@ async function handlePushState(
   return doStub(env, farmId).fetch(url.toString());
 }
 
-async function handleProxyFarm(env: Env, id: string): Promise<Response> {
+async function handleProxyFarm(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
   if (!/^\d+$/.test(id)) {
     return json({ error: "Invalid farm id" }, { status: 400 });
   }
-  const result = await fetchAndCheckAccess(env, Number(id));
+  // Forward the player's IP so the BE can scope its `community-get-farm`
+  // throttle per-player when SUPPORT_API_KEY matches. Without this, every
+  // overview load shares one bucket on the worker's egress IP.
+  const clientIp = request.headers.get("cf-connecting-ip") ?? undefined;
+  const result = await fetchAndCheckAccess(env, Number(id), clientIp);
   if (!result.ok) {
     return json({ error: result.error }, { status: result.status });
   }
@@ -327,7 +335,7 @@ export default {
     // Farm proxy.
     const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
     if (farmMatch && method === "GET") {
-      return handleProxyFarm(env, farmMatch[1]);
+      return handleProxyFarm(request, env, farmMatch[1]);
     }
 
     // Push routes.
