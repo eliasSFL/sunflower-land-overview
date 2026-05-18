@@ -55,6 +55,22 @@ export async function fetchAndCheckAccess(
   const rawBody = await upstream.text();
   const contentType = upstream.headers.get("content-type");
 
+  // One log line per upstream community/farms call so the CF dashboard
+  // can answer two questions at a glance:
+  //   1. Is SUPPORT_API_KEY actually loaded on this deploy?
+  //      (`hasSupportKey: false` → secret missing, BE will throttle on
+  //      cf-connecting-ip instead of player IP)
+  //   2. What status did upstream return?
+  //      (a sudden 401 here would mean the headers got corrupted; a
+  //      surge of 429 confirms the BE throttle is biting.)
+  // Body / key values are deliberately omitted.
+  console.log("community/farms upstream", {
+    farmId,
+    hasSupportKey: !!env.SUPPORT_API_KEY,
+    hasClientIp: !!clientIp,
+    status: upstream.status,
+  });
+
   if (!upstream.ok) {
     return {
       ok: false,
