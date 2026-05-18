@@ -4,7 +4,6 @@ import { Button, Checkbox, Radio, Label, SectionHeader } from "./ui/index.ts";
 import {
   canSubscribe,
   getPermissionState,
-  isIOS,
   isStandalone,
   requestPermission,
   type PermissionState,
@@ -73,22 +72,11 @@ export function NotificationSettings({ farmId }: Props) {
     };
   }, []);
 
-  if (isIOS() && !isStandalone()) {
-    return (
-      <div className="flex flex-col gap-2 text-sm">
-        <p>
-          <strong>Install required.</strong> iOS only delivers push
-          notifications to apps installed to the Home Screen.
-        </p>
-        <ol className="list-decimal pl-5 space-y-1">
-          <li>Tap the share button in Safari.</li>
-          <li>
-            Choose <strong>Add to Home Screen</strong>.
-          </li>
-          <li>Open the app from your Home Screen, then return here.</li>
-        </ol>
-      </div>
-    );
+  // Push notifications require the app to be running as an installed
+  // PWA — see PwaInstallPanel for the user-facing nudge. Hiding the
+  // whole section keeps Settings tidy until the prerequisite is met.
+  if (!isStandalone()) {
+    return null;
   }
 
   if (!canSubscribe()) {
