@@ -13,6 +13,13 @@ import {
 import { NODE_LABEL } from "./resources.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
+// One Timer per flower bed — beds don't aggregate well because each is
+// planted independently and the player can stagger plant times across
+// beds of the same flower. Player feedback (mango, 2026-05-18): "I only
+// grow one type of flower, but with different time schedules. I think
+// displaying each plot separately would be better." Same shape as
+// beehives (`Beehives|${hiveId}`).
+//
 // readyAt mirrors harvestFlower.ts: speed boosts are baked into
 // `plantedAt` at plant time (see plantFlower.ts:getPlantedAt), so the
 // runtime check is just `now >= plantedAt + plantSeconds * 1000`.
@@ -95,7 +102,10 @@ export function extractFlowerTimers(
       readyAt,
       predictedYield: { amount, item: flower.name },
       boosts,
-      aggregationKey: `Flowers|${flower.name}`,
+      // Unique per bed — each flower bed shows as its own card so a
+      // player who plants the same flower at staggered times still sees
+      // an individual countdown per plot.
+      aggregationKey: `Flowers|${bedId}`,
       nodeLabel: NODE_LABEL[flower.name],
     });
   }
