@@ -69,7 +69,6 @@ export const sampledByFarm =
 export const OVERVIEW_FEATURE_FLAGS = {
   TEAM_ONLY_EXAMPLE: usernameFeatureFlag,
   BETA_ONLY_EXAMPLE: betaFeatureFlag,
-  LIMITED_ONLY_ACCESS: () => true,
 } satisfies Record<string, FeatureFlag>;
 
 export type OverviewFeatureName = keyof typeof OVERVIEW_FEATURE_FLAGS;

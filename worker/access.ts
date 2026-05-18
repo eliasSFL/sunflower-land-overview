@@ -1,15 +1,3 @@
-// Server-side enforcement of the overview's access cohort. Mirrors the
-// client-side check in `src/api/fetchFarm.ts` so a hand-crafted request
-// (bypassing the React UI) can't reach the D1 / DO write paths.
-//
-// `fetchAndCheckAccess` fetches the upstream farm payload and runs the
-// same `hasOverviewAccess` predicate the SPA uses. Callers that already
-// need the body (the `/api/farms/{id}` proxy) get the raw response back
-// to avoid a second round-trip; pure gate callers (e.g. `/push/subscribe`)
-// can ignore it.
-
-import { hasOverviewAccess } from "../src/lib/access.ts";
-import { makeGame } from "../src/game/index.ts";
 import { mintFarmKey } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
@@ -89,20 +77,6 @@ export async function fetchAndCheckAccess(
     typeof (parsed as Record<string, unknown>).farm !== "object"
   ) {
     return { ok: false, status: 502, error: "Unexpected upstream shape" };
-  }
-
-  const raw = parsed as { farm: unknown; isBlacklisted?: boolean };
-  const game = makeGame(raw.farm as Parameters<typeof makeGame>[0]);
-
-  // `access_denied` is the sentinel the frontend's fetchFarm.ts maps
-  // back to AccessDeniedError. Keep this exact string in sync.
-  if (
-    !hasOverviewAccess(game, "LIMITED_ONLY_ACCESS", {
-      farmId,
-      isBlacklisted: raw.isBlacklisted,
-    })
-  ) {
-    return { ok: false, status: 403, error: "access_denied" };
   }
 
   return { ok: true, rawBody, status: upstream.status, contentType };

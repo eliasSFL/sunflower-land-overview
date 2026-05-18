@@ -1,5 +1,4 @@
 import { makeGame, type GameState } from "../game/index.ts";
-import { hasOverviewAccess } from "../lib/access.ts";
 import { postRefresh } from "../notifications/api.ts";
 import { getExistingSubscription } from "../notifications/subscribe.ts";
 
@@ -69,20 +68,7 @@ export function loadCachedFarm(
     const parsed = JSON.parse(raw) as { v: FarmResponse; at: number };
     if (!parsed?.v?.farm) return undefined;
     const data = { ...parsed.v, farm: makeGame(parsed.v.farm) };
-    // Re-check access on every cache read — if the cohort tightens in
-    // code or the cached payload gets `isBlacklisted: true`, a
-    // previously-approved farm should stop auto-loading. Pre-PR caches
-    // have `isBlacklisted: undefined` and are treated as not-banned;
-    // a subsequent fetch/snapshot that sets the field to `true` will
-    // flip the cache to denied on the next read.
-    if (
-      !hasOverviewAccess(data.farm, "LIMITED_ONLY_ACCESS", {
-        farmId: data.id,
-        isBlacklisted: data.isBlacklisted,
-      })
-    ) {
-      return undefined;
-    }
+
     return { data, fetchedAt: parsed.at };
   } catch {
     return undefined;
@@ -139,17 +125,6 @@ export async function fetchFarm(farmId: string): Promise<FarmResponse> {
   // / `.add()` on these — they'd crash on the raw JSON numbers.
   const raw = parsed as FarmResponse;
   const hydrated = { ...raw, farm: makeGame(raw.farm) };
-
-  // Gate before caching / pinging the DO — denied farms shouldn't
-  // occupy localStorage or schedule push notifications.
-  if (
-    !hasOverviewAccess(hydrated.farm, "LIMITED_ONLY_ACCESS", {
-      farmId: hydrated.id,
-      isBlacklisted: hydrated.isBlacklisted,
-    })
-  ) {
-    throw new AccessDeniedError();
-  }
 
   saveCachedFarm(trimmedId, raw);
 
