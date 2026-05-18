@@ -1,184 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
-import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
-import { DonationAddress } from "../components/DonationAddress.tsx";
-import { getActiveDeliveryGroups } from "../components/deliveryGroups.ts";
-import { FarmIdForm } from "../components/FarmIdForm.tsx";
-import { MobileNav, type NavSection } from "../components/MobileNav.tsx";
-import { IdlePanel } from "../components/IdlePanel.tsx";
-import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
+import { MobileNav } from "../components/MobileNav.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
-import { TimerSection } from "../components/TimerSection.tsx";
-import { buildIdleEntries } from "../lib/idle.ts";
-import { getCategoryIcon } from "../components/categoryIcon.ts";
-import {
-  BUMPKIN_SECTION_ID,
-  DELIVERIES_COINS_SECTION_ID,
-  DELIVERIES_FLOWER_SECTION_ID,
-  DELIVERIES_TICKETS_SECTION_ID,
-  IDLE_SECTION_ID,
-  NEXT_UP_SECTION_ID,
-  READY_SECTION_ID,
-  sectionId,
-} from "../components/sectionId.ts";
-import { OuterPanel, InnerPanel } from "../components/ui/index.ts";
-import { getChapterTicket, getItemIcon } from "../game/index.ts";
-import { CHROME_ICONS } from "../lib/assets.ts";
-import {
-  fetchFarm,
-  loadCachedFarm,
-  ApiError,
-  AccessDeniedError,
-  type FarmResponse,
-} from "../api/fetchFarm.ts";
+import { OuterPanel } from "../components/ui/index.ts";
+import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
+import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
-import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import {
   extractAndAggregate,
   CATEGORY_ORDER,
   PLACEMENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
-import { BANNER_URLS } from "../lib/assets.ts";
-import { pullDoSnapshot } from "../notifications/snapshot.ts";
-import * as storage from "../lib/storage.ts";
-
-const GITHUB_REPO =
-  (import.meta.env.VITE_GITHUB_REPO as string | undefined) ??
-  "eliasSFL/sunflower-land-overview";
-
-const DONATION_ADDRESS = (
-  import.meta.env.VITE_DONATION_ADDRESS as string | undefined
-)?.trim();
-
-const FARM_ID_KEY = "sfl-overview:farm-id";
-const REFRESH_COOLDOWN_MS = 60_000;
-
-// Bypass the HTTP cache by changing the URL — browsers won't serve a
-// cached response for a URL they haven't seen. `location.reload(true)`
-// no longer works in modern browsers, and there's no JS API for the
-// Ctrl+Shift+R behaviour.
-function hardReload(): void {
-  const url = new URL(window.location.href);
-  url.searchParams.set("_", String(Date.now()));
-  window.location.replace(url.toString());
-}
-
-const BANNER_URL = BANNER_URLS.marketplace;
-
-// Short "Refreshed X ago" label for the header. Updates each render
-// since `now` ticks every second.
-function formatRefreshedAgo(at: number, now: number): string {
-  const diff = Math.max(0, now - at);
-  if (diff < 5_000) return "just now";
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return new Date(at).toLocaleDateString();
-}
+import { DashboardGrid } from "./DashboardGrid.tsx";
+import { DashboardHeader } from "./DashboardHeader.tsx";
 
 export function App() {
-  const [farmId, setFarmId] = useState<string>(
-    () => storage.load<string>(FARM_ID_KEY) ?? "",
-  );
-  // Seed from the localStorage cache so a reload paints the farm
-  // immediately. The `fetchedAt` stamp keeps the "last refreshed" label
-  // truthful across sessions and respects the refresh cooldown.
-  const initialCache = useMemo(() => {
-    const id = storage.load<string>(FARM_ID_KEY);
-    return id ? loadCachedFarm(id) : undefined;
-    // Run once on mount — deps left empty intentionally.
-  }, []);
-  const [data, setData] = useState<FarmResponse | undefined>(
-    () => initialCache?.data,
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [accessDenied, setAccessDenied] = useState(false);
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>(
-    () => initialCache?.fetchedAt,
-  );
+  const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
+    useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const inFlightRef = useRef<Promise<void> | undefined>(undefined);
-
   const now = useNow(1000);
-
-  // On mount: if we have a cached farm, ask the DO whether it's seen
-  // a newer snapshot since the cache's `at` timestamp. The Coordinator
-  // updates DO state every 10 min regardless of whether the PWA was
-  // open, so this catches state changes the player made in the main
-  // game while the overview was closed.
-  useEffect(() => {
-    if (!initialCache || !data) return;
-    let cancelled = false;
-    (async () => {
-      const fresher = await pullDoSnapshot(data.id, initialCache.fetchedAt);
-      if (cancelled || !fresher) return;
-      // Re-load from localStorage so makeGame() runs over the freshly-
-      // written payload — keeps Decimal hydration logic in one place.
-      const reloaded = loadCachedFarm(data.id);
-      if (reloaded) {
-        setData(reloaded.data);
-        setLastFetchedAt(reloaded.fetchedAt);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // Run once on mount — `initialCache` is stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const load = async (id: string) => {
-    if (inFlightRef.current) return inFlightRef.current;
-    if (
-      lastFetchedAt &&
-      Date.now() - lastFetchedAt < REFRESH_COOLDOWN_MS &&
-      id === farmId
-    ) {
-      return;
-    }
-    setLoading(true);
-    setError(undefined);
-    setAccessDenied(false);
-    const p = (async () => {
-      try {
-        const resp = await fetchFarm(id);
-        setData(resp);
-        setFarmId(id);
-        storage.save(FARM_ID_KEY, id);
-        setLastFetchedAt(Date.now());
-      } catch (e) {
-        if (e instanceof AccessDeniedError) {
-          // Clear any previously-loaded farm so the denial panel surfaces
-          // immediately — without this, a stale `data` from an earlier
-          // successful load keeps the dashboard rendered. Also drop
-          // `lastFetchedAt` (the 60s cooldown would otherwise silently
-          // block re-submitting the previously-successful farm) and
-          // align `farmId` with the denied attempt so the re-mounted
-          // form's pre-fill matches the denial copy.
-          setData(undefined);
-          setLastFetchedAt(undefined);
-          setFarmId(id);
-          setAccessDenied(true);
-        } else if (e instanceof ApiError) {
-          setError(`${e.status} — ${e.message}`);
-        } else if (e instanceof Error) {
-          setError(e.message);
-        } else {
-          setError("Unknown error");
-        }
-      } finally {
-        setLoading(false);
-        inFlightRef.current = undefined;
-      }
-    })();
-    inFlightRef.current = p;
-    return p;
-  };
 
   const timers = useMemo(() => {
     if (!data) return [];
@@ -196,12 +39,12 @@ export function App() {
     return grouped;
   }, [timers]);
 
-  // Cooking buildings + Aging Shed racks only show up if the player
-  // has actually placed the building — otherwise we'd render a
-  // "Smoothie Shack: Not cooking" / "Aging Rack: No fish aging" panel
-  // (and a MobileNav chip) for a building they don't own. Other
-  // categories (Crops, Animals, …) always render so the panel still
-  // serves as a "you could be doing this" reminder when idle.
+  // Cooking buildings + Aging Shed racks only show up if the player has
+  // actually placed the building — otherwise we'd render a "Smoothie
+  // Shack: Not cooking" / "Aging Rack: No fish aging" panel (and a
+  // MobileNav chip) for a building they don't own. Other categories
+  // (Crops, Animals, …) always render so the panel still serves as a
+  // "you could be doing this" reminder when idle.
   const visibleCategories = useMemo(
     () =>
       CATEGORY_ORDER.filter((cat) => {
@@ -213,237 +56,35 @@ export function App() {
     [byCategory],
   );
 
-  // Build the MobileNav strip declaratively. Order mirrors the
-  // on-page render order (left column top→bottom, then timer
-  // sections). Each entry is `{ id, label, icon }`; a new panel just
-  // needs its section id stamped on the panel root and a push here.
-  const navSections = useMemo<NavSection[]>(() => {
-    if (!data) return [];
-    const out: NavSection[] = [];
-    const hasReady = timers.some((t) => {
-      if (t.idle) return false;
-      if (t.slots && t.slots.length > 0)
-        return t.slots.some((s) => s.readyAt <= now);
-      return t.readyAt <= now;
-    });
-
-    out.push({
-      id: BUMPKIN_SECTION_ID,
-      label: "Bumpkin",
-      icon: CHROME_ICONS.level_up,
-    });
-    if (hasReady) {
-      out.push({
-        id: READY_SECTION_ID,
-        label: "Ready",
-        icon: CHROME_ICONS.expression_alerted,
-      });
-    }
-    out.push({
-      id: NEXT_UP_SECTION_ID,
-      label: "Next up",
-      icon: CHROME_ICONS.timer,
-    });
-    const hasIdle = buildIdleEntries(data.farm, byCategory, now).length > 0;
-    if (hasIdle) {
-      out.push({
-        id: IDLE_SECTION_ID,
-        label: "Idle",
-        icon: CHROME_ICONS.sleep,
-      });
-    }
-    const groups = getActiveDeliveryGroups(data.farm, now);
-    if (groups.coins.length > 0) {
-      out.push({
-        id: DELIVERIES_COINS_SECTION_ID,
-        label: "Coin Deliveries",
-        icon: CHROME_ICONS.coins,
-      });
-    }
-    if (groups.sfl.length > 0) {
-      out.push({
-        id: DELIVERIES_FLOWER_SECTION_ID,
-        label: "FLOWER Deliveries",
-        icon: CHROME_ICONS.flower_token,
-      });
-    }
-    if (groups.tickets.length > 0) {
-      const ticketName = getChapterTicket(now);
-      out.push({
-        id: DELIVERIES_TICKETS_SECTION_ID,
-        label: `${ticketName} Deliveries`,
-        icon: getItemIcon(ticketName),
-      });
-    }
-    for (const cat of visibleCategories) {
-      out.push({
-        id: sectionId(cat),
-        label: cat,
-        icon: getCategoryIcon(cat),
-      });
-    }
-    return out;
-  }, [data, now, timers, visibleCategories, byCategory]);
+  const navSections = useNavSections({
+    data,
+    timers,
+    byCategory,
+    visibleCategories,
+    now,
+  });
 
   const cooldownLeft =
     lastFetchedAt !== undefined
       ? Math.max(0, REFRESH_COOLDOWN_MS - (now - lastFetchedAt))
       : 0;
 
-  const { bundleSha, isStale } = useVersionCheck();
-  const shortSha = bundleSha.slice(0, 7);
-  const commitUrl = bundleSha
-    ? `https://github.com/${GITHUB_REPO}/tree/${bundleSha}`
-    : `https://github.com/${GITHUB_REPO}`;
-
   return (
     <div className="min-h-dvh bg-[#181425]">
       <OuterPanel className="min-h-dvh">
-        {/* Banner header — repeating pixel-art grass tile, mirrors the
-            in-game Marketplace / Flower Dashboard chrome. */}
-        <header
-          className="relative mb-2 flex min-h-22 flex-col gap-1 rounded-sm py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0"
-          style={{
-            backgroundImage: `url(${BANNER_URL})`,
-            backgroundRepeat: "repeat",
-            backgroundSize: "320px",
-            imageRendering: "pixelated",
-          }}
-        >
-          <div className="z-10 min-w-0 flex flex-col pl-3 sm:pl-4">
-            <p className="text-base text-white text-shadow">
-              Sunflower Land Overview
-            </p>
-            <p className="text-xs text-white text-shadow">
-              Live timers for your farm
-            </p>
-          </div>
-          {/* Build hash + last-refreshed time + stale-version nag.
-              On mobile this stacks below the title (single column flow);
-              on sm+ it sits in the top-right corner of the header.
-              `shrink-0` prevents it from squeezing the title at sm+. */}
-          <div className="z-10 flex shrink-0 flex-col items-start gap-1 pl-3 sm:items-end sm:pl-0 sm:pr-4 sm:text-right">
-            {shortSha ? (
-              <span className="text-xs text-white text-shadow">
-                <span>Version: </span>
-                <a
-                  href={commitUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-                  title="View this commit on GitHub"
-                >
-                  {shortSha}
-                </a>
-              </span>
-            ) : null}
-            {lastFetchedAt ? (
-              <span
-                className="whitespace-nowrap text-xs text-white text-shadow"
-                title={new Date(lastFetchedAt).toLocaleString()}
-              >
-                <span>Refreshed </span>
-                {formatRefreshedAgo(lastFetchedAt, now)}
-              </span>
-            ) : null}
-            {/* "Saved" reflects FarmModel.updatedAt from the BE — bumps
-                only on real saves (mongoDiff-non-empty). Distinguishes
-                "we polled X ago" (Refreshed) from "the farm last
-                actually changed upstream X ago" — useful when a second
-                device is the one making changes. Bails on missing /
-                unparseable so legacy cached payloads from before the
-                BE shipped the field don't render "Saved NaN". */}
-            {(() => {
-              const raw = data?.updatedAt;
-              if (!raw) return null;
-              const savedAt = Date.parse(raw);
-              if (Number.isNaN(savedAt)) return null;
-              return (
-                <span
-                  className="whitespace-nowrap text-xs text-white text-shadow"
-                  title={new Date(savedAt).toLocaleString()}
-                >
-                  <span>Saved </span>
-                  {formatRefreshedAgo(savedAt, now)}
-                </span>
-              );
-            })()}
-            {DONATION_ADDRESS ? (
-              <DonationAddress address={DONATION_ADDRESS} />
-            ) : null}
-            {isStale ? (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={hardReload}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    hardReload();
-                  }
-                }}
-                className="cursor-pointer whitespace-nowrap text-xs text-yellow-300 text-shadow underline decoration-dotted underline-offset-2 hover:opacity-80"
-                title="A newer build is deployed — click to reload"
-              >
-                New version available · click to refresh
-              </span>
-            ) : null}
-          </div>
-        </header>
-
-        {/* Single CSS multi-column flow containing every panel. Source
-            order is FarmIdForm → Ready → BumpkinSummary → NextUp →
-            Deliveries → CATEGORY_ORDER timer panels; the browser auto-balances
-            heights across columns. Total column count per breakpoint:
-              <sm  : 1 col (mobile, full-width stack)
-              sm   : 2 cols
-              lg   : 3 cols
-              2xl+ : 4 cols
-            Matches the pre-merge layout where the Farm ID column +
-            timer columns summed to the same totals. Adding more
-            panels just makes existing columns taller — no breakpoint
-            maintenance needed. `break-inside-avoid` on each direct
-            child keeps panels intact across column boundaries. */}
-        <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
-          {!data ? (
-            <InnerPanel className="flex flex-col gap-3">
-              {accessDenied ? (
-                <p className="text-sm">
-                  Your farm isn't on the access list yet. We're rolling this out
-                  to a small group of players first — please check back later.
-                </p>
-              ) : (
-                <p className="text-sm">
-                  Enter your Farm ID to see live timers. Your ID is the number
-                  next to your name in the main game.
-                </p>
-              )}
-              <FarmIdForm
-                initialFarmId={farmId}
-                onSubmit={load}
-                loading={loading}
-              />
-              {error ? <p className="text-sm text-red-700">{error}</p> : null}
-            </InnerPanel>
-          ) : null}
-          {data ? <BumpkinSummaryPanel data={data} /> : null}
-          {data ? <ReadyPanel timers={timers} now={now} /> : null}
-          {data ? <NextUpPanel timers={timers} now={now} /> : null}
-          {data ? (
-            <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
-          ) : null}
-          {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
-          {data
-            ? visibleCategories.map((cat) => (
-                <TimerSection
-                  key={cat}
-                  category={cat}
-                  timers={byCategory.get(cat) ?? []}
-                  now={now}
-                />
-              ))
-            : null}
-        </div>
+        <DashboardHeader data={data} lastFetchedAt={lastFetchedAt} now={now} />
+        <DashboardGrid
+          data={data}
+          timers={timers}
+          byCategory={byCategory}
+          visibleCategories={visibleCategories}
+          now={now}
+          farmId={farmId}
+          accessDenied={accessDenied}
+          error={error}
+          loading={loading}
+          onLoad={load}
+        />
         {/* Extra bottom padding on `<sm` so the fixed MobileNav strip
             doesn't cover the last section. */}
         <div className="h-16 sm:hidden" aria-hidden />
