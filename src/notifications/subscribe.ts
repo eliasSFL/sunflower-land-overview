@@ -70,7 +70,14 @@ export async function subscribePush(): Promise<PushSubscription | null> {
     // the old endpoint gets 410'd on its next fire and pruned by the
     // DO. pushManager.subscribe() with a different key would otherwise
     // throw InvalidStateError, so unsubscribe is mandatory here.
-    await existing.unsubscribe().catch(() => {});
+    //
+    // Let a rejection propagate: NotificationSettings.onEnable wraps
+    // this in try/catch and surfaces err.message to the UI, so the
+    // original failure reason stays visible instead of being masked
+    // by the downstream InvalidStateError from subscribe(). A `false`
+    // resolve is benign per spec (sub was already invalid) — the next
+    // subscribe() will succeed since nothing's blocking it.
+    await existing.unsubscribe();
   }
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
