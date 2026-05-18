@@ -67,6 +67,18 @@ export const CHROME_ICONS = {
   flower_token: submoduleAsset("icons/flower_token.webp"),
   gem: submoduleAsset("icons/gem.webp"),
   love_charm: submoduleAsset("icons/love_charm.webp"),
+  // Identity chips on the BumpkinSummaryPanel. Island sprites live in
+  // a dedicated subfolder; faction emblems and the VIP star sit
+  // alongside the other icons. None are on the CDN.
+  island_basic: submoduleAsset("icons/islands/basic.webp"),
+  island_spring: submoduleAsset("icons/islands/spring.webp"),
+  island_desert: submoduleAsset("icons/islands/desert.webp"),
+  island_volcano: submoduleAsset("icons/islands/volcano.webp"),
+  sunflorian_emblem: submoduleAsset("icons/sunflorian_emblem.webp"),
+  bumpkin_emblem: submoduleAsset("icons/bumpkin_emblem.webp"),
+  goblin_emblem: submoduleAsset("icons/goblin_emblem.webp"),
+  nightshade_emblem: submoduleAsset("icons/nightshade_emblem.webp"),
+  vip: submoduleAsset("icons/vip.webp"),
 } as const;
 
 export const BANNER_URLS = {
