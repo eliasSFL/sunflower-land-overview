@@ -162,6 +162,14 @@ export type Timer = {
   // produces Sunflower) leave it undefined; the body falls back to
   // an "(×N)" suffix instead.
   nodeLabel?: string;
+  // Optional override for the source count used in the push body.
+  // When set alongside `nodeLabel`, the single-instance fallback
+  // renders "{amount} {item} from {nodeCount} {nodeLabel}" (no `×`),
+  // suited to bulk-quantity inputs like crop machine seeds where the
+  // source is a raw quantity rather than a count of discrete nodes.
+  // Ignored when `instances[]` is set — cluster fires use the
+  // cluster's own count instead.
+  nodeCount?: number;
   metadata?: Record<string, string>;
 };
 

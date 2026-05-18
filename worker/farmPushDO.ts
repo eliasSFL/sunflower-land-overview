@@ -128,11 +128,20 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
   }
 
   // Single-instance fallback: matches the pre-fix headline format so
-  // a lone beehive/plot still surfaces its predicted yield.
+  // a lone beehive/plot still surfaces its predicted yield. When the
+  // timer carries an explicit `nodeCount` (crop machine packs report
+  // their seed input), append a "from N nodeLabel" suffix so the
+  // body reads "900 Sunflower from 300 seeds" instead of just
+  // "900 Sunflower".
   const prefix = t.count > 1 ? `${t.count}× ` : "";
-  const headline = t.predictedYield
+  const base = t.predictedYield
     ? `${prefix}${formatAmount(t.predictedYield.amount)} ${t.predictedYield.item}`
     : `${prefix}${t.label}`;
+  const source =
+    t.nodeCount !== undefined && t.nodeLabel
+      ? ` from ${t.nodeCount} ${t.nodeLabel}`
+      : "";
+  const headline = `${base}${source}`;
   out.push({
     fireKey: `${aggKey}@${t.readyAt}`,
     readyAt: t.readyAt,
