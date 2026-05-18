@@ -107,7 +107,10 @@ export { PROCESSED_RESOURCES } from "features/game/types/processedFood";
 export { MAX_COOKING_SLOTS } from "features/game/events/landExpansion/cook";
 export { MAX_FISH_PROCESSING_SLOTS } from "features/game/events/landExpansion/processResource";
 export { MAX_QUEUE_SIZE as MAX_CROP_MACHINE_QUEUE_SIZE } from "features/game/events/landExpansion/supplyCropMachine";
-export { hasVipAccess } from "features/game/lib/vipAccess";
+export {
+  hasVipAccess,
+  hasLifetimeFarmerBanner,
+} from "features/game/lib/vipAccess";
 export { getBoostedAnimalCapacity } from "features/game/events/landExpansion/buyAnimal";
 export { getMaxFermentationSlots } from "features/game/types/fermentation";
 export { getMaxSpiceRackSlots } from "features/game/types/spiceRack";
@@ -253,6 +256,9 @@ export type {
   CriticalHitName,
   // Inventory key union (collectibles + tools + tickets + ...)
   InventoryItemName,
+  // Island progression + faction pledge
+  IslandType,
+  FactionName,
   // Wearable name union — Crafting Box queues these alongside collectibles.
   BumpkinItem,
   // Resource node-name unions (Tree / Rock variants)

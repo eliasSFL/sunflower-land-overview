@@ -82,6 +82,9 @@ export type {
 
 export type { AnimalType, AnimalLevel } from "features/game/types/animals";
 export type { BumpkinItem } from "features/game/types/bumpkin";
+// Island progression tier (basic/spring/desert/volcano) and faction
+// pledge — surfaced on the BumpkinSummaryPanel chips.
+export type { IslandType, FactionName } from "features/game/types/game";
 export type {
   CookingBuildingName,
   ProcessingBuildingName,
