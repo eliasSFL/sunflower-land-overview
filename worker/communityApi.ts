@@ -95,6 +95,7 @@ export async function getFarm(
   farmId: number,
   apiKey: string,
   clientIp?: string,
+  supportKey?: string,
 ): Promise<GetFarmResult> {
   const headers: Record<string, string> = { "x-api-key": apiKey };
   // The BE's `community-get-farm` throttle keys on `cf-connecting-ip`,
@@ -104,6 +105,11 @@ export async function getFarm(
   // per-player when the API key validates. `x-forwarded-client-ip` is
   // a custom name so we don't collide with any CF-managed header.
   if (clientIp) headers["x-forwarded-client-ip"] = clientIp;
+  // Admin secret that proves the request is from our trusted proxy.
+  // The BE only trusts `x-forwarded-client-ip` for the throttle bucket
+  // when this matches `process.env.SUPPORT_API_KEY` (timing-safe). When
+  // absent the BE silently falls back to `cf-connecting-ip`.
+  if (supportKey) headers["x-support-key"] = supportKey;
 
   // 1 try + RETRY_DELAYS_MS.length retries on 429/5xx/network. 404/401
   // and parse failures are not retried — they're deterministic given

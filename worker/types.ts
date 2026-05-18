@@ -15,6 +15,14 @@ export interface Env {
   // (sfl.{base64url(farmId)}.{hmac(secret, farmId)}) and as x-api-key
   // for the paginated /community/farms scan.
   SFL_COMMUNITY_API_KEY: string;
+  // Opaque admin secret shared with the upstream BE. Sent on the
+  // `x-support-key` header alongside the per-farm key; when it matches
+  // the BE's `process.env.SUPPORT_API_KEY` the BE trusts our forwarded
+  // `x-forwarded-client-ip` for the `community-get-farm` throttle key
+  // (scoping the bucket per-player instead of per-Worker-egress-IP).
+  // Optional so dev deploys without it still work — the BE falls back
+  // to `cf-connecting-ip` when the header is absent.
+  SUPPORT_API_KEY?: string;
   // VAPID keypair for Web Push. PUBLIC is also surfaced to the PWA via
   // GET /push/vapid (avoids baking it into the SPA bundle at build).
   VAPID_PUBLIC: string;
