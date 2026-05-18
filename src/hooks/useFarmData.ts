@@ -56,7 +56,14 @@ export function useFarmData(): FarmData {
     if (!initialCache || !data) return;
     let cancelled = false;
     (async () => {
-      const fresher = await pullDoSnapshot(data.id, initialCache.fetchedAt);
+      // `.catch(() => null)` collapses any unexpected throw from the
+      // DO call into the same no-op path as a "no update" response —
+      // an unhandled rejection here would otherwise surface on the
+      // window since the IIFE is fire-and-forget.
+      const fresher = await pullDoSnapshot(
+        data.id,
+        initialCache.fetchedAt,
+      ).catch(() => null);
       if (cancelled || !fresher) return;
       // Re-load from localStorage so makeGame() runs over the freshly-
       // written payload — keeps Decimal hydration logic in one place.
