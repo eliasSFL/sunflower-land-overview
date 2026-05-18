@@ -11,6 +11,14 @@ function base64UrlToUint8Array(value: string): Uint8Array {
   return out;
 }
 
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false;
+  for (let i = 0; i < a.byteLength; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 export async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   return (await navigator.serviceWorker.getRegistration()) ?? null;
@@ -37,11 +45,36 @@ export async function subscribePush(): Promise<PushSubscription | null> {
   const reg = await getRegistration();
   if (!reg) return null;
   const existing = await reg.pushManager.getSubscription();
-  if (existing) return existing;
-  const key = await fetchVapidPublicKey();
+  // Always fetch the current public key so we can detect server-side
+  // rotation. If the fetch fails AND we already have a subscription,
+  // return it as-is rather than tearing down a working sub on a
+  // transient /push/vapid hiccup — worst case we keep using a stale-key
+  // sub until a later call refreshes successfully.
+  let serverKey: Uint8Array;
+  try {
+    serverKey = base64UrlToUint8Array(await fetchVapidPublicKey());
+  } catch (err) {
+    if (existing) return existing;
+    throw err;
+  }
+  if (existing) {
+    const existingKey = existing.options.applicationServerKey;
+    if (existingKey && bytesEqual(new Uint8Array(existingKey), serverKey)) {
+      return existing;
+    }
+    // VAPID public key has rotated server-side (or this subscription
+    // predates applicationServerKey support entirely). The push service
+    // will reject sends signed with the new private key against a sub
+    // bound to the old public key — drop it so we can create a fresh
+    // one. The caller will POST the new endpoint to /push/subscribe;
+    // the old endpoint gets 410'd on its next fire and pruned by the
+    // DO. pushManager.subscribe() with a different key would otherwise
+    // throw InvalidStateError, so unsubscribe is mandatory here.
+    await existing.unsubscribe().catch(() => {});
+  }
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: base64UrlToUint8Array(key) as BufferSource,
+    applicationServerKey: serverKey as BufferSource,
   });
 }
 
