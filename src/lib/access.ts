@@ -43,7 +43,7 @@ const POPULATION_ESTIMATE = 744_180;
  * Client-side only — anyone can monkey-patch the bundle. Use to hide UI
  * from most players, not as a security boundary.
  */
-const sampledByFarm =
+export const sampledByFarm =
   (featureName: string, target: number): FeatureFlag =>
   (_game, ctx) => {
     // Banned farms are filtered out of the cohort. POPULATION_ESTIMATE
@@ -69,9 +69,7 @@ const sampledByFarm =
 export const OVERVIEW_FEATURE_FLAGS = {
   TEAM_ONLY_EXAMPLE: usernameFeatureFlag,
   BETA_ONLY_EXAMPLE: betaFeatureFlag,
-  LIMITED_ONLY_ACCESS: (game, ctx) =>
-    betaFeatureFlag(game, ctx) ||
-    sampledByFarm("LIMITED_ONLY_ACCESS", 250_000)(game, ctx),
+  LIMITED_ONLY_ACCESS: () => true,
 } satisfies Record<string, FeatureFlag>;
 
 export type OverviewFeatureName = keyof typeof OVERVIEW_FEATURE_FLAGS;
