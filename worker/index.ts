@@ -244,11 +244,27 @@ async function handlePushState(
   return doStub(env, farmId).fetch(url.toString());
 }
 
-async function handleProxyFarm(env: Env, id: string): Promise<Response> {
+/**
+ * GET `/api/farms/{id}` — proxy the SPA's farm load through the access
+ * gate and stamp a server-trusted `__proxyFetchedAt` on the body so a
+ * subsequent `/push/refresh` forward of the same body can't roll the DO
+ * back to a stale snapshot. Eyeball's `cf-connecting-ip` flows through
+ * to upstream as `x-forwarded-client-ip` so the BE's throttle can
+ * scope per-player.
+ */
+async function handleProxyFarm(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
   if (!/^\d+$/.test(id)) {
     return json({ error: "Invalid farm id" }, { status: 400 });
   }
-  const result = await fetchAndCheckAccess(env, Number(id));
+  // Forward the player's IP so the BE can scope its `community-get-farm`
+  // throttle per-player when SUPPORT_API_KEY matches. Without this, every
+  // overview load shares one bucket on the worker's egress IP.
+  const clientIp = request.headers.get("cf-connecting-ip") ?? undefined;
+  const result = await fetchAndCheckAccess(env, Number(id), clientIp);
   if (!result.ok) {
     return json({ error: result.error }, { status: result.status });
   }
@@ -327,7 +343,7 @@ export default {
     // Farm proxy.
     const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
     if (farmMatch && method === "GET") {
-      return handleProxyFarm(env, farmMatch[1]);
+      return handleProxyFarm(request, env, farmMatch[1]);
     }
 
     // Push routes.

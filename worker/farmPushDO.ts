@@ -313,7 +313,12 @@ export class FarmPushDO extends Agent<Env, State> {
       // Forwarded from the worker entrypoint so the BE's per-IP
       // throttle scopes per-player instead of per-Worker-egress-IP.
       const clientIp = request.headers.get("x-client-ip") ?? undefined;
-      const result = await getFarm(body.farmId, key, clientIp);
+      const result = await getFarm(
+        body.farmId,
+        key,
+        clientIp,
+        this.env.SUPPORT_API_KEY,
+      );
       if (!result.ok) {
         if (result.reason === "not_found") {
           return Response.json({ error: "Unknown farm" }, { status: 404 });
@@ -679,7 +684,12 @@ export class FarmPushDO extends Agent<Env, State> {
       this.state.farmId,
       this.env.SFL_COMMUNITY_API_KEY,
     );
-    const result = await getFarm(this.state.farmId, key);
+    const result = await getFarm(
+      this.state.farmId,
+      key,
+      undefined,
+      this.env.SUPPORT_API_KEY,
+    );
     if (!result.ok) return false;
     await this.applySnapshot(result.raw);
     return true;
