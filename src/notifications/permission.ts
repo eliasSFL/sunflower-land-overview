@@ -17,10 +17,7 @@ export async function requestPermission(): Promise<PermissionState> {
 }
 
 export function isIOS(): boolean {
-  if (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-    !("MSStream" in window)
-  ) {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window)) {
     return true;
   }
   // iPadOS 13+ defaults to a desktop-class UA (reports "Macintosh"),
