@@ -17,9 +17,21 @@ export async function requestPermission(): Promise<PermissionState> {
 }
 
 export function isIOS(): boolean {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window)
-  );
+  if (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !("MSStream" in window)
+  ) {
+    return true;
+  }
+  // iPadOS 13+ defaults to a desktop-class UA (reports "Macintosh"),
+  // hiding the device family entirely. Catch it via maxTouchPoints:
+  // Apple doesn't ship touch Macs, so >1 touch point on a Mac-like
+  // platform string is reliably an iPad. Without this, iPad-on-Safari
+  // users pass canSubscribe() and then fail opaquely at
+  // pushManager.subscribe() because Apple still requires home-screen
+  // install on iPadOS 16.4+ exactly like iOS — the Install Required
+  // copy in NotificationSettings would otherwise be skipped for them.
+  return navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform);
 }
 
 export function isStandalone(): boolean {
