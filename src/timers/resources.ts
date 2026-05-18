@@ -93,15 +93,15 @@ export const NODE_LABEL: Record<ResourceKind, string> = {
   Oil: "Oil Reserve",
   ...getKeys(CROPS).reduce(
     (acc, crop) => ({ ...acc, [crop]: "Crop Plot" }),
-    {} as Record<CropName, ResourceName>,
+    {} as Record<CropName, string>,
   ),
   ...getKeys(GREENHOUSE_CROPS).reduce(
     (acc, crop) => ({ ...acc, [crop]: "Greenhouse" }),
-    {} as Record<GreenHouseCropName, ResourceName>,
+    {} as Record<GreenHouseCropName, string>,
   ),
   ...getKeys(PATCH_FRUIT).reduce(
     (acc, fruit) => ({ ...acc, [fruit]: "Fruit Patch" }),
-    {} as Record<PatchFruitName, ResourceName>,
+    {} as Record<PatchFruitName, string>,
   ),
   Grape: "Greenhouse",
   ...getKeys(FLOWERS).reduce(
