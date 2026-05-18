@@ -13,7 +13,7 @@ export function SettingsButton({ onClick }: Props) {
       onClick={onClick}
       aria-label="Open settings"
       title="Settings"
-      className="fixed bottom-4 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+      className="fixed bottom-16 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 sm:bottom-4"
     >
       <img
         src={CHROME_ICONS.settings_disc}

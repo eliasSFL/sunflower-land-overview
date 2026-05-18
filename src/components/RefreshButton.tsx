@@ -61,7 +61,7 @@ export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
       title={
         loading ? "Refreshing…" : cooling ? `Refresh in ${seconds}s` : "Refresh"
       }
-      className="fixed bottom-20 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+      className="fixed bottom-32 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:bottom-20"
     >
       <div className="relative h-12 w-12 sm:h-14 sm:w-14">
         {/* Disc = filled background + outline. settings_disc.png is a
