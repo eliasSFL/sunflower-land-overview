@@ -244,6 +244,14 @@ async function handlePushState(
   return doStub(env, farmId).fetch(url.toString());
 }
 
+/**
+ * GET `/api/farms/{id}` — proxy the SPA's farm load through the access
+ * gate and stamp a server-trusted `__proxyFetchedAt` on the body so a
+ * subsequent `/push/refresh` forward of the same body can't roll the DO
+ * back to a stale snapshot. Eyeball's `cf-connecting-ip` flows through
+ * to upstream as `x-forwarded-client-ip` so the BE's throttle can
+ * scope per-player.
+ */
 async function handleProxyFarm(
   request: Request,
   env: Env,

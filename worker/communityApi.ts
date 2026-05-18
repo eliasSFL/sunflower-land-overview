@@ -12,6 +12,12 @@ const UPSTREAM = "https://api.sunflower-land.com";
 // key (no master secret on the laptop) while production uses the master.
 const PER_FARM_KEY_RE = /^sfl\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
+/**
+ * True when `value` matches the `sfl.{payload}.{sig}` per-farm key
+ * shape. Used by {@link mintFarmKey} to decide whether the configured
+ * secret is already a pre-minted per-farm key (local-dev mode) or a
+ * master HMAC secret it should sign with.
+ */
 export function looksLikePerFarmKey(value: string): boolean {
   return PER_FARM_KEY_RE.test(value);
 }
@@ -22,10 +28,15 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(bin).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-// Mint a per-farm community API key from the master HMAC secret.
-// If `masterSecret` is itself already a per-farm key (local-dev mode),
-// return it unchanged — upstream will accept it for the encoded farm
-// and reject it for any other.
+/**
+ * Mint a per-farm community API key from the master HMAC secret.
+ *
+ * If `masterSecret` is itself already a per-farm key (local-dev mode,
+ * detected via {@link looksLikePerFarmKey}), it is returned unchanged
+ * — upstream will accept it for the encoded farm and reject it for
+ * any other. Otherwise, a fresh key is signed with HMAC-SHA256 and
+ * the result follows the BE's `sfl.{base64url(farmId)}.{sig}` format.
+ */
 export async function mintFarmKey(
   farmId: number,
   masterSecret: string,
@@ -91,6 +102,28 @@ const RETRY_DELAYS_MS: ReadonlyArray<readonly [number, number]> = [
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Fetch a single farm from upstream `community/farms/{id}`.
+ *
+ * Distinguishes "definitely not found" (404/401 — both deterministic
+ * given a valid signed key) from "transient upstream issue" (429/5xx/
+ * network) so the subscribe path only persists opt-in for farms that
+ * really exist. Transient failures are retried with jittered backoff
+ * per {@link RETRY_DELAYS_MS}.
+ *
+ * @param farmId    Numeric farm id to fetch.
+ * @param apiKey    Per-farm community key, minted via {@link mintFarmKey}.
+ *                  Sent on `x-api-key` for `verifyCommunityKey` upstream.
+ * @param clientIp  Eyeball's IP. Forwarded on `x-forwarded-client-ip` so
+ *                  the BE's `community-get-farm` throttle scopes per
+ *                  player when the trusted-proxy gate fires. Omit for
+ *                  server-initiated calls (Coordinator sweep).
+ * @param supportKey Admin secret proving the request is from our worker.
+ *                   Sent on `x-support-key`; matches the BE's
+ *                   `process.env.SUPPORT_API_KEY` to unlock per-player
+ *                   throttling. When absent the BE falls back to
+ *                   `cf-connecting-ip` (no behaviour change).
+ */
 export async function getFarm(
   farmId: number,
   apiKey: string,
