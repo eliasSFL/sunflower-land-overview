@@ -9,6 +9,12 @@ export type FarmResponse = {
   nft_id?: number;
   nftId?: number;
   isBlacklisted?: boolean;
+  // ISO timestamp of the last real save on the BE (FarmModel.updatedAt;
+  // bumped by addFarmDefaultValues + mongoDiff so it only moves when
+  // the GameState actually changed). Optional because legacy cached
+  // payloads from before the BE shipped this field on the single-farm
+  // GET endpoint won't have it.
+  updatedAt?: string;
 };
 
 export class ApiError extends Error {

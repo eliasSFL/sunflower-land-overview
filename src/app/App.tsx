@@ -346,6 +346,28 @@ export function App() {
                 {formatRefreshedAgo(lastFetchedAt, now)}
               </span>
             ) : null}
+            {/* "Saved" reflects FarmModel.updatedAt from the BE — bumps
+                only on real saves (mongoDiff-non-empty). Distinguishes
+                "we polled X ago" (Refreshed) from "the farm last
+                actually changed upstream X ago" — useful when a second
+                device is the one making changes. Bails on missing /
+                unparseable so legacy cached payloads from before the
+                BE shipped the field don't render "Saved NaN". */}
+            {(() => {
+              const raw = data?.updatedAt;
+              if (!raw) return null;
+              const savedAt = Date.parse(raw);
+              if (Number.isNaN(savedAt)) return null;
+              return (
+                <span
+                  className="whitespace-nowrap text-xs text-white text-shadow"
+                  title={new Date(savedAt).toLocaleString()}
+                >
+                  <span>Saved </span>
+                  {formatRefreshedAgo(savedAt, now)}
+                </span>
+              );
+            })()}
             {DONATION_ADDRESS ? (
               <DonationAddress address={DONATION_ADDRESS} />
             ) : null}
