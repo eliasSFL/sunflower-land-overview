@@ -94,6 +94,11 @@ export function extractCropMachineTimers(
       // Unique per-slot key keeps each pack as its own card; the queue
       // matters here, unlike crops/fruits where plots all merge.
       aggregationKey: `Crop Machine|${machineId}|${packIndex}`,
+      // Source is the seed input (a bulk quantity), not a count of
+      // discrete nodes — the push body renders "900 Sunflower from
+      // 300 seeds · Crop Machine".
+      nodeLabel: "seeds",
+      nodeCount: pack.seeds,
     });
   }
 

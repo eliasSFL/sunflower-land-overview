@@ -7,6 +7,7 @@ import {
   refreshBeehives,
   type GameState,
 } from "../game/index.ts";
+import { NODE_LABEL } from "./resources.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 // One Timer per beehive — beehives don't aggregate well (each progresses
@@ -84,6 +85,7 @@ export function extractBeehiveTimers(
       progressPercent: fraction * 100,
       // Unique per hive — each beehive shows as its own card.
       aggregationKey: `Beehives|${hiveId}`,
+      nodeLabel: NODE_LABEL.Honey,
     });
   }
 

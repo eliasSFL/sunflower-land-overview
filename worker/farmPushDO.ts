@@ -39,6 +39,30 @@ function formatAmount(n: number): string {
   return parseFloat(n.toFixed(2)).toString();
 }
 
+// Format the per-cluster headline for an `instances`-based aggregate.
+// See the caller comment for the chosen forms.
+function clusterHeadline(
+  t: AggregatedTimer,
+  item: string,
+  amount: number,
+  count: number,
+): string {
+  if (amount <= 0) {
+    return count > 1 ? `${count}× ${t.label}` : t.label;
+  }
+  const base = `${formatAmount(amount)} ${item}`;
+  if (count <= 1) return base;
+  // Prefer a distinct node noun when the extractor supplied one
+  // (Wood→Tree, Egg→Chicken, Obsidian→Lava Pit). Fall back to a
+  // bare "(×N)" suffix when the node and the item share a name
+  // (a Sunflower plot produces Sunflower) — leading with "from N×
+  // Sunflower" would just read as redundancy.
+  if (t.nodeLabel && t.nodeLabel !== item) {
+    return `${base} from ${count}× ${t.nodeLabel}`;
+  }
+  return `${base} (×${count})`;
+}
+
 // Derive the list of (fireKey, payload) entries for one aggregated
 // timer. Three branches:
 //
@@ -47,10 +71,10 @@ function formatAmount(n: number): string {
 //   * `instances[]` set  → multi-plot plant/animal/resource. Cluster
 //     adjacent readyAts within CLUSTER_WINDOW_MS so e.g. a player who
 //     plants 5 zucchini in one in-game session gets ONE "5× Zucchini
-//     ready" push instead of five back-to-back notifications. Yield
-//     amount is dropped from the body because the aggregate's
-//     `predictedYield.amount` is summed across ALL instances, not the
-//     cluster — surfacing it on a partial wave would be misleading.
+//     ready" push instead of five back-to-back notifications. The
+//     cluster's yield is the sum of its members' per-instance amounts
+//     (tracked in `instances[].amount`), so the body can surface the
+//     wave's actual yield rather than dropping it.
 //   * Neither            → single-instance timer (beehives, lone
 //     plots). Keeps the prior yield headline format.
 //
@@ -81,13 +105,20 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
   }
 
   if (t.instances && t.instances.length > 0) {
+    const item = t.predictedYield?.item ?? t.label;
     for (const c of clusterReadyAts(t.instances, CLUSTER_WINDOW_MS)) {
-      const prefix = c.count > 1 ? `${c.count}× ` : "";
+      // Avoid the "{N}× {amount} {item}" form here — players read it as
+      // multiplication ("3× 4.2 Wood" → 12.6 Wood). Lead with the
+      // amount instead, and qualify the count with the source noun:
+      //   "4.2 Wood from 3× Tree"   (nodeLabel ≠ item)
+      //   "12 Sunflower (×5)"       (nodeLabel absent; node == item)
+      //   "1.4 Wood"                (single ripening in this cluster)
+      const headline = clusterHeadline(t, item, c.amount, c.count);
       out.push({
         fireKey: `${aggKey}@${c.readyAt}`,
         readyAt: c.readyAt,
         title: `${t.label} ready`,
-        body: `${prefix}${t.label} · ${t.category}`,
+        body: `${headline} · ${t.category}`,
         icon: t.icon,
         category: t.category,
         count: c.count,
@@ -97,11 +128,20 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
   }
 
   // Single-instance fallback: matches the pre-fix headline format so
-  // a lone beehive/plot still surfaces its predicted yield.
+  // a lone beehive/plot still surfaces its predicted yield. When the
+  // timer carries an explicit `nodeCount` (crop machine packs report
+  // their seed input), append a "from N× nodeLabel" suffix so the
+  // body reads "900 Sunflower from 300× seeds" — same shape as the
+  // cluster format used for trees/chickens/etc.
   const prefix = t.count > 1 ? `${t.count}× ` : "";
-  const headline = t.predictedYield
+  const base = t.predictedYield
     ? `${prefix}${formatAmount(t.predictedYield.amount)} ${t.predictedYield.item}`
     : `${prefix}${t.label}`;
+  const source =
+    t.nodeCount !== undefined && t.nodeLabel
+      ? ` from ${t.nodeCount}× ${t.nodeLabel}`
+      : "";
+  const headline = `${base}${source}`;
   out.push({
     fireKey: `${aggKey}@${t.readyAt}`,
     readyAt: t.readyAt,

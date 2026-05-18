@@ -12,7 +12,12 @@ export type {
 } from "features/game/types/fruits";
 export type { FlowerName } from "features/game/types/flowers";
 export type { GreenHouseCropName } from "features/game/types/crops";
-export type { TreeName, RockName } from "features/game/types/resources";
+export type {
+  TreeName,
+  RockName,
+  ResourceName,
+  CommodityName,
+} from "features/game/types/resources";
 export type {
   FruitCompostName,
   CropCompostName,

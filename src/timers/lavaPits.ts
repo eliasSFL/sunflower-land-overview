@@ -82,6 +82,7 @@ export function extractLavaPitTimers(
       // All pits collapse into a single Obsidian card; matches the
       // Resources panel pattern used for Wood, Stone, Iron, etc.
       aggregationKey: `Resources|Obsidian`,
+      nodeLabel: "Lava Pit",
     });
   }
 

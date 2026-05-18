@@ -48,15 +48,24 @@ function mergeBoosts(
 
 export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
   const groups = new Map<string, AggregatedTimer>();
-  // Per-group readyAts collected separately so we don't grow the
-  // AggregatedTimer's `instances` array until we know the group ended
-  // up with count > 1 (single-source groups leave the field undefined
-  // — see types.ts).
-  const readyAtsByKey = new Map<string, number[]>();
+  // Per-group {readyAt, amount} pairs collected separately so we don't
+  // grow the AggregatedTimer's `instances` array until we know the
+  // group ended up with count > 1 (single-source groups leave the
+  // field undefined — see types.ts). `amount` is the source Timer's
+  // `predictedYield.amount` (or 0 when absent) — the notification
+  // scheduler sums it per cluster to render the wave's yield.
+  const instancesByKey = new Map<
+    string,
+    Array<{ readyAt: number; amount: number }>
+  >();
 
   for (const t of timers) {
     const key = t.aggregationKey ?? `${t.category}|${t.label}`;
     const existing = groups.get(key);
+    const instance = {
+      readyAt: t.readyAt,
+      amount: t.predictedYield?.amount ?? 0,
+    };
 
     if (!existing) {
       // Strip the per-plot `boosts` field — the aggregate is a new
@@ -68,13 +77,13 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
         predictedYield: t.predictedYield ? { ...t.predictedYield } : undefined,
         boosts: mergeBoosts([], t.boosts),
       });
-      readyAtsByKey.set(key, [t.readyAt]);
+      instancesByKey.set(key, [instance]);
       continue;
     }
 
     existing.count += 1;
     existing.readyAt = Math.min(existing.readyAt, t.readyAt);
-    readyAtsByKey.get(key)!.push(t.readyAt);
+    instancesByKey.get(key)!.push(instance);
 
     if (t.predictedYield) {
       if (existing.predictedYield) {
@@ -93,15 +102,15 @@ export function aggregateTimers(timers: Timer[]): AggregatedTimer[] {
   for (const [key, t] of groups) {
     // Drop empty boost arrays so card rendering can simply check truthiness.
     if (t.boosts && t.boosts.length === 0) t.boosts = undefined;
-    // Attach per-instance readyAts for the DO scheduler (Bug 2 fix —
-    // lets the notification path schedule per-ripening-wave instead
-    // of one alarm at min(readyAt) per aggregation key). Single-
-    // source groups don't need it; the scheduler falls back to
-    // `readyAt`/`count` for those.
+    // Attach per-instance {readyAt, amount} for the DO scheduler —
+    // lets the notification path schedule per-ripening-wave AND
+    // render the per-cluster yield amount. Single-source groups
+    // don't need it; the scheduler falls back to `readyAt`/`count`
+    // for those.
     if (t.count > 1) {
-      const readyAts = readyAtsByKey.get(key)!;
-      readyAts.sort((a, b) => a - b);
-      t.instances = readyAts;
+      const insts = instancesByKey.get(key)!;
+      insts.sort((a, b) => a.readyAt - b.readyAt);
+      t.instances = insts;
     }
   }
 
