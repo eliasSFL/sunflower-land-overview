@@ -1,8 +1,12 @@
 import {
   CRIMSTONE_RECOVERY_TIME,
+  CROPS,
+  FLOWERS,
   GOLD_RECOVERY_TIME,
+  GREENHOUSE_CROPS,
   IRON_RECOVERY_TIME,
   OIL_RESERVE_RECOVERY_TIME,
+  PATCH_FRUIT,
   STONE_RECOVERY_TIME,
   SUNSTONE_RECOVERY_TIME,
   TREE_RECOVERY_TIME,
@@ -14,7 +18,10 @@ import {
   batchSunstoneYields,
   batchWoodYields,
   getItemIcon,
+  getKeys,
+  type CropName,
   type FiniteResource,
+  type FlowerName,
   type GameState,
   type OilReserve,
   type Rock,
@@ -22,6 +29,12 @@ import {
   type Tree,
   type TreeName,
 } from "../game/index.ts";
+import type {
+  AnimalResource,
+  GreenHouseCropName,
+  GreenhousePlantName,
+  PatchFruitName,
+} from "../game/types.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // One card per resource type. Each resource's batch yield helper threads
@@ -32,7 +45,7 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // away nodes have coords stripped (matches upstream `getActiveResources`
 // pattern).
 
-type ResourceKind =
+type ResourceName =
   | "Wood"
   | "Stone"
   | "Iron"
@@ -41,7 +54,18 @@ type ResourceKind =
   | "Sunstone"
   | "Oil";
 
-const RECOVERY_SECONDS: Record<ResourceKind, number> = {
+type ResourceKind =
+  | ResourceName
+  | CropName
+  | PatchFruitName
+  | GreenhousePlantName
+  | FlowerName
+  | "Honey"
+  | "Salt"
+  | "Salt Charged"
+  | AnimalResource;
+
+const RECOVERY_SECONDS: Record<ResourceName, number> = {
   Wood: TREE_RECOVERY_TIME,
   Stone: STONE_RECOVERY_TIME,
   Iron: IRON_RECOVERY_TIME,
@@ -51,9 +75,56 @@ const RECOVERY_SECONDS: Record<ResourceKind, number> = {
   Oil: OIL_RESERVE_RECOVERY_TIME,
 };
 
+// Canonical node name per produced item. Used by the notification
+// scheduler to render "4.2 Wood from 3× Tree" so the count clearly
+// modifies the source, not the yield. Per-extractor lookup, keyed on
+// the item the player actually receives (Wood, Sunflower, Egg, …).
+// Names mostly come from upstream `ResourceName` in
+// sunflower-land/.../game/types/resources.ts; animal node names come
+// from `AnimalType` and the salt node label is overview-coined since
+// upstream has no collectible for it.
+export const NODE_LABEL: Record<ResourceKind, string> = {
+  Wood: "Tree",
+  Stone: "Stone Rock",
+  Iron: "Iron Rock",
+  Gold: "Gold Rock",
+  Crimstone: "Crimstone Rock",
+  Sunstone: "Sunstone Rock",
+  Oil: "Oil Reserve",
+  ...getKeys(CROPS).reduce(
+    (acc, crop) => ({ ...acc, [crop]: "Crop Plot" }),
+    {} as Record<CropName, ResourceName>,
+  ),
+  ...getKeys(GREENHOUSE_CROPS).reduce(
+    (acc, crop) => ({ ...acc, [crop]: "Greenhouse" }),
+    {} as Record<GreenHouseCropName, ResourceName>,
+  ),
+  ...getKeys(PATCH_FRUIT).reduce(
+    (acc, fruit) => ({ ...acc, [fruit]: "Fruit Patch" }),
+    {} as Record<PatchFruitName, ResourceName>,
+  ),
+  Grape: "Greenhouse",
+  ...getKeys(FLOWERS).reduce(
+    (acc, flower) => ({ ...acc, [flower]: "Flower Bed" }),
+    {} as Record<FlowerName, string>,
+  ),
+  Honey: "Beehive",
+  Salt: "Salt Node",
+  "Salt Charged": "Salt Node",
+  // Animal resources → source species. Two resources per species: Egg /
+  // Feather from Chicken, Milk / Leather from Cow, Wool / Merino Wool
+  // from Sheep.
+  Egg: "Chicken",
+  Feather: "Chicken",
+  Milk: "Cow",
+  Leather: "Cow",
+  Wool: "Sheep",
+  "Merino Wool": "Sheep",
+} satisfies Record<ResourceKind, string>;
+
 function pushResourceTimer(
   out: Timer[],
-  kind: ResourceKind,
+  kind: ResourceName,
   nodeId: string,
   readyAt: number,
   yieldAmount: number,
@@ -68,6 +139,7 @@ function pushResourceTimer(
     predictedYield: { amount: yieldAmount, item: kind },
     boosts,
     aggregationKey: `Resources|${kind}`,
+    nodeLabel: NODE_LABEL[kind],
   });
 }
 
@@ -120,7 +192,7 @@ export function extractResourceTimers(
 
   // --- Rocks (Stone / Iron / Gold) ---
   const rockConfigs: Array<{
-    kind: ResourceKind;
+    kind: ResourceName;
     map: Record<string, Rock> | undefined;
     defaultName: RockName;
     batch:

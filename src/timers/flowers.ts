@@ -10,6 +10,7 @@ import {
   type GameState,
   type PlantedFlower,
 } from "../game/index.ts";
+import { NODE_LABEL } from "./resources.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // readyAt mirrors harvestFlower.ts: speed boosts are baked into
@@ -95,6 +96,7 @@ export function extractFlowerTimers(
       predictedYield: { amount, item: flower.name },
       boosts,
       aggregationKey: `Flowers|${flower.name}`,
+      nodeLabel: NODE_LABEL[flower.name],
     });
   }
 

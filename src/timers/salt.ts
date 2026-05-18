@@ -8,6 +8,7 @@ import {
   type BoostName,
   type GameState,
 } from "../game/index.ts";
+import { NODE_LABEL } from "./resources.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 function toBoosts(
@@ -100,6 +101,7 @@ export function extractSaltTimers(
       subtext: `${storedCharges}/${maxCharges} charges`,
       // Each node = own card; matches the beehive pattern.
       aggregationKey: `Salt|${nodeId}`,
+      nodeLabel: NODE_LABEL.Salt,
       metadata: {
         nodeId,
         storedCharges: String(storedCharges),

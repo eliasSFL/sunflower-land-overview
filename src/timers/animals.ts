@@ -35,6 +35,7 @@ const NEXT_ANIMAL_LEVEL = {
   14: 15,
   15: 15,
 } as const satisfies Record<AnimalLevel, AnimalLevel>;
+import { NODE_LABEL } from "./resources.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
 // One Timer per (animal, resource at the animal's current level). The
@@ -136,6 +137,10 @@ export function extractAnimalTimers(
         // on those cards.
         subtext: type,
         aggregationKey: animalKey(type, resource),
+        // Resource → species lookup (Egg/Feather → Chicken, Milk/
+        // Leather → Cow, Wool/Merino Wool → Sheep). The notification
+        // scheduler renders "6 Egg from 3× Chicken" using this.
+        nodeLabel: NODE_LABEL[resource],
       });
     }
   }

@@ -153,19 +153,31 @@ export type Timer = {
   // Small text rendered under the headline. Useful for state that
   // doesn't fit "<amount> <item>" — e.g. salt charges "2/3 charges".
   subtext?: string;
+  // Name of the source NODE (Tree, Chicken, Lava Pit, …) when distinct
+  // from `label` (which usually names the produced item — Wood, Egg,
+  // Obsidian, …). The notification scheduler uses this to render
+  // "{amount} {item} from {N}× {nodeLabel}" so push bodies don't
+  // suggest the player gets `{N}×{amount}` of the item. Extractors
+  // where the node and the item share a name (a Sunflower plot
+  // produces Sunflower) leave it undefined; the body falls back to
+  // an "(×N)" suffix instead.
+  nodeLabel?: string;
   metadata?: Record<string, string>;
 };
 
 export type AggregatedTimer = Omit<Timer, "boosts"> & {
   count: number;
   boosts?: AggregatedBoost[];
-  // Per-source `readyAt` values for every Timer merged into this
-  // aggregate, sorted ascending. Populated only when count > 1; the
-  // notification scheduler reads it to cluster ripening events into
-  // separate pushes (so e.g. zucchini ready at T and T+1h fire as
-  // two notifications rather than one). UI consumers ignore this
-  // field — they still read `count` and `readyAt` (= the earliest).
-  instances?: number[];
+  // Per-source `{readyAt, amount}` pairs for every Timer merged into
+  // this aggregate, sorted by readyAt ascending. Populated only when
+  // count > 1; the notification scheduler reads it to cluster
+  // ripening events into separate pushes (so e.g. zucchini ready at
+  // T and T+1h fire as two notifications rather than one) AND to
+  // surface the per-cluster yield in the body. `amount` is the
+  // source Timer's `predictedYield.amount`, or 0 when the source has
+  // no `predictedYield`. UI consumers ignore this field — they still
+  // read `count` and `readyAt` (= the earliest).
+  instances?: Array<{ readyAt: number; amount: number }>;
 };
 
 export type TimerContext = {

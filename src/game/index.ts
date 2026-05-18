@@ -55,7 +55,11 @@ export { makeGame } from "features/game/lib/transforms";
 export { FLOWERS, FLOWER_SEEDS } from "features/game/types/flowers";
 export { getFlowerAmount } from "features/game/events/landExpansion/harvestFlower";
 export { CROPS, GREENHOUSE_CROPS } from "features/game/types/crops";
-export { PATCH_FRUIT, PATCH_FRUIT_SEEDS } from "features/game/types/fruits";
+export {
+  PATCH_FRUIT,
+  PATCH_FRUIT_SEEDS,
+  GREENHOUSE_FRUIT,
+} from "features/game/types/fruits";
 export { GREENHOUSE_CROP_TIME_SECONDS } from "features/game/events/landExpansion/harvestGreenHouse";
 export {
   TREE_RECOVERY_TIME,
