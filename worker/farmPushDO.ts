@@ -397,8 +397,18 @@ export class FarmPushDO extends Agent<Env, State> {
     });
 
     // Idempotent INSERT OR IGNORE — always run so the D1 registry
-    // self-heals across deploys or schema changes.
-    await addOptIn(this.env, body.farmId).catch(() => {});
+    // self-heals across deploys or schema changes. Failures are logged
+    // and swallowed: the DO has already persisted the subscription, so
+    // the user's "Enable" succeeds, but the coordinator sweep won't
+    // find this farm in the registry until a later subscribe call
+    // retries the insert. Loud logging surfaces persistent D1 outages
+    // to monitoring rather than masking them as silent push gaps.
+    await addOptIn(this.env, body.farmId).catch((err) => {
+      console.error(
+        `farmPushDO(${body.farmId}): addOptIn failed:`,
+        err instanceof Error ? `${err.message}\n${err.stack}` : err,
+      );
+    });
 
     return Response.json({ ok: true }, { status: 201 });
   }
@@ -933,7 +943,17 @@ export class FarmPushDO extends Agent<Env, State> {
       snapshotUpdatedAt: undefined,
     });
     if (this.state.farmId !== null) {
-      await removeOptIn(this.env, this.state.farmId).catch(() => {});
+      // DO state is already clear; a D1 failure here leaves a phantom
+      // registry row that wastes coordinator effort on a sub-less DO
+      // until the 30-day TTL vacuum catches it. Log so monitoring sees
+      // persistent failures instead of letting them rot quietly.
+      const farmId = this.state.farmId;
+      await removeOptIn(this.env, farmId).catch((err) => {
+        console.error(
+          `farmPushDO(${farmId}): removeOptIn failed:`,
+          err instanceof Error ? `${err.message}\n${err.stack}` : err,
+        );
+      });
     }
   }
 }
