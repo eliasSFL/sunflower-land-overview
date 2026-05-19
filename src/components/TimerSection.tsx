@@ -25,8 +25,7 @@ export function TimerSection({ category, timers, now }: Props) {
   // emit a placeholder idle row per placed instance (so the panel stays
   // gated visible). Without this branch a placed-but-empty Fish Market
   // would render its idle row instead of the more inviting vignette.
-  const isEmpty =
-    sorted.length === 0 || sorted.every((t) => t.idle === true);
+  const isEmpty = sorted.length === 0 || sorted.every((t) => t.idle === true);
 
   return (
     <InnerPanel
