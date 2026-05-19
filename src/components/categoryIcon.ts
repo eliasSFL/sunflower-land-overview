@@ -29,6 +29,7 @@ const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
   "Crafting Box": "Crafting Box",
   Resources: "Wood",
   Salt: "Salt",
+  "Lava Pits": "Lava Pit",
   "Crab Traps": "Blue Crab",
 };
 

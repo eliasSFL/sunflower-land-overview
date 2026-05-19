@@ -39,6 +39,10 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "Still salt pans",
     subtitle: "No salt nodes placed.",
   },
+  "Lava Pits": {
+    headline: "The lava cools",
+    subtitle: "No obsidian forming.",
+  },
   "Crab Traps": {
     headline: "The shore is quiet",
     subtitle: "No traps placed on this farm.",

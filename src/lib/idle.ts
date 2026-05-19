@@ -288,6 +288,23 @@ export function buildIdleEntries(
     });
   }
 
+  // Lava Pits: placed pits that aren't currently running. Mirrors the
+  // active-pit check in lavaPits.ts — idle = on-board AND
+  // `startedAt === undefined` (covers never-started AND post-collect,
+  // since upstream clears `startedAt` on collect).
+  const lavaPits = state.lavaPits ?? {};
+  let lavaIdle = 0;
+  for (const pit of Object.values(lavaPits)) {
+    if (pit.x === undefined && pit.y === undefined) continue;
+    if (pit.startedAt === undefined) lavaIdle += 1;
+  }
+  if (lavaIdle > 0) {
+    out.push({
+      category: "Lava Pits",
+      message: `${lavaIdle} ${pluralise(lavaIdle, "pit")} idle`,
+    });
+  }
+
   // Animals: hen house + barn free slots.
   const henFree = animalBuildingFree(state, "henHouse");
   const barnFree = animalBuildingFree(state, "barn");

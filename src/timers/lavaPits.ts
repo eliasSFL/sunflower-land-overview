@@ -8,10 +8,11 @@ import {
 } from "../game/index.ts";
 import type { Boost, Timer, TimerContext } from "./types.ts";
 
-// One Timer per active lava pit, all stacked into a single "Obsidian"
-// row inside the Resources section — same pattern as Wood / Stone /
-// Iron / Gold. The aggregator sums yields and uses the earliest
-// `readyAt`.
+// One Timer per active lava pit, all stacked into a single Obsidian
+// card inside the "Lava Pits" section (same yield data the Resources
+// panel previously showed). Placed-but-not-running pits emit an idle
+// Timer each, sharing one aggregationKey so they collapse into a
+// single "N× Lava Pit" idle row at the bottom of the section.
 //
 // Active = `startedAt` set AND `collectedAt` undefined (post-collection
 // upstream clears `startedAt` and stamps `collectedAt`).
@@ -45,7 +46,8 @@ export function extractLavaPitTimers(
   const lavaPits = state.lavaPits;
   if (!lavaPits || Object.keys(lavaPits).length === 0) return [];
 
-  const icon = getItemIcon("Obsidian");
+  const obsidianIcon = getItemIcon("Obsidian");
+  const pitIcon = getItemIcon("Lava Pit");
   const { amount: yieldAmount, boostsUsed: yieldBoostsUsed } = getObsidianYield(
     { game: state },
   );
@@ -65,23 +67,37 @@ export function extractLavaPitTimers(
   for (const [pitId, pit] of Object.entries(lavaPits)) {
     // Landscaped away.
     if (pit.x === undefined && pit.y === undefined) continue;
-    // Not started, or already collected.
-    if (pit.startedAt === undefined) continue;
-    if (pit.collectedAt !== undefined) continue;
+
+    // Idle: placed but not currently running (never started, or
+    // already collected — upstream clears `startedAt` on collect).
+    if (pit.startedAt === undefined) {
+      out.push({
+        id: `lavaPit:${pitId}:idle`,
+        category: "Lava Pits",
+        label: "Lava Pit",
+        icon: pitIcon,
+        readyAt: 0,
+        idle: true,
+        idleText: "Not running",
+        // Shared key so multiple idle pits collapse into one row with
+        // `count: N` — matches the active-side pattern below.
+        aggregationKey: `LavaPits|idle`,
+      });
+      continue;
+    }
 
     const readyAt = pit.readyAt ?? pit.startedAt + getTime();
 
     out.push({
-      id: `resource:Obsidian:${pitId}`,
-      category: "Resources",
+      id: `lavaPit:${pitId}`,
+      category: "Lava Pits",
       label: "Obsidian",
-      icon,
+      icon: obsidianIcon,
       readyAt,
       predictedYield: { amount: yieldAmount, item: "Obsidian" },
       boosts: yieldBoosts,
-      // All pits collapse into a single Obsidian card; matches the
-      // Resources panel pattern used for Wood, Stone, Iron, etc.
-      aggregationKey: `Resources|Obsidian`,
+      // All running pits collapse into a single Obsidian card.
+      aggregationKey: `LavaPits|Obsidian`,
       nodeLabel: "Lava Pit",
     });
   }
