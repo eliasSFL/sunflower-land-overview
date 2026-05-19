@@ -34,6 +34,7 @@ const EMPTY_MESSAGES: Record<Category, string> = {
   "Crafting Box": "Nothing crafting",
   Resources: "No resources placed",
   Salt: "No salt nodes placed",
+  "Crab Traps": "No traps placed",
 };
 
 export function TimerSection({ category, timers, now }: Props) {
