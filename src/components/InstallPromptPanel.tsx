@@ -68,14 +68,11 @@ function computeView({
     // `beforeinstallprompt` event — show A2HS copy. iPadOS reports a
     // desktop UA but `isIOS()` already handles that case.
     if (isIOS()) return { kind: "install-ios" };
-    // No install method available (e.g. desktop Firefox) — fall back to
-    // the notifications CTA if the browser supports push at all, so the
-    // panel still does something useful. Per spec the panel shouldn't
-    // show if notifications are already on, which the `notificationsOn`
-    // short-circuit above already covers.
-    if (canSubscribe() && permissionDefault) {
-      return { kind: "enable-notifications" };
-    }
+    // Browser with no available install path yet (Android Chrome
+    // before its engagement heuristics fire `beforeinstallprompt`,
+    // desktop Firefox, etc). Stay hidden rather than surfacing the
+    // notifications CTA — per spec, prompting for notifications only
+    // happens once the player is in the installed PWA.
     return { kind: "hidden" };
   }
 
