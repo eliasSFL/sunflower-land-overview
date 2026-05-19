@@ -52,19 +52,19 @@ export function extractBeehiveTimers(
     if (hive.x === undefined && hive.y === undefined) continue;
 
     const produced = getCurrentHoneyProduced(hive, ctx.now);
-    let readyAt: number;
+    const isFull = produced >= DEFAULT_HONEY_PRODUCTION_TIME;
+    const speed = isFull ? 0 : getCurrentSpeed(hive, ctx.now);
+    // Paused = no flower currently feeding the hive AND not yet full.
+    // Mirrors upstream `beehive.honeyProductionPaused` (Beehive.tsx
+    // `currentSpeed === 0` branch). We still emit a Timer so the card
+    // stays visible — otherwise a player with only paused hives sees
+    // "No active beehives" and can't tell which hives need flowers.
+    const isPaused = !isFull && speed <= 0;
 
-    if (produced >= DEFAULT_HONEY_PRODUCTION_TIME) {
-      readyAt = ctx.now;
-    } else {
-      const speed = getCurrentSpeed(hive, ctx.now);
-      if (speed <= 0) {
-        // No flower currently producing AND not full yet → skip; the
-        // in-game UI also shows no countdown in this state.
-        continue;
-      }
-      readyAt = ctx.now + (DEFAULT_HONEY_PRODUCTION_TIME - produced) / speed;
-    }
+    const readyAt =
+      isFull || isPaused
+        ? ctx.now
+        : ctx.now + (DEFAULT_HONEY_PRODUCTION_TIME - produced) / speed;
 
     // Current honey at this moment: fraction-of-full × multiplier. When
     // the hive is full, fraction = 1 and amount = multiplier. While
@@ -83,6 +83,11 @@ export function extractBeehiveTimers(
       readyAt,
       predictedYield: { amount, item: "Honey" },
       progressPercent: fraction * 100,
+      ...(isPaused && {
+        idle: true,
+        idleText: "Paused",
+        idleLabelType: "danger" as const,
+      }),
       // Unique per hive — each beehive shows as its own card.
       aggregationKey: `Beehives|${hiveId}`,
       nodeLabel: NODE_LABEL.Honey,
