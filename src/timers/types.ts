@@ -39,7 +39,8 @@ export type Category =
   | "Aging Rack"
   | "Fermentation Rack"
   | "Spice Rack"
-  | "Crafting Box";
+  | "Crafting Box"
+  | "Crab Traps";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -81,6 +82,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Beehives",
   "Resources",
   "Salt",
+  "Crab Traps",
   "Animals",
   ...COOKING_BUILDING_CATEGORIES,
   "Composters",

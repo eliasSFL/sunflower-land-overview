@@ -1,5 +1,6 @@
 import type { AggregatedTimer, Category } from "../timers/index.ts";
 import { getCategoryIcon } from "./categoryIcon.ts";
+import { EmptyVignette } from "./EmptyVignette.tsx";
 import { sectionId } from "./sectionId.ts";
 import { TimerCard } from "./TimerCard.tsx";
 import { InnerPanel, Label } from "./ui/index.ts";
@@ -8,32 +9,6 @@ type Props = {
   category: Category;
   timers: AggregatedTimer[];
   now: number;
-};
-
-// Per-category placeholder for when there's nothing active. Shown
-// inside the panel so the layout stays stable across refreshes — a
-// crop you just harvested doesn't make the whole Crops panel vanish.
-const EMPTY_MESSAGES: Record<Category, string> = {
-  Crops: "No crops planted",
-  "Fruit Patches": "No fruit planted",
-  Greenhouse: "No greenhouse crops planted",
-  "Crop Machine": "Crop machine idle",
-  Flowers: "No flowers planted",
-  Beehives: "No active beehives",
-  Animals: "No animals",
-  "Fire Pit": "Not cooking",
-  "Smoothie Shack": "Not cooking",
-  Deli: "Not cooking",
-  Kitchen: "Not cooking",
-  Bakery: "Not cooking",
-  "Fish Market": "Not processing",
-  Composters: "No composters placed",
-  "Aging Rack": "No fish aging",
-  "Fermentation Rack": "Not fermenting",
-  "Spice Rack": "Not spicing",
-  "Crafting Box": "Nothing crafting",
-  Resources: "No resources placed",
-  Salt: "No salt nodes placed",
 };
 
 export function TimerSection({ category, timers, now }: Props) {
@@ -45,7 +20,12 @@ export function TimerSection({ category, timers, now }: Props) {
     return a.readyAt - b.readyAt;
   });
   const totalCount = sorted.reduce((acc, t) => acc + t.count, 0);
-  const isEmpty = sorted.length === 0;
+  // "Nothing active" = no timers at all, OR every timer is idle. The
+  // latter covers cooking buildings / aging-shed racks, whose extractors
+  // emit a placeholder idle row per placed instance (so the panel stays
+  // gated visible). Without this branch a placed-but-empty Fish Market
+  // would render its idle row instead of the more inviting vignette.
+  const isEmpty = sorted.length === 0 || sorted.every((t) => t.idle === true);
 
   return (
     <InnerPanel
@@ -61,7 +41,7 @@ export function TimerSection({ category, timers, now }: Props) {
         </Label>
       </header>
       {isEmpty ? (
-        <p className="text-sm">{EMPTY_MESSAGES[category]}</p>
+        <EmptyVignette category={category} />
       ) : (
         <div className="flex flex-col gap-2">
           {sorted.map((t) => (

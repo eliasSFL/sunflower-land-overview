@@ -10,6 +10,7 @@ import { extractAgingShedTimers } from "./agingShed.ts";
 import { extractAnimalTimers } from "./animals.ts";
 import { extractComposterTimers } from "./composters.ts";
 import { extractCookingTimers } from "./cooking.ts";
+import { extractCrabTrapTimers } from "./crabTraps.ts";
 import { extractCraftingBoxTimers } from "./craftingBox.ts";
 import { extractLavaPitTimers } from "./lavaPits.ts";
 import { extractResourceTimers } from "./resources.ts";
@@ -59,6 +60,7 @@ export function extractAllTimers(
     ...extractResourceTimers(state, ctx),
     ...extractSaltTimers(state, ctx),
     ...extractLavaPitTimers(state, ctx),
+    ...extractCrabTrapTimers(state, ctx),
   ];
 }
 

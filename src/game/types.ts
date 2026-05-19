@@ -54,6 +54,12 @@ export type {
   OilReserve,
   // Lava pits
   LavaPit,
+  // Crab traps — `CrabTrap` is the per-farm container
+  // (`state.crabTraps`) holding a map of trap spots; each spot can hold
+  // one `WaterTrap`, which tracks the placed pot type, chum, readyAt,
+  // and the crustacean it will yield.
+  CrabTrap,
+  WaterTrap,
   // Animals
   Animal,
   AnimalBuilding,
@@ -106,6 +112,11 @@ export type {
   AgedFishName,
   PrimeAgedFishName,
 } from "features/game/types/fishing";
+export type {
+  CrustaceanName,
+  CrustaceanChum,
+  WaterTrapName,
+} from "features/game/types/crustaceans";
 export type { FarmActivityName } from "features/game/types/farmActivity";
 // Unions / aliases we use locally that aren't a single upstream type.
 import type { GreenHouseCropName } from "features/game/types/crops";

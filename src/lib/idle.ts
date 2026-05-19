@@ -188,6 +188,14 @@ export function buildIdleEntries(
       ).length,
       noun: "bed",
     },
+    {
+      category: "Crab Traps",
+      placed: Object.keys(state.crabTraps?.trapSpots ?? {}).length,
+      used: Object.values(state.crabTraps?.trapSpots ?? {}).filter(
+        (s) => !!s.waterTrap,
+      ).length,
+      noun: "trap spot",
+    },
   ];
 
   for (const { category, placed, used, noun, pluralNoun } of plotCounts) {

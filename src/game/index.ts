@@ -78,6 +78,12 @@ export {
   getLavaPitTime,
 } from "features/game/events/landExpansion/startLavaPit";
 export { getObsidianYield } from "features/game/events/landExpansion/collectLavaPit";
+// Crab traps — `getCrustaceanAmount` boosts a base catch amount by
+// trap-specific boosts (Crab House flat +2, Pistol Shrimp 20% PRNG +1).
+// Caller passes `prngArgs` seeded by farmActivity[`${name} Caught`] so
+// the Pistol Shrimp roll matches what the server will compute at
+// collection time.
+export { getCrustaceanAmount } from "features/game/events/landExpansion/collectWaterTrap";
 // Animals — `getAnimalLevel` maps experience → level, `ANIMAL_RESOURCE_DROP`
 // is the per-level base drop table, and `getResourceDropAmount` threads
 // all boosts (collectibles, wearables, skills, Buds) onto a single
@@ -243,6 +249,12 @@ export type {
   FishName,
   AgedFishName,
   PrimeAgedFishName,
+  // Crab traps
+  CrabTrap,
+  WaterTrap,
+  WaterTrapName,
+  CrustaceanName,
+  CrustaceanChum,
   CraftingQueueItem,
   // Composter worm name + the corresponding farmActivity counter key.
   Worm,
