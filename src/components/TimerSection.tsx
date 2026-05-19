@@ -20,7 +20,13 @@ export function TimerSection({ category, timers, now }: Props) {
     return a.readyAt - b.readyAt;
   });
   const totalCount = sorted.reduce((acc, t) => acc + t.count, 0);
-  const isEmpty = sorted.length === 0;
+  // "Nothing active" = no timers at all, OR every timer is idle. The
+  // latter covers cooking buildings / aging-shed racks, whose extractors
+  // emit a placeholder idle row per placed instance (so the panel stays
+  // gated visible). Without this branch a placed-but-empty Fish Market
+  // would render its idle row instead of the more inviting vignette.
+  const isEmpty =
+    sorted.length === 0 || sorted.every((t) => t.idle === true);
 
   return (
     <InnerPanel
