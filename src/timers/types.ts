@@ -3,7 +3,12 @@ import type {
   BumpkinItem,
   InventoryItemName,
 } from "../game/index.ts";
-import type { LabelType } from "../components/ui/Label.tsx";
+
+// Mirror of LabelType from src/components/ui/Label.tsx — duplicated
+// here so `types.ts` stays free of .tsx imports (the worker bundle's
+// tsconfig has `jsx` disabled and chokes on transitive .tsx imports
+// even when the import is type-only).
+type LabelType = "default" | "success" | "info" | "danger" | "warning";
 
 // The `item` displayed on a TimerCard / TimerSlot row. Every extractor
 // resolves it to an InventoryItemName (crops, recipes, resources,
