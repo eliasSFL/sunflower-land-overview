@@ -3,6 +3,7 @@ import type {
   BumpkinItem,
   InventoryItemName,
 } from "../game/index.ts";
+import type { LabelType } from "../components/ui/Label.tsx";
 
 // The `item` displayed on a TimerCard / TimerSlot row. Every extractor
 // resolves it to an InventoryItemName (crops, recipes, resources,
@@ -136,6 +137,11 @@ export type Timer = {
   // bottom of the section regardless of `readyAt`.
   idle?: boolean;
   idleText?: string;
+  // When set, the idle text renders as a Label of this type (e.g.
+  // "danger" for a red "Paused" pill) instead of the default gray
+  // italic caption. Used by beehives whose production has stalled to
+  // signal that the player can act on it.
+  idleLabelType?: LabelType;
   // 0-100. When set, the card's headline appends "· N%". Useful for
   // sources that produce continuously (e.g. beehives) where the yield
   // amount tracks fraction-of-full and the percentage is the more

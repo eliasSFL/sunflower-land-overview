@@ -83,7 +83,11 @@ export function extractBeehiveTimers(
       readyAt,
       predictedYield: { amount, item: "Honey" },
       progressPercent: fraction * 100,
-      ...(isPaused && { idle: true, idleText: "Production paused" }),
+      ...(isPaused && {
+        idle: true,
+        idleText: "Paused",
+        idleLabelType: "danger" as const,
+      }),
       // Unique per hive — each beehive shows as its own card.
       aggregationKey: `Beehives|${hiveId}`,
       nodeLabel: NODE_LABEL.Honey,
