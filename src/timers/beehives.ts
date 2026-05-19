@@ -61,9 +61,10 @@ export function extractBeehiveTimers(
     // "No active beehives" and can't tell which hives need flowers.
     const isPaused = !isFull && speed <= 0;
 
-    const readyAt = isFull || isPaused
-      ? ctx.now
-      : ctx.now + (DEFAULT_HONEY_PRODUCTION_TIME - produced) / speed;
+    const readyAt =
+      isFull || isPaused
+        ? ctx.now
+        : ctx.now + (DEFAULT_HONEY_PRODUCTION_TIME - produced) / speed;
 
     // Current honey at this moment: fraction-of-full × multiplier. When
     // the hive is full, fraction = 1 and amount = multiplier. While
