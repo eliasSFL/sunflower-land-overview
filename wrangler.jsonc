@@ -4,6 +4,7 @@
   "main": "dist-worker/index.js",
   "compatibility_date": "2026-05-09",
   "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": true,
   "observability": {
     "enabled": true,
   },
