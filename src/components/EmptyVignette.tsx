@@ -72,8 +72,13 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     subtitle: "Nothing processing.",
   },
   Composters: {
+    // Fires for two states: no composter placed at all, OR composters
+    // placed but all idle (the per-instance idle rows fold into the
+    // vignette via the "all idle → empty" rule in TimerSection). The
+    // subtitle has to read true for both — "Nothing composting" works
+    // either way; "No composters placed" would lie about the latter.
     headline: "The pile sits still",
-    subtitle: "No composters placed.",
+    subtitle: "Nothing composting.",
   },
   "Aging Rack": {
     headline: "Empty barrels",
@@ -107,13 +112,7 @@ export function EmptyVignette({ category }: { category: Category }) {
     <div className="flex flex-col items-center gap-2 py-1">
       <div
         className="flex w-full items-center justify-center"
-        style={{
-          // Same warm tan as OuterPanel — sits a half-step darker than
-          // the InnerPanel's `#e4a672`, so the strip reads as a recessed
-          // background rather than another foreground card.
-          background: "#c28569",
-          height: "64px",
-        }}
+        style={{ height: "64px" }}
       >
         <img
           src={getCategoryIcon(category)}
