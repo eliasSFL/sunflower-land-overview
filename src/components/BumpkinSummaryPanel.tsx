@@ -139,7 +139,7 @@ export function BumpkinSummaryPanel({ data }: Props) {
           NFT ID gets its own info chip when the farm is minted. */}
       <div className="flex flex-col gap-1 text-xs">
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <Label type="default" className="truncate opacity-80">
+          <Label type="default" className="truncate">
             {username ? `@${username}` : "No username"}
           </Label>
           <Label type="default" className="shrink-0 tabular-nums">
