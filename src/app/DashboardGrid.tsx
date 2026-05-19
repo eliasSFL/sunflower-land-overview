@@ -2,6 +2,7 @@ import type { FarmResponse } from "../api/fetchFarm.ts";
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { IdlePanel } from "../components/IdlePanel.tsx";
+import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import type { AggregatedTimer, Category } from "../timers/index.ts";
@@ -52,6 +53,7 @@ export function DashboardGrid({
           onSubmit={onLoad}
         />
       ) : null}
+      {data ? <InstallPromptPanel farmId={data.id} /> : null}
       {data ? <BumpkinSummaryPanel data={data} /> : null}
       {data ? <ReadyPanel timers={timers} now={now} /> : null}
       {data ? <NextUpPanel timers={timers} now={now} /> : null}

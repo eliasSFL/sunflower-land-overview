@@ -139,10 +139,12 @@ export function BumpkinSummaryPanel({ data }: Props) {
           NFT ID gets its own info chip when the farm is minted. */}
       <div className="flex flex-col gap-1 text-xs">
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <span className="truncate opacity-80">
+          <Label type="default" className="truncate">
             {username ? `@${username}` : "No username"}
-          </span>
-          <span className="shrink-0 tabular-nums">Farm #{farmId}</span>
+          </Label>
+          <Label type="default" className="shrink-0 tabular-nums">
+            Farm #{farmId}
+          </Label>
         </div>
         {nftId ? (
           <div className="flex">
@@ -155,7 +157,7 @@ export function BumpkinSummaryPanel({ data }: Props) {
           collapses to nothing on a brand-new farm with no faction and
           no VIP. */}
       {islandType || factionName || isVip ? (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 ml-2">
           {islandType ? (
             <Label type="default" icon={ISLAND_ICONS[islandType]}>
               {ISLAND_LABELS[islandType]}

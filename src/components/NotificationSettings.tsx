@@ -6,21 +6,19 @@ import {
   getPermissionState,
   isIOS,
   isStandalone,
-  requestPermission,
   type PermissionState,
 } from "../notifications/permission.ts";
 import {
   getExistingSubscription,
-  subscribePush,
   unsubscribePush,
 } from "../notifications/subscribe.ts";
 import {
-  postSubscribe,
   postUnsubscribe,
   postCategories,
   postNotificationTarget,
   postTest,
 } from "../notifications/api.ts";
+import { enableNotifications } from "../notifications/enable.ts";
 import {
   loadEnabled,
   saveEnabled,
@@ -103,40 +101,11 @@ export function NotificationSettings({ farmId }: Props) {
     setBusy(true);
     setError(undefined);
     setTestStatus(undefined);
-    try {
-      const perm = await requestPermission();
-      setPermission(perm);
-      if (perm !== "granted") {
-        setError(
-          perm === "denied"
-            ? "Permission denied. Re-enable it in your browser site settings."
-            : "Permission not granted.",
-        );
-        return;
-      }
-      const sub = await subscribePush();
-      if (!sub) {
-        setError("Couldn't create a subscription on this device.");
-        return;
-      }
-      const res = await postSubscribe({
-        farmId,
-        subscription: sub.toJSON() as PushSubscriptionJSON,
-        mutedCategories: [...muted],
-        notificationTarget: target,
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? `Subscribe failed: ${res.status}`);
-        return;
-      }
-      saveEnabled(true);
-      setEnabled(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setBusy(false);
-    }
+    const result = await enableNotifications(farmId);
+    setPermission(result.permission);
+    if (result.ok) setEnabled(true);
+    else setError(result.error);
+    setBusy(false);
   }
 
   async function onDisable() {
