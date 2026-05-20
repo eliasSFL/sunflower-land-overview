@@ -2,6 +2,7 @@ import type { FarmResponse } from "../api/fetchFarm.ts";
 import { DonationAddress } from "../components/DonationAddress.tsx";
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
+import { hardReload } from "../lib/hardReload.ts";
 
 const GITHUB_REPO =
   (import.meta.env.VITE_GITHUB_REPO as string | undefined) ??
@@ -12,16 +13,6 @@ const DONATION_ADDRESS = (
 )?.trim();
 
 const BANNER_URL = BANNER_URLS.marketplace;
-
-// Bypass the HTTP cache by changing the URL — browsers won't serve a
-// cached response for a URL they haven't seen. `location.reload(true)`
-// no longer works in modern browsers, and there's no JS API for the
-// Ctrl+Shift+R behaviour.
-function hardReload(): void {
-  const url = new URL(window.location.href);
-  url.searchParams.set("_", String(Date.now()));
-  window.location.replace(url.toString());
-}
 
 // Short "Refreshed X ago" label for the header. Updates each render
 // since `now` ticks every second.
