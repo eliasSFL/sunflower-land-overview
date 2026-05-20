@@ -47,7 +47,7 @@ export async function sendOne(
     await webpush.sendNotification(
       subscription as unknown as webpush.PushSubscription,
       JSON.stringify(payload),
-      { TTL: 60 * 60 }, // 1 h — drop if device offline past then.
+      { TTL: 60 * 60, urgency: "high" }, // 1 h — drop if device offline past then.
     );
     return { ok: true, endpoint: subscription.endpoint };
   } catch (err) {
