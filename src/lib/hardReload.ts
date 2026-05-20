@@ -18,7 +18,7 @@ export async function hardReload(): Promise<void> {
   try {
     if ("serviceWorker" in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
+      await Promise.allSettled(regs.map((r) => r.unregister()));
     }
   } catch {
     // ignore — fall through to cache purge + reload
@@ -26,7 +26,7 @@ export async function hardReload(): Promise<void> {
   try {
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      await Promise.allSettled(keys.map((k) => caches.delete(k)));
     }
   } catch {
     // ignore — fall through to reload
