@@ -261,6 +261,10 @@ export class FarmPushDO extends Agent<Env, State> {
         return this.handleOnSnapshot(request);
       case "/state":
         return this.handleStateRequest(request);
+      case "/debug":
+        return this.handleDebug();
+      case "/broadcast":
+        return this.handleBroadcast(request);
       default:
         return new Response("Not found", { status: 404 });
     }
@@ -888,6 +892,72 @@ export class FarmPushDO extends Agent<Env, State> {
       scheduled: nextScheduled,
       notified: seededCount > 0 ? notified : this.state.notified,
     });
+  }
+
+  // Admin-only summary of internal state. Reachable only via the
+  // Access-gated /api/admin/farm-debug endpoint in worker/index.ts;
+  // the DO itself doesn't authenticate the caller. Designed to be
+  // safe to JSON-dump in an admin UI — no raw push endpoints, no
+  // subscription keys, no full snapshot.
+  private async handleDebug(): Promise<Response> {
+    const subs = this.state.subscriptions ?? [];
+    const scheduled = Object.values(this.state.scheduled ?? {});
+    return Response.json({
+      farmId: this.state.farmId,
+      subscriptionCount: subs.length,
+      notificationTargets: subs.map((s) => s.notificationTarget ?? "overview"),
+      mutedCategories: Array.from(
+        new Set(subs.flatMap((s) => s.mutedCategories ?? [])),
+      ),
+      lastActivityAt: this.state.lastActivityAt ?? null,
+      snapshotFetchedAt: this.state.snapshot?.fetchedAt ?? null,
+      snapshotUpdatedAt: this.state.snapshotUpdatedAt ?? null,
+      pendingFires: scheduled
+        .map((f) => ({
+          fireKey: f.fireKey,
+          readyAt: f.readyAt,
+          title: f.title,
+          body: f.body,
+          category: f.category,
+          count: f.count,
+        }))
+        .sort((a, b) => a.readyAt - b.readyAt),
+    });
+  }
+
+  // Admin-only fan-out of a custom push to every stored subscription on
+  // this farm. Gated upstream by the Access-protected /api/admin/
+  // broadcast-push endpoint. Reuses dispatchPush so dead-endpoint
+  // pruning happens for free.
+  private async handleBroadcast(request: Request): Promise<Response> {
+    const body = (await request.json().catch(() => null)) as {
+      title?: string;
+      body?: string;
+      url?: string;
+      tag?: string;
+    } | null;
+    if (
+      !body ||
+      typeof body.title !== "string" ||
+      typeof body.body !== "string" ||
+      body.title.length === 0 ||
+      body.body.length === 0
+    ) {
+      return Response.json({ error: "Missing title / body" }, { status: 400 });
+    }
+    if (this.state.subscriptions.length === 0) {
+      return Response.json({ sent: 0, pruned: 0, total: 0 });
+    }
+    const payload: PushPayload = {
+      title: body.title,
+      body: body.body,
+      tag: body.tag ?? `sfl-overview:admin:${Date.now()}`,
+      url:
+        typeof body.url === "string" && body.url.length > 0
+          ? body.url
+          : clickUrl(undefined, this.state.farmId),
+    };
+    return this.dispatchPush(payload);
   }
 
   // Send a push to the given subscription set (defaults to every

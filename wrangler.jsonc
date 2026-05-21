@@ -26,6 +26,11 @@
   "durable_objects": {
     "bindings": [{ "name": "FARM_PUSH_DO", "class_name": "FarmPushDO" }],
   },
+  "send_email": [
+    {
+      "name": "SEND_EMAIL",
+    },
+  ],
   "migrations": [
     { "tag": "v3-add-farm-push-do", "new_sqlite_classes": ["FarmPushDO"] },
   ],
@@ -34,6 +39,12 @@
   },
   "vars": {
     "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
+    // Admin dashboard gating — see worker/admin.ts. Leave these empty
+    // until the Cloudflare Access app for /admin* exists; admin
+    // endpoints fail closed when any is unset.
+    "CF_ACCESS_TEAM_DOMAIN": "",
+    "CF_ACCESS_AUD": "",
+    "ADMIN_EMAIL": "",
   },
   "ratelimits": [
     {

@@ -38,6 +38,24 @@ export interface Env {
   // every /push/* and /api/* request. Configured in wrangler.jsonc
   // under `ratelimits`: 60 requests per 60s, namespace_id "1001".
   PUSH_RATE_LIMITER: RateLimit;
+  // Cloudflare Email Sending (beta) binding. Sends from any address on
+  // a verified sender domain (sfl-overview.com); 200 msgs/day on the
+  // free Workers tier. `SendEmail` covers both the new structured
+  // `.send({to, from, subject, text, html})` overload and the legacy
+  // EmailMessage MIME overload.
+  SEND_EMAIL: SendEmail;
+  // Cloudflare Access team domain (e.g. "elias-personal.cloudflareaccess.com").
+  // Used to derive the JWKS endpoint + issuer when verifying the
+  // `CF_Authorization` JWT on /api/admin/*. Unset ⇒ admin endpoints
+  // fail closed.
+  CF_ACCESS_TEAM_DOMAIN?: string;
+  // Audience tag of the Access application protecting /admin*. Found in
+  // Zero Trust → Access → Applications → (app) → Overview.
+  CF_ACCESS_AUD?: string;
+  // Email address allowed to use the admin dashboard. Verified against
+  // the `email` claim in the Access JWT. Unset ⇒ admin endpoints fail
+  // closed (matches the rest of the admin gating's fail-closed posture).
+  ADMIN_EMAIL?: string;
 }
 
 // PushSubscriptionJSON shape (browser PushSubscription.toJSON()).

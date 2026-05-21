@@ -15,6 +15,8 @@
 // sweep, GET /push/state for snapshot pulls, POST /push/refresh.
 
 import { fetchAndCheckAccess } from "./access.ts";
+import { handleAdmin, isAdminPath } from "./admin.ts";
+import { getBanner, runAndRecordSweep } from "./adminStorage.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
 
@@ -340,6 +342,24 @@ export default {
       }
     }
 
+    // Admin dashboard endpoints — Cloudflare Access JWT verified per
+    // handler; see worker/admin.ts for the trust model. /api/admin/me is
+    // a public ping the SPA uses to decide whether to render the admin
+    // button; /api/admin/test-email and friends are Access-gated.
+    if (isAdminPath(url.pathname)) {
+      return handleAdmin(request, env, ctx, url.pathname, method);
+    }
+
+    // Public read of the active system banner — polled by every SPA
+    // mount, so the response is intentionally tiny ({ banner: null }
+    // when unset) and cache-friendly via the shared `json()` helper's
+    // `no-store` header (we want banner edits to land instantly, not
+    // sit in an intermediate cache).
+    if (url.pathname === "/api/banner" && method === "GET") {
+      const banner = await getBanner(env);
+      return json({ banner });
+    }
+
     // Farm proxy.
     const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
     if (farmMatch && method === "GET") {
@@ -387,7 +407,7 @@ export default {
         return json({ error: "Forbidden" }, { status: 403 });
       }
       ctx.waitUntil(
-        sweep(env).catch((err) => {
+        runAndRecordSweep(env, "manual", sweep).catch((err) => {
           console.error(
             "manual sweep crashed:",
             err instanceof Error ? `${err.message}\n${err.stack}` : err,
@@ -406,10 +426,12 @@ export default {
   },
 
   // Cron-triggered Coordinator sweep. Every 10 min walks paginated
-  // /community/farms, fan-outs to each opted-in DO.
+  // /community/farms, fan-outs to each opted-in DO. Wrapped in
+  // runAndRecordSweep so the admin dashboard can show "is the cron
+  // still alive" + the last few runs.
   async scheduled(_event, env: Env, ctx): Promise<void> {
     ctx.waitUntil(
-      sweep(env).catch((err) => {
+      runAndRecordSweep(env, "cron", sweep).catch((err) => {
         console.error(
           "coordinator: sweep crashed:",
           err instanceof Error ? `${err.message}\n${err.stack}` : err,

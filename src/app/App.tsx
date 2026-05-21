@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 
+import { useIsAdmin } from "../admin/useIsAdmin.ts";
+import { AdminButton } from "../components/AdminButton.tsx";
 import { MobileNav } from "../components/MobileNav.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
+import { SystemBanner } from "../components/SystemBanner.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
@@ -20,6 +23,7 @@ export function App() {
   const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
     useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const adminState = useIsAdmin();
 
   const now = useNow(1000);
 
@@ -71,6 +75,7 @@ export function App() {
 
   return (
     <div className="min-h-dvh bg-[#181425]">
+      <SystemBanner />
       <OuterPanel className="min-h-dvh">
         <DashboardHeader data={data} lastFetchedAt={lastFetchedAt} now={now} />
         <DashboardGrid
@@ -98,6 +103,7 @@ export function App() {
             cooldownLeftMs={cooldownLeft}
           />
           <SettingsButton onClick={() => setSettingsOpen(true)} />
+          {adminState.status === "admin" ? <AdminButton /> : null}
           <SettingsModal
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}

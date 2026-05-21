@@ -72,6 +72,21 @@ async function fetchBatch(ids: number[], apiKey: string): Promise<BatchResult> {
   }
 }
 
+// Stats returned by `sweep()` so callers (cron handler, manual admin
+// trigger) can persist a `sweep_runs` row for the admin dashboard's
+// "is the cron still alive" view. `skipped:true` means another sweep
+// was already in flight and we bailed out — no D1 row should be
+// written in that case (the in-flight sweep is the one to record).
+export type SweepStats = {
+  skipped?: boolean;
+  fetched: number;
+  skippedUpstream: number;
+  synced: number;
+  batches: number;
+  totalBatches: number;
+  elapsedMs: number;
+};
+
 // Runs from the Worker's `scheduled()` handler every 10 min and on
 // demand via POST /push/sweep.
 //
@@ -84,29 +99,45 @@ async function fetchBatch(ids: number[], apiKey: string): Promise<BatchResult> {
 //
 // 40k subscribers → 400 batches × ~1 s each = ~7 min worst case, well
 // inside the 25-min wall-clock budget per sweep tick.
-export async function sweep(env: Env): Promise<void> {
+export async function sweep(env: Env): Promise<SweepStats> {
   if (sweepInFlight) {
     console.log("coordinator: sweep already in flight, skipping");
-    return;
+    return {
+      skipped: true,
+      fetched: 0,
+      skippedUpstream: 0,
+      synced: 0,
+      batches: 0,
+      totalBatches: 0,
+      elapsedMs: 0,
+    };
   }
   sweepInFlight = true;
   try {
-    await sweepImpl(env);
+    return await sweepImpl(env);
   } finally {
     sweepInFlight = false;
   }
 }
 
-async function sweepImpl(env: Env): Promise<void> {
+async function sweepImpl(env: Env): Promise<SweepStats> {
   const startedAt = Date.now();
+  const empty = (): SweepStats => ({
+    fetched: 0,
+    skippedUpstream: 0,
+    synced: 0,
+    batches: 0,
+    totalBatches: 0,
+    elapsedMs: Date.now() - startedAt,
+  });
 
   if (!env.SFL_COMMUNITY_API_KEY) {
     console.warn("coordinator: SFL_COMMUNITY_API_KEY missing; skipping sweep");
-    return;
+    return empty();
   }
 
   const optedInList = await listOptedInIds(env);
-  if (optedInList.length === 0) return;
+  if (optedInList.length === 0) return empty();
 
   const apiKey = await mintFarmKey(0, env.SFL_COMMUNITY_API_KEY);
 
@@ -202,9 +233,18 @@ async function sweepImpl(env: Env): Promise<void> {
   // "when did this farm last refresh". Saves N D1 row-writes per
   // sweep without changing observable behaviour.
 
+  const elapsedMs = Date.now() - startedAt;
   console.log(
     `coordinator: fetched=${totalFetched} skipped=${totalSkipped} ` +
       `synced=${synced.length} batches=${batchIdx}/${batches.length} ` +
-      `ms=${Date.now() - startedAt}`,
+      `ms=${elapsedMs}`,
   );
+  return {
+    fetched: totalFetched,
+    skippedUpstream: totalSkipped,
+    synced: synced.length,
+    batches: batchIdx,
+    totalBatches: batches.length,
+    elapsedMs,
+  };
 }
