@@ -7,6 +7,7 @@ import {
   refreshBeehives,
   type GameState,
 } from "../game/index.ts";
+import { CHROME_ICONS } from "../lib/assets.ts";
 import { NODE_LABEL } from "./resources.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
@@ -75,6 +76,19 @@ export function extractBeehiveTimers(
     const fraction = Math.min(produced / DEFAULT_HONEY_PRODUCTION_TIME, 1);
     const amount = fraction * multiplier;
 
+    // `hive.swarm` is set server-side (see api `swarmGenerator`) and
+    // synced down on the next state pull. When true, the upcoming
+    // beehive harvest applies the swarm bonus and resets the flag
+    // (harvestBeehive.ts:143-148). Surface it as a chip so the player
+    // sees a pending swarm before they collect.
+    const bonus = hive.swarm
+      ? {
+          icon: CHROME_ICONS.bee,
+          label: "Swarm",
+          type: "success" as const,
+        }
+      : undefined;
+
     out.push({
       id: `beehive:${hiveId}`,
       category: "Beehives",
@@ -83,6 +97,7 @@ export function extractBeehiveTimers(
       readyAt,
       predictedYield: { amount, item: "Honey" },
       progressPercent: fraction * 100,
+      ...(bonus && { bonus }),
       ...(isPaused && {
         idle: true,
         idleText: "Paused",
