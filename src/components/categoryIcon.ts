@@ -13,6 +13,7 @@ const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
   Flowers: "Red Pansy",
   Beehives: "Honey",
   Animals: "Chicken",
+  Petting: "Petting Hand",
   "Fire Pit": "Fire Pit",
   "Smoothie Shack": "Smoothie Shack",
   Deli: "Deli",

@@ -30,6 +30,7 @@ export type Category =
   | "Salt"
   | "Lava Pits"
   | "Animals"
+  | "Petting"
   | "Fire Pit"
   | "Smoothie Shack"
   | "Deli"
@@ -86,6 +87,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Salt",
   "Crab Traps",
   "Animals",
+  "Petting",
   ...COOKING_BUILDING_CATEGORIES,
   "Composters",
   ...AGING_RACK_CATEGORIES,
