@@ -60,6 +60,9 @@ export const CHROME_ICONS = {
   empty_disc: submoduleAsset("icons/empty_disc.png"),
   empty_disc_background: submoduleAsset("icons/empty_disc_background.png"),
   fast_forward: submoduleAsset("icons/fast_forward.png"),
+  // Bee icon — flagged on a beehive timer card when `hive.swarm === true`
+  // so the player sees a pending swarm bonus before they harvest.
+  bee: submoduleAsset("icons/bee.webp"),
   close: `${CDN}/icons/close.png`,
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.

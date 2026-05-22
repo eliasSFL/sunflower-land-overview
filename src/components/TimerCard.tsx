@@ -65,8 +65,22 @@ export function TimerCard({ timer, now }: Props) {
               />
             ) : null}
           </div>
-          {timer.subtext ? (
-            <span className="text-xs opacity-60 truncate">{timer.subtext}</span>
+          {timer.bonus || timer.subtext ? (
+            <div className="mt-0.5 flex items-center gap-2 min-w-0">
+              {timer.bonus ? (
+                <Label
+                  type={timer.bonus.type ?? "success"}
+                  icon={timer.bonus.icon}
+                >
+                  {timer.bonus.label}
+                </Label>
+              ) : null}
+              {timer.subtext ? (
+                <span className="text-xs opacity-60 truncate">
+                  {timer.subtext}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

@@ -94,6 +94,22 @@ export function extractFlowerTimers(
     }
     const readyAt = flower.plantedAt + growSeconds * 1000;
 
+    // Mutant flower drop — `flower.reward` is server-rolled at plant
+    // time (api `getFlowerReward` in plantFlower.ts; ~0.5%/day chance
+    // per the FLOWER_SEEDS plant duration) and persisted into the
+    // synced GameState. When present, items[0] is the chapter's mutant
+    // flower (Prism Petal / Celestial Frostbloom / Primula Enigma /
+    // …). Surface it as a chip so the player knows a special drop is
+    // pending before they harvest.
+    const rewardItem = flower.reward?.items?.[0];
+    const bonus = rewardItem
+      ? {
+          icon: getItemIcon(rewardItem.name),
+          label: rewardItem.name,
+          type: "success" as const,
+        }
+      : undefined;
+
     out.push({
       id: `flower:${bedId}`,
       category: "Flowers",
@@ -102,6 +118,7 @@ export function extractFlowerTimers(
       readyAt,
       predictedYield: { amount, item: flower.name },
       boosts,
+      ...(bonus && { bonus }),
       // Unique per bed — each flower bed shows as its own card so a
       // player who plants the same flower at staggered times still sees
       // an individual countdown per plot.

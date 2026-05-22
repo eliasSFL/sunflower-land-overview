@@ -170,6 +170,15 @@ export type Timer = {
   // Small text rendered under the headline. Useful for state that
   // doesn't fit "<amount> <item>" — e.g. salt charges "2/3 charges".
   subtext?: string;
+  // Small Label chip rendered next to the headline. Used to surface a
+  // pending special drop that isn't counted in `predictedYield.amount`:
+  // flowers display the mutant flower their bed will yield on harvest
+  // (server-rolled at plant time, stored in `flower.reward`), beehives
+  // display "Swarm" when `hive.swarm === true` (set server-side, applied
+  // as a multiplier on the next harvest). Distinct from `boosts` because
+  // it's a binary "you got it" outcome, not a contribution to the
+  // current amount.
+  bonus?: { icon?: string; label: string; type?: LabelType };
   // Name of the source NODE (Tree, Chicken, Lava Pit, …) when distinct
   // from `label` (which usually names the produced item — Wood, Egg,
   // Obsidian, …). The notification scheduler uses this to render
