@@ -8,6 +8,7 @@ import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
+import { usePushSubscriptionChangeSync } from "../notifications/usePushSubscriptionChangeSync.ts";
 import {
   extractAndAggregate,
   CATEGORY_ORDER,
@@ -22,6 +23,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const now = useNow(1000);
+
+  usePushSubscriptionChangeSync(data?.id);
 
   const timers = useMemo(() => {
     if (!data) return [];

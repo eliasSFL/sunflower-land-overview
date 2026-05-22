@@ -4,6 +4,8 @@ import type { Category } from "../timers/types.ts";
 const ENABLED_KEY = "sfl-overview:notifications:enabled";
 const MUTED_CATEGORIES_KEY = "sfl-overview:notifications:mutedCategories";
 const NOTIFICATION_TARGET_KEY = "sfl-overview:notifications:target";
+const LAST_REGISTERED_ENDPOINT_KEY =
+  "sfl-overview:notifications:lastRegisteredEndpoint";
 
 export type NotificationTarget = "overview" | "play";
 
@@ -39,4 +41,21 @@ export function loadNotificationTarget(): NotificationTarget {
 export function saveNotificationTarget(value: NotificationTarget): void {
   if (value === "overview") clear(NOTIFICATION_TARGET_KEY);
   else save(NOTIFICATION_TARGET_KEY, value);
+}
+
+// Endpoint we last successfully registered with the Worker. Used by the
+// mount-effect repair path to detect when the browser silently rotated
+// the push subscription (Chrome auto-revoke, push-service expiry, the
+// SW's pushsubscriptionchange handler re-subscribing with no clients
+// open, etc.) — if the live sub's endpoint differs from this, the
+// server is still pushing to a dead endpoint and we need to re-POST
+// /push/subscribe.
+export function loadLastRegisteredEndpoint(): string | undefined {
+  return load<string>(LAST_REGISTERED_ENDPOINT_KEY) ?? undefined;
+}
+export function saveLastRegisteredEndpoint(value: string): void {
+  save(LAST_REGISTERED_ENDPOINT_KEY, value);
+}
+export function clearLastRegisteredEndpoint(): void {
+  clear(LAST_REGISTERED_ENDPOINT_KEY);
 }
