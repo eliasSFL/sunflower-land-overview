@@ -118,6 +118,7 @@ export {
   hasLifetimeFarmerBanner,
 } from "features/game/lib/vipAccess";
 export { getBoostedAnimalCapacity } from "features/game/events/landExpansion/buyAnimal";
+export { getNextLoveAvailableAt } from "features/game/events/landExpansion/loveAnimal";
 export { getMaxFermentationSlots } from "features/game/types/fermentation";
 export { getMaxSpiceRackSlots } from "features/game/types/spiceRack";
 export { getAgingSlotCount } from "features/game/types/aging";
