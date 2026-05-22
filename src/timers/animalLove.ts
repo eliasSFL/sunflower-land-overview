@@ -9,10 +9,10 @@ import type { Timer, TimerContext } from "./types.ts";
 
 // One Timer per animal that has a pending love opportunity within its
 // CURRENT sleep cycle. `getNextLoveAvailableAt` is the upstream helper
-// (sunflower-land/src/features/game/events/landExpansion/
-// applyAnimalFeedBuff.ts) — it mirrors the two throw-gates in
-// `loveAnimal`: at least one third of the nap must have elapsed since
-// `asleepAt`, and one third since the last `lovedAt`.
+// in sunflower-land/src/features/game/events/landExpansion/loveAnimal.ts
+// — it mirrors the two throw-gates in `loveAnimal`: at least one third
+// of the nap must have elapsed since `asleepAt`, and one third since
+// the last `lovedAt`.
 //
 // Caller responsibility (documented on the upstream helper): once the
 // returned timestamp is >= awakeAt, no love slot remains this cycle —
@@ -23,9 +23,13 @@ import type { Timer, TimerContext } from "./types.ts";
 // stamped there); fresh / never-claimed animals have asleepAt = 0 and
 // awakeAt = 0, which falls through the `awakeAt > 0` check below.
 //
-// Aggregation: one card per species — `Animals|Love|<type>` — pooling
-// every animal of that type that's currently sleeping and loveable.
-// The aggregator's earliest-readyAt picks the first animal to open up.
+// Category: "Petting" — its own top-level section after "Animals" so
+// the action ("love your animal") is visually distinct from production
+// cards ("collect Egg / Milk / Wool").
+//
+// Aggregation: one card per species — `Petting|<type>` — pooling every
+// animal of that type that's currently sleeping and loveable. The
+// aggregator's earliest-readyAt picks the first animal to open up.
 
 function* iterAnimals(state: GameState): Iterable<Animal> {
   const henHouse = state.henHouse;
@@ -60,18 +64,18 @@ export function extractAnimalLoveTimers(
     const type = animal.type;
     out.push({
       id: `animal-love:${type}:${animal.id}`,
-      category: "Animals",
+      category: "Petting",
       label: `Pet ${type}`,
       icon: getItemIcon(animal.item),
       readyAt: nextLoveAt,
       subtext: animal.item,
-      aggregationKey: loveKey(type),
+      aggregationKey: pettingKey(type),
     });
   }
 
   return out;
 }
 
-function loveKey(type: AnimalType): string {
-  return `Animals|Love|${type}`;
+function pettingKey(type: AnimalType): string {
+  return `Petting|${type}`;
 }

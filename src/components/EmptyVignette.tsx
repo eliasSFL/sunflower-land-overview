@@ -51,6 +51,10 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "Empty pens",
     subtitle: "No animals on this farm.",
   },
+  Petting: {
+    headline: "Sleeping soundly",
+    subtitle: "No animals ready for affection.",
+  },
   "Fire Pit": {
     headline: "Cold ashes",
     subtitle: "Nothing on the fire.",
