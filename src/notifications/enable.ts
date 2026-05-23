@@ -9,6 +9,7 @@ import {
   loadMutedCategories,
   loadNotificationTarget,
   saveEnabled,
+  saveLastRegisteredEndpoint,
 } from "./prefs.ts";
 import {
   getPermissionState,
@@ -69,6 +70,7 @@ export async function enableNotifications(
       };
     }
     saveEnabled(true);
+    saveLastRegisteredEndpoint(sub.endpoint);
     return { ok: true, permission };
   } catch (e) {
     return {

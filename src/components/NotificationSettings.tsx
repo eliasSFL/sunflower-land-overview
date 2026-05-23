@@ -27,6 +27,8 @@ import {
   saveMutedCategories,
   loadNotificationTarget,
   saveNotificationTarget,
+  loadLastRegisteredEndpoint,
+  clearLastRegisteredEndpoint,
   type NotificationTarget,
 } from "../notifications/prefs.ts";
 import { CATEGORY_ORDER, type Category } from "../timers/types.ts";
@@ -51,25 +53,72 @@ export function NotificationSettings({ farmId }: Props) {
   const [error, setError] = useState<string | undefined>();
   const [testStatus, setTestStatus] = useState<string | undefined>();
 
-  // Re-sync UI state with the actual browser subscription on mount —
-  // covers the case where the user revoked permission outside the app.
+  // Re-sync UI state with the actual browser subscription on mount.
+  //
+  // Two scenarios warrant a silent repair instead of showing "Disabled":
+  //
+  //   a) localStorage says enabled + permission is still granted, but
+  //      the live PushSubscription is gone. Chrome auto-revokes subs
+  //      for low-engagement origins, push services expire endpoints,
+  //      storage eviction can drop subs, and the SW's
+  //      pushsubscriptionchange handler may have failed to recover
+  //      on its own with no clients open. Flipping enabled=false here
+  //      makes it look like the user turned it off themselves.
+  //
+  //   b) Live sub exists, but its endpoint differs from the one we
+  //      last registered. The SW (or the push service) silently
+  //      rotated the sub while the app was closed; the server still
+  //      thinks it should be pushing to the old endpoint, which will
+  //      410 + get pruned next time it fires. Re-POST so the new
+  //      endpoint is the one the DO knows about.
+  //
+  // In both cases enableNotifications() reuses the granted permission
+  // without re-prompting and posts the current local prefs along with
+  // the (possibly fresh) subscription. If permission really did get
+  // revoked the repair short-circuits and we fall through to the
+  // browser-is-authoritative behavior so the UI reflects reality.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const sub = await getExistingSubscription();
       const live = sub !== null;
       const flag = loadEnabled();
-      if (!cancelled && live !== flag) {
+      const perm = getPermissionState();
+      const lastEndpoint = loadLastRegisteredEndpoint();
+      if (cancelled) return;
+      setPermission(perm);
+
+      const needsRepair =
+        flag &&
+        perm === "granted" &&
+        (!live || (sub !== null && sub.endpoint !== lastEndpoint));
+
+      if (needsRepair) {
+        const result = await enableNotifications(farmId);
+        if (cancelled) return;
+        setPermission(result.permission);
+        if (result.ok) {
+          setEnabled(true);
+        } else {
+          // Surface the error but leave the flag intact — the player
+          // can hit Disable manually if they want to give up on this
+          // device. Common failure here is permission flipping to
+          // "denied" between the pre-check and requestPermission().
+          setError(result.error);
+        }
+        return;
+      }
+
+      if (live !== flag) {
         // Browser is authoritative.
         saveEnabled(live);
         setEnabled(live);
       }
-      if (!cancelled) setPermission(getPermissionState());
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [farmId]);
 
   if (isIOS() && !isStandalone()) {
     return (
@@ -123,6 +172,7 @@ export function NotificationSettings({ farmId }: Props) {
       }
       void result;
       clearEnabled();
+      clearLastRegisteredEndpoint();
       setEnabled(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");

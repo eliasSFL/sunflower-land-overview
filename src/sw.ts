@@ -34,6 +34,68 @@ type PushPayload = {
   badge?: string;
 };
 
+// Web Push subscriptions can be invalidated outside the user's control
+// — Chrome auto-revoke for low-engagement origins, push-service
+// expiry, applicationServerKey rotation, and storage eviction all
+// silently drop the sub. The browser fires `pushsubscriptionchange`
+// so the SW can re-subscribe before the next push.
+//
+// `event.newSubscription` is sometimes pre-populated (the browser
+// already re-subscribed for us); otherwise we subscribe explicitly
+// with the current VAPID public key. Either way we relay to any open
+// clients via postMessage so the SPA can POST /push/subscribe with the
+// full prefs (farmId, mute set, target) that aren't reachable from the
+// SW. If no clients are open the SPA's mount-effect repair will pick
+// it up on next load via the lastRegisteredEndpoint mismatch.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const ev = event as ExtendableEvent & {
+    oldSubscription?: PushSubscription | null;
+    newSubscription?: PushSubscription | null;
+  };
+  ev.waitUntil(
+    (async () => {
+      let newSub: PushSubscription | null = ev.newSubscription ?? null;
+      if (!newSub) {
+        try {
+          const res = await fetch("/push/vapid");
+          if (!res.ok) return;
+          const { publicKey } = (await res.json()) as { publicKey: string };
+          newSub = await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: base64UrlToUint8Array(
+              publicKey,
+            ) as BufferSource,
+          });
+        } catch {
+          // Best-effort: the SPA repair path will handle this on next
+          // mount if the player still has permission granted.
+          return;
+        }
+      }
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const c of windows) {
+        c.postMessage({
+          type: "pushsubscriptionchange",
+          newEndpoint: newSub.endpoint,
+          oldEndpoint: ev.oldSubscription?.endpoint ?? null,
+        });
+      }
+    })(),
+  );
+});
+
+function base64UrlToUint8Array(value: string): Uint8Array {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let payload: PushPayload;
