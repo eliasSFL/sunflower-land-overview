@@ -14,6 +14,7 @@ import { extractCookingTimers } from "./cooking.ts";
 import { extractCrabTrapTimers } from "./crabTraps.ts";
 import { extractCraftingBoxTimers } from "./craftingBox.ts";
 import { extractLavaPitTimers } from "./lavaPits.ts";
+import { extractPowerSkillTimers } from "./powerSkills.ts";
 import { extractResourceTimers } from "./resources.ts";
 import { extractSaltTimers } from "./salt.ts";
 import type { AggregatedTimer, Timer, TimerContext } from "./types.ts";
@@ -63,6 +64,7 @@ export function extractAllTimers(
     ...extractSaltTimers(state, ctx),
     ...extractLavaPitTimers(state, ctx),
     ...extractCrabTrapTimers(state, ctx),
+    ...extractPowerSkillTimers(state, ctx),
   ];
 }
 

@@ -42,7 +42,8 @@ export type Category =
   | "Fermentation Rack"
   | "Spice Rack"
   | "Crafting Box"
-  | "Crab Traps";
+  | "Crab Traps"
+  | "Power Skills";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -73,6 +74,10 @@ export const AGING_RACK_CATEGORIES: readonly Category[] = [
 export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
   ...COOKING_BUILDING_CATEGORIES,
   ...AGING_RACK_CATEGORIES,
+  // "Power Skills" is a meta category: rows only exist for skills the
+  // player has unlocked. Players who haven't unlocked any shouldn't see
+  // an empty chip/panel for it.
+  "Power Skills",
 ];
 
 export const CATEGORY_ORDER: Category[] = [
@@ -92,6 +97,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Composters",
   ...AGING_RACK_CATEGORIES,
   "Crafting Box",
+  "Power Skills",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a

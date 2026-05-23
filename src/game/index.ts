@@ -119,6 +119,12 @@ export {
 } from "features/game/lib/vipAccess";
 export { getBoostedAnimalCapacity } from "features/game/events/landExpansion/buyAnimal";
 export { getNextLoveAvailableAt } from "features/game/events/landExpansion/loveAnimal";
+// Power skills — `getPowerSkills` returns the list of skills with
+// `power: true`, `getSkillCooldown` resolves the boost-scaled cooldown
+// (Luna's Crescent halves it). Combined with `bumpkin.previousPowerUseAt`
+// this lets us predict when each unlocked skill comes off cooldown.
+export { getPowerSkills } from "features/game/types/bumpkinSkills";
+export { getSkillCooldown } from "features/game/events/landExpansion/skillUsed";
 export { getMaxFermentationSlots } from "features/game/types/fermentation";
 export { getMaxSpiceRackSlots } from "features/game/types/spiceRack";
 export { getAgingSlotCount } from "features/game/types/aging";
@@ -193,6 +199,11 @@ export { isCollectible } from "features/game/events/landExpansion/garbageSold";
 export { NPC_WEARABLES } from "lib/npcs";
 export type { NPCName } from "lib/npcs";
 export { getAnimatedWebpUrl } from "features/world/lib/animations";
+
+export type {
+  BumpkinSkillRevamp,
+  BumpkinRevampSkillName,
+} from "features/game/types/bumpkinSkills";
 
 export type {
   GameState,

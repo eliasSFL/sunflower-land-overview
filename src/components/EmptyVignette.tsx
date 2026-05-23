@@ -104,6 +104,10 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "Tools at rest",
     subtitle: "Nothing crafting.",
   },
+  "Power Skills": {
+    headline: "No sparks yet",
+    subtitle: "No power skills on cooldown.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders
