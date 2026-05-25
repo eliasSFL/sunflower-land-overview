@@ -28,12 +28,18 @@ type Props = {
 // show affordability only, since that's a plain balance-vs-cost
 // comparison over data the shop already carries.
 export function LoveIslandShopPanel({ state }: Props) {
+  // getActiveFloatingIsland reads state.floatingIsland.schedule, so guard
+  // the (nominally required) field first — a sanitised API payload that
+  // dropped it would otherwise throw here and white-screen the dashboard.
+  // Mirrors the same guard in the loveIsland timer extractor.
+  if (!state.floatingIsland) return null;
+
   const active = getActiveFloatingIsland({ state });
   if (!active) return null;
 
   const balance = state.inventory["Love Charm"]?.toNumber() ?? 0;
 
-  const items = getObjectEntries(state.floatingIsland.shop)
+  const items = getObjectEntries(state.floatingIsland.shop ?? {})
     .flatMap(([, item]) => (item ? [item] : []))
     .map((item) => ({
       name: item.name,
