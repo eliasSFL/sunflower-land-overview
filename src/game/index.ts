@@ -180,6 +180,13 @@ export {
 export { isTicketNPC } from "features/island/delivery/lib/delivery";
 export { getChapterTicket } from "features/game/types/chapters";
 export type { Order, Delivery } from "features/game/types/game";
+// Floating Island ("Love Island") event. `getActiveFloatingIsland`
+// returns the schedule window covering `now` (or undefined when the
+// island isn't currently reachable); `hasClaimedPetalPrize` reports
+// whether today's daily Bronze Love Box has already been claimed
+// (UTC-day keyed, same comparison the in-game claim uses).
+export { getActiveFloatingIsland } from "features/game/types/floatingIsland";
+export { hasClaimedPetalPrize } from "features/game/events/landExpansion/claimPetalPrize";
 // Discriminator for the `InventoryItemName | BumpkinItem` union — true
 // when the name is a collectible (i.e. lives in `state.inventory`),
 // false when it's a wearable (lives in `state.wardrobe`). Used by the

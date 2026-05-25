@@ -104,6 +104,13 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "Tools at rest",
     subtitle: "Nothing crafting.",
   },
+  // Event-gated: the Love Island section is hidden entirely off-season
+  // (see EVENT_GATED_CATEGORIES), so this vignette won't normally render
+  // — it exists to satisfy the exhaustive Category map.
+  "Love Island": {
+    headline: "The balloon is grounded",
+    subtitle: "Love Island isn't open right now.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders

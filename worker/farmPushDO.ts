@@ -797,6 +797,10 @@ export class FarmPushDO extends Agent<Env, State> {
 
     for (const t of aggregated) {
       if (t.idle) continue;
+      // Informational countdown cards (e.g. the Love Island live window)
+      // render on the dashboard but opt out of push — the "{label}
+      // ready" framing doesn't fit a window-close deadline.
+      if (t.notify === false) continue;
       for (const inst of instancesFor(t)) {
         // Dedup: a previous fire (or seed) already covered this exact
         // ripening event. The new fireKey embeds readyAt so a presence
