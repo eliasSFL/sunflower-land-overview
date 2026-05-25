@@ -167,6 +167,13 @@ export {
   isMaxLevel,
   MAX_BUMPKIN_LEVEL,
 } from "features/game/lib/level";
+// Power skills — `getPowerSkills` returns the `power: true` entries of
+// the revamp skill tree; `getSkillCooldown` applies the cooldown boost
+// (Luna's Crescent halves it). The power-skills timer reads
+// `bumpkin.previousPowerUseAt[name] + getSkillCooldown(...)` for the
+// next-available timestamp, exactly as the in-game PowerSkills panel does.
+export { getPowerSkills } from "features/game/types/bumpkinSkills";
+export { getSkillCooldown } from "features/game/events/landExpansion/skillUsed";
 // Deliveries — `getOrderSellPrice` handles boost-adjusted coin / SFL
 // rewards, `generateDeliveryTickets` handles seasonal-ticket rewards
 // (those aren't stored on the order; upstream computes them at claim
@@ -279,6 +286,12 @@ export type {
   // Island progression + faction pledge
   IslandType,
   FactionName,
+  // Power-skill name union — keys of `bumpkin.previousPowerUseAt` and
+  // the `power: true` entries returned by getPowerSkills. `BumpkinSkillRevamp`
+  // is the structural skill type (its `requirements.cooldown` is optional),
+  // used to read cooldowns off the otherwise-narrow getPowerSkills() union.
+  BumpkinRevampSkillName,
+  BumpkinSkillRevamp,
   // Wearable name union — Crafting Box queues these alongside collectibles.
   BumpkinItem,
   // Resource node-name unions (Tree / Rock variants)

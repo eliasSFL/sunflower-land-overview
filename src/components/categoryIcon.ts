@@ -1,11 +1,18 @@
 import { getItemIcon, type InventoryItemName } from "../game/index.ts";
+import { CHROME_ICONS } from "../lib/assets.ts";
 import type { Category } from "../timers/index.ts";
 
 // Item name passed through getItemIcon for each category. Kept as a name
 // (not a resolved URL) so updates to ITEM_DETAILS in the submodule
 // propagate without a rebuild here. Each cooking / processing building
 // uses its own building icon since each is its own top-level category.
-const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
+// "Power Skills" is the one category not backed by an inventory item —
+// it resolves to the lightning chrome icon below, matching the in-game
+// power-skills iconography — so it's excluded from this map.
+const CATEGORY_ICON_NAME: Record<
+  Exclude<Category, "Power Skills">,
+  InventoryItemName
+> = {
   Crops: "Sunflower",
   "Fruit Patches": "Apple",
   Greenhouse: "Rice",
@@ -36,5 +43,6 @@ const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
 };
 
 export function getCategoryIcon(category: Category): string {
+  if (category === "Power Skills") return CHROME_ICONS.lightning;
   return getItemIcon(CATEGORY_ICON_NAME[category]);
 }

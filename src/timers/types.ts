@@ -43,7 +43,8 @@ export type Category =
   | "Spice Rack"
   | "Crafting Box"
   | "Crab Traps"
-  | "Love Island";
+  | "Love Island"
+  | "Power Skills";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -81,9 +82,15 @@ export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
 // timer. "Love Island" (the Floating Island event) is only reachable
 // while an event window is live or scheduled; off-season its extractor
 // returns nothing and the section should disappear entirely instead of
-// showing an empty vignette year-round. App.tsx applies the same
-// "hide when empty" filter to these as it does to placement-gated ones.
-export const EVENT_GATED_CATEGORIES: readonly Category[] = ["Love Island"];
+// showing an empty vignette year-round. "Power Skills" is gated the same
+// way: its extractor emits a row only for cooldown power skills the
+// player has actually unlocked, so a farm with none never shows the
+// section. App.tsx applies the same "hide when empty" filter to these as
+// it does to placement-gated ones.
+export const EVENT_GATED_CATEGORIES: readonly Category[] = [
+  "Love Island",
+  "Power Skills",
+];
 
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
@@ -103,6 +110,7 @@ export const CATEGORY_ORDER: Category[] = [
   ...AGING_RACK_CATEGORIES,
   "Crafting Box",
   "Love Island",
+  "Power Skills",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
