@@ -43,47 +43,98 @@
       // cross-origin URL always opens a regular browser tab — it
       // bypasses the destination PWA's launch handler, so users with
       // the Sunflower Land PWA installed lose the in-app experience.
-      // Going through a same-origin page turns the next step into a
-      // standard top-level navigation, which DOES go through the
-      // browser's "URL is in an installed PWA's scope" detection and
-      // launches the PWA when present.
+      // Going through a same-origin page lets us do the cross-origin
+      // step ourselves via `window.open(url, "_blank", ...)`, which —
+      // unlike `location.replace()` from inside a PWA scope — Chrome
+      // dispatches as a fresh top-level navigation. On Android that
+      // navigation goes through the OS app-link intent dispatcher, so
+      // if the user has enabled "Open supported links" for
+      // sunflower-land.com the installed PWA picks it up. This mirrors
+      // the in-app "Open Sunflower Land" button in Settings, which
+      // uses the same window.open call.
       //
       // The target URL is passed in the fragment so the SW's precache
       // route still matches /launch.html exactly (query params would
       // miss the cache).
       (function () {
         var ALLOWED_ORIGINS = ["https://sunflower-land.com"];
-        function bail() {
+        var FALLBACK_URL = "https://sunflower-land.com/play";
+
+        function parseTarget() {
+          try {
+            var raw = window.location.hash || "";
+            if (raw.charAt(0) === "#") raw = raw.slice(1);
+            var to = new URLSearchParams(raw).get("to");
+            if (!to) return null;
+            var u = new URL(to);
+            if (ALLOWED_ORIGINS.indexOf(u.origin) === -1) return null;
+            return u.toString();
+          } catch (e) {
+            return null;
+          }
+        }
+
+        var target = parseTarget();
+        if (!target) {
+          try {
+            window.location.replace("/");
+          } catch (e) {
+            /* ignore */
+          }
+          return;
+        }
+
+        // Expose the resolved target to the visible fallback link so a
+        // user whose browser blocked the auto-open can still finish
+        // the navigation with a tap (anchor clicks always go through
+        // the OS app-link dispatcher on Android).
+        function wireFallback() {
+          var a = document.getElementById("fallback-link");
+          if (a) a.setAttribute("href", target);
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", wireFallback, {
+            once: true,
+          });
+        } else {
+          wireFallback();
+        }
+
+        var opened = null;
+        try {
+          opened = window.open(target, "_blank", "noopener,noreferrer");
+        } catch (e) {
+          opened = null;
+        }
+
+        if (opened) {
+          // Open succeeded — send this bounce page back to the
+          // overview so the user doesn't return to a "transitioning"
+          // screen when they switch away from the game.
           try {
             window.location.replace("/");
           } catch (e) {
             /* ignore */
           }
         }
-        try {
-          var raw = window.location.hash || "";
-          if (raw.charAt(0) === "#") raw = raw.slice(1);
-          var params = new URLSearchParams(raw);
-          var to = params.get("to");
-          if (!to) {
-            bail();
-            return;
-          }
-          var u = new URL(to);
-          if (ALLOWED_ORIGINS.indexOf(u.origin) === -1) {
-            bail();
-            return;
-          }
-          window.location.replace(u.toString());
-        } catch (err) {
-          bail();
-        }
+        // If window.open returned null the popup was blocked or the
+        // notification's user activation didn't survive; leave the
+        // page in place so the fallback link is visible.
       })();
     </script>
   </head>
   <body>
     <div class="wrap">
       <p>Opening Sunflower Land…</p>
+      <p>
+        <a
+          id="fallback-link"
+          href="https://sunflower-land.com/play"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Tap here if the game didn't open</a
+        >
+      </p>
       <noscript>
         <p>
           JavaScript is required to continue.

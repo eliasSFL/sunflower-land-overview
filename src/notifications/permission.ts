@@ -31,6 +31,15 @@ export function isIOS(): boolean {
   return navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform);
 }
 
+export function isAndroid(): boolean {
+  if (typeof navigator === "undefined") return false;
+  // Chrome on Android always includes "Android" in the UA. We
+  // intentionally don't use userAgentData — it's gated behind a
+  // browser flag in older Chromes and not worth the polyfill churn
+  // for a one-line platform sniff that only drives a UI tip.
+  return /Android/.test(navigator.userAgent);
+}
+
 export function isStandalone(): boolean {
   // iOS uses the non-standard `navigator.standalone`; Android/desktop
   // expose the display-mode media query.

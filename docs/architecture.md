@@ -484,9 +484,16 @@ The SW's `notificationclick` handler:
 - Parses `data.url`. If it's same-origin, focuses an existing tab on
   that path or opens a new one. If it's an allowlisted external origin
   (`sunflower-land.com`), it routes through `/launch.html#to=...` —
-  a same-origin bounce page that gives Chrome a chance to launch the
-  destination PWA (cross-origin `clients.openWindow` opens a plain tab
-  even if the user has the target installed).
+  a same-origin bounce page that then calls
+  `window.open(target, "_blank", "noopener,noreferrer")` (the same
+  call the in-app "Open Sunflower Land" button uses). Chrome treats
+  that as a fresh top-level navigation, so on Android the OS
+  app-link intent system can route it into the installed Sunflower
+  Land PWA when the user has enabled "Open supported links" for
+  `sunflower-land.com`. (Cross-origin `clients.openWindow` opens a
+  plain tab even if the user has the target installed, and
+  `location.replace()` from inside the overview PWA scope stays
+  in-process and never reaches the OS dispatcher.)
 
 ### iOS quirk
 
