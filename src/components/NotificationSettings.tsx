@@ -378,8 +378,8 @@ export function NotificationSettings({ farmId }: Props) {
               <InnerPanel className="flex flex-col gap-2 text-xs">
                 <p>
                   <strong>Have the Sunflower Land app installed?</strong> By
-                  default Android opens notification links in a browser tab.
-                  To launch them in the installed app instead:
+                  default Android opens notification links in a browser tab. To
+                  launch them in the installed app instead:
                 </p>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>
