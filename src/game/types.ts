@@ -125,7 +125,10 @@ import type { GameState } from "features/game/types/game";
 // BoostName subtypes — each branch of the BoostName union has its own
 // dictionary (CALENDAR_EVENT_ICONS, BUMPKIN_REVAMP_SKILL_TREE, …) so
 // the icon resolver narrows to these to look up images.
-export type { BumpkinRevampSkillName } from "features/game/types/bumpkinSkills";
+export type {
+  BumpkinRevampSkillName,
+  BumpkinSkillRevamp,
+} from "features/game/types/bumpkinSkills";
 export type { BudNFTName } from "features/game/types/marketplace";
 export type { SeasonalEventName } from "features/game/types/calendar";
 

@@ -111,6 +111,14 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "The balloon is grounded",
     subtitle: "Love Island isn't open right now.",
   },
+  // Event-gated like Love Island: the section is hidden unless the player
+  // has unlocked a cooldown power skill (see EVENT_GATED_CATEGORIES), so
+  // this vignette won't normally render — it exists to satisfy the
+  // exhaustive Category map.
+  "Power Skills": {
+    headline: "No powers learned",
+    subtitle: "No power skills unlocked yet.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders
