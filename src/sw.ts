@@ -122,9 +122,11 @@ const ALLOWED_EXTERNAL_ORIGINS = new Set(["https://sunflower-land.com"]);
 // Same-origin bounce page used to launch the destination PWA on
 // external clicks. Chrome's clients.openWindow() opens cross-origin
 // URLs in a plain browser tab even when the user has the target PWA
-// installed; going through a same-origin redirect turns the next
-// step into a standard top-level navigation, which IS routed through
-// the browser's installed-PWA scope check.
+// installed; the bounce page then calls window.open(target, "_blank",
+// "noopener,noreferrer") — the same call the in-app "Open Sunflower
+// Land" button uses — which Chrome dispatches as a fresh top-level
+// navigation and Android's app-link intent system can route into the
+// installed Sunflower Land PWA.
 const LAUNCH_PATH = "/launch.html";
 
 type ClickTarget =
