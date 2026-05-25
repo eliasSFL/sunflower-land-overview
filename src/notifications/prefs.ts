@@ -6,6 +6,8 @@ const MUTED_CATEGORIES_KEY = "sfl-overview:notifications:mutedCategories";
 const NOTIFICATION_TARGET_KEY = "sfl-overview:notifications:target";
 const LAST_REGISTERED_ENDPOINT_KEY =
   "sfl-overview:notifications:lastRegisteredEndpoint";
+const ANDROID_PWA_TIP_DISMISSED_KEY =
+  "sfl-overview:notifications:androidPwaTipDismissed";
 
 export type NotificationTarget = "overview" | "play";
 
@@ -58,4 +60,16 @@ export function saveLastRegisteredEndpoint(value: string): void {
 }
 export function clearLastRegisteredEndpoint(): void {
   clear(LAST_REGISTERED_ENDPOINT_KEY);
+}
+
+// Per-device dismissal of the Android "Open supported links" tip
+// shown in the Notifications settings. Sticky across reloads so a
+// player who already configured the workaround (or who actively chose
+// to keep notifications in a browser tab) doesn't keep seeing it.
+export function loadAndroidPwaTipDismissed(): boolean {
+  return load<boolean>(ANDROID_PWA_TIP_DISMISSED_KEY) ?? false;
+}
+export function saveAndroidPwaTipDismissed(value: boolean): void {
+  if (value) save(ANDROID_PWA_TIP_DISMISSED_KEY, true);
+  else clear(ANDROID_PWA_TIP_DISMISSED_KEY);
 }
