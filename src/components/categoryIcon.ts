@@ -32,6 +32,7 @@ const CATEGORY_ICON_NAME: Record<Category, InventoryItemName> = {
   Salt: "Salt",
   "Lava Pits": "Lava Pit",
   "Crab Traps": "Blue Crab",
+  "Love Island": "Love Charm",
 };
 
 export function getCategoryIcon(category: Category): string {

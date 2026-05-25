@@ -42,7 +42,8 @@ export type Category =
   | "Fermentation Rack"
   | "Spice Rack"
   | "Crafting Box"
-  | "Crab Traps";
+  | "Crab Traps"
+  | "Love Island";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -75,6 +76,15 @@ export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
   ...AGING_RACK_CATEGORIES,
 ];
 
+// Categories gated on a transient game event rather than a placed
+// building — they only render when their extractor emits at least one
+// timer. "Love Island" (the Floating Island event) is only reachable
+// while an event window is live or scheduled; off-season its extractor
+// returns nothing and the section should disappear entirely instead of
+// showing an empty vignette year-round. App.tsx applies the same
+// "hide when empty" filter to these as it does to placement-gated ones.
+export const EVENT_GATED_CATEGORIES: readonly Category[] = ["Love Island"];
+
 export const CATEGORY_ORDER: Category[] = [
   "Crops",
   "Fruit Patches",
@@ -92,6 +102,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Composters",
   ...AGING_RACK_CATEGORIES,
   "Crafting Box",
+  "Love Island",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
@@ -137,6 +148,13 @@ export type Timer = {
   label: string;
   icon?: string;
   readyAt: number;
+  // Set to false for informational countdown timers that belong on the
+  // dashboard but should NOT generate a push notification. The cron
+  // sweep frames pushes as "{label} ready", which only makes sense for
+  // collect-this events — a Love Island live-window card ("Island
+  // closes" at endAt) would fire a nonsensical "Island closes ready"
+  // push. Defaults to notifiable when omitted.
+  notify?: boolean;
   predictedYield?: { amount: number; item: TimerItemName };
   // When present, the card renders the slot list (one row per slot)
   // instead of a single yield headline. Used by cooking buildings where

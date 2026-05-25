@@ -13,6 +13,7 @@ import {
   extractAndAggregate,
   CATEGORY_ORDER,
   PLACEMENT_GATED_CATEGORIES,
+  EVENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
 import { DashboardGrid } from "./DashboardGrid.tsx";
 import { DashboardHeader } from "./DashboardHeader.tsx";
@@ -45,13 +46,18 @@ export function App() {
   // Cooking buildings + Aging Shed racks only show up if the player has
   // actually placed the building — otherwise we'd render a "Smoothie
   // Shack: Not cooking" / "Aging Rack: No fish aging" panel (and a
-  // MobileNav chip) for a building they don't own. Other categories
-  // (Crops, Animals, …) always render so the panel still serves as a
-  // "you could be doing this" reminder when idle.
+  // MobileNav chip) for a building they don't own. Love Island is
+  // gated the same way but on the event being in-season (its extractor
+  // emits nothing off-season). Other categories (Crops, Animals, …)
+  // always render so the panel still serves as a "you could be doing
+  // this" reminder when idle.
   const visibleCategories = useMemo(
     () =>
       CATEGORY_ORDER.filter((cat) => {
-        if (PLACEMENT_GATED_CATEGORIES.includes(cat)) {
+        if (
+          PLACEMENT_GATED_CATEGORIES.includes(cat) ||
+          EVENT_GATED_CATEGORIES.includes(cat)
+        ) {
           return (byCategory.get(cat) ?? []).length > 0;
         }
         return true;

@@ -9,12 +9,17 @@ import {
   DELIVERIES_FLOWER_SECTION_ID,
   DELIVERIES_TICKETS_SECTION_ID,
   IDLE_SECTION_ID,
+  LOVE_ISLAND_SHOP_SECTION_ID,
   NEXT_UP_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
 import type { FarmResponse } from "../api/fetchFarm.ts";
-import { getChapterTicket, getItemIcon } from "../game/index.ts";
+import {
+  getActiveFloatingIsland,
+  getChapterTicket,
+  getItemIcon,
+} from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { buildIdleEntries } from "../lib/idle.ts";
 import type { AggregatedTimer, Category } from "../timers/index.ts";
@@ -92,6 +97,16 @@ export function useNavSections({
         id: DELIVERIES_TICKETS_SECTION_ID,
         label: `${ticketName} Deliveries`,
         icon: getItemIcon(ticketName),
+      });
+    }
+    // The Love Island shop panel only renders while an event window is
+    // live (LoveIslandShopPanel returns null otherwise) — mirror that
+    // gate so the nav chip doesn't dangle off-season.
+    if (getActiveFloatingIsland({ state: data.farm })) {
+      out.push({
+        id: LOVE_ISLAND_SHOP_SECTION_ID,
+        label: "Love Shop",
+        icon: getItemIcon("Love Charm"),
       });
     }
     for (const cat of visibleCategories) {
