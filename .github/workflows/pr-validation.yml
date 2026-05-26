@@ -40,6 +40,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run format:check
 
+      - name: Test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm test
+
       - name: Build (typecheck + bundle)
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build

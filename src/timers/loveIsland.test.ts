@@ -82,10 +82,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("emits the close-countdown card with notify disabled", () => {
       mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const window = result.find((t) => t.id === "love-island:window");
       // The dashboard card counts to the REAL endAt — repurposing it
@@ -101,10 +98,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("emits a pushOnly closing-soon headsup 5 minutes before endAt", () => {
       mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const closingSoon = result.find(
         (t) => t.id === "love-island:closing-soon",
@@ -129,10 +123,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("emits the petal puzzle as readyAt=now when unclaimed", () => {
       mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const puzzle = result.find((t) => t.id === "love-island:petal-puzzle");
       // notify: false — user explicitly removed the daily puzzle push.
@@ -150,10 +141,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("delays the petal puzzle until the next UTC midnight when claimed today", () => {
       mockHasClaimed.mockReturnValue(true);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const puzzle = result.find((t) => t.id === "love-island:petal-puzzle");
       expect(puzzle?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
@@ -163,10 +151,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("does not emit an 'Island opens' timer while live", () => {
       mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
       // The live branch returns early — the off-season "opens" timer
       // belongs to a different code path entirely. Belt-and-braces in
       // case future refactors collapse the branches.
@@ -175,10 +160,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("emits exactly three timers (window, closing-soon, petal-puzzle)", () => {
       mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([active]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
       // Pins the cardinality so an accidental fourth-timer addition
       // gets flagged. Order matches the extractor's `out.push` sequence.
       expect(result.map((t) => t.id)).toEqual([
@@ -204,10 +186,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("ignores past windows", () => {
       const past = { startAt: NOW - 2 * HOUR_MS, endAt: NOW - HOUR_MS };
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([past]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([past]), ctx);
       // `startAt > now` filter — a window that already ended should
       // not resurrect itself as a future "opens" countdown.
       expect(result).toEqual([]);
@@ -215,10 +194,7 @@ describe("extractLoveIslandTimers", () => {
 
     it("emits an opens-countdown with push-wording overrides at startAt", () => {
       const next = { startAt: NOW + HOUR_MS, endAt: NOW + 4 * HOUR_MS };
-      const result = extractLoveIslandTimers(
-        stateWithSchedule([next]),
-        ctx,
-      );
+      const result = extractLoveIslandTimers(stateWithSchedule([next]), ctx);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({

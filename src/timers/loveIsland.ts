@@ -114,8 +114,7 @@ export function extractLoveIslandTimers(
       icon: getItemIcon("Love Charm"),
       readyAt: next.startAt,
       pushTitle: "Love Island is open",
-      pushBody:
-        "Hop on the hot-air balloon — the Floating Island has arrived.",
+      pushBody: "Hop on the hot-air balloon — the Floating Island has arrived.",
     });
   }
 
