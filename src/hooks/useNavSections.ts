@@ -11,6 +11,7 @@ import {
   IDLE_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   NEXT_UP_SECTION_ID,
+  PETS_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
@@ -107,6 +108,19 @@ export function useNavSections({
         id: LOVE_ISLAND_SHOP_SECTION_ID,
         label: "Love Shop",
         icon: getItemIcon("Love Charm"),
+      });
+    }
+    // Mirror the PetsPanel render gate so the chip doesn't dangle for a
+    // farm with no pets.
+    const pets = data.farm.pets;
+    const hasPets =
+      Object.keys(pets?.common ?? {}).length > 0 ||
+      Object.keys(pets?.nfts ?? {}).length > 0;
+    if (hasPets) {
+      out.push({
+        id: PETS_SECTION_ID,
+        label: "Pets",
+        icon: getItemIcon("Pet House"),
       });
     }
     for (const cat of visibleCategories) {

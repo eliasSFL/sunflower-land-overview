@@ -150,3 +150,18 @@ export type {
   SaltFarm,
   Salt,
 } from "features/game/types/salt";
+
+// Pets — `Pet` (common breed) and `PetNFT` (tokenised) are the per-pet
+// records held on `state.pets.common` / `state.pets.nfts`; `Pets` is the
+// container. `PetType` covers both common breeds (Dog, Cat, …) and NFT
+// trait types (Dragon, Phoenix, …).
+export type {
+  Pet,
+  PetNFT,
+  Pets,
+  PetName,
+  PetNFTName,
+  PetType,
+  CommonPetType,
+  PetNFTType,
+} from "features/game/types/pets";

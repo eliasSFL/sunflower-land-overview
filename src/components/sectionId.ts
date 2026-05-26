@@ -19,3 +19,4 @@ export const DELIVERIES_COINS_SECTION_ID = "section-deliveries-coins";
 export const DELIVERIES_FLOWER_SECTION_ID = "section-deliveries-flower";
 export const DELIVERIES_TICKETS_SECTION_ID = "section-deliveries-tickets";
 export const LOVE_ISLAND_SHOP_SECTION_ID = "section-love-shop";
+export const PETS_SECTION_ID = "section-pets";
