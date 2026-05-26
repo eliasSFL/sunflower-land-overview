@@ -13,6 +13,7 @@ import {
   type PetName,
   type PetNFT,
 } from "../game/index.ts";
+import { useCollapsibleSection } from "../hooks/useCollapsibleSection.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
@@ -76,6 +77,7 @@ function collectPets(state: GameState): PetView[] {
 export function PetsPanel({ state }: Props) {
   const now = useNow(60_000);
   const pets = collectPets(state);
+  const { open, onToggle } = useCollapsibleSection(PETS_SECTION_ID);
 
   if (pets.length === 0) return null;
 
@@ -84,7 +86,11 @@ export function PetsPanel({ state }: Props) {
       id={PETS_SECTION_ID}
       className="mb-2 w-full scroll-mt-4 break-inside-avoid"
     >
-      <details open className="group flex flex-col gap-2">
+      <details
+        open={open}
+        onToggle={onToggle}
+        className="group flex flex-col gap-2"
+      >
         <summary className="list-none cursor-pointer marker:hidden">
           <div className="flex items-center justify-between gap-2">
             <Label type="default" icon={getItemIcon("Pet House")}>
