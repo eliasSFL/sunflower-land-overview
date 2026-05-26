@@ -30,7 +30,12 @@ export function App() {
   const timers = useMemo(() => {
     if (!data) return [];
     const id = data.id ?? (Number(farmId) || 0);
-    return extractAndAggregate(data.farm, id, now);
+    // Drop `pushOnly` timers from the dashboard list. They exist so the
+    // worker can schedule a headsup push (Love Island "closing soon"
+    // 5 min before endAt) without doubling up on the existing
+    // dashboard countdown. The worker re-runs `extractAndAggregate`
+    // itself and is unfiltered, so the push still schedules.
+    return extractAndAggregate(data.farm, id, now).filter((t) => !t.pushOnly);
   }, [data, farmId, now]);
 
   const byCategory = useMemo(() => {
