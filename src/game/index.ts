@@ -215,6 +215,11 @@ export {
 } from "features/game/types/pets";
 export { getPetFoodRequests } from "features/game/events/pets/feedPet";
 export { getPetImage } from "features/island/pets/lib/petShared";
+// `isCollectibleBuilt` is the upstream placement check for a common
+// pet (and any other collectible): true iff a ready PlacedItem exists
+// in any of the placeable locations (farm, home, interior, level_one,
+// petHouse). Matches `feedPet`'s gate for common pets.
+export { isCollectibleBuilt } from "features/game/lib/collectibleBuilt";
 // Discriminator for the `InventoryItemName | BumpkinItem` union — true
 // when the name is a collectible (i.e. lives in `state.inventory`),
 // false when it's a wearable (lives in `state.wardrobe`). Used by the

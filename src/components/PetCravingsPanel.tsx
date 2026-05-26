@@ -2,6 +2,7 @@ import {
   getItemIcon,
   getPetFoodRequests,
   getPetLevel,
+  isCollectibleBuilt,
   type CookableName,
   type GameState,
 } from "../game/index.ts";
@@ -27,7 +28,6 @@ type Need = {
 // `getPetFoodRequests` filter so the totals here always agree with the
 // per-pet rows.
 function collectNeeds(state: GameState): Need[] {
-  const placedCommon = state.petHouse?.pets ?? {};
   const tally = new Map<CookableName, number>();
 
   const accumulate = (
@@ -43,8 +43,7 @@ function collectNeeds(state: GameState): Need[] {
 
   for (const pet of Object.values(state.pets?.common ?? {})) {
     if (!pet) continue;
-    const placements = placedCommon[pet.name] ?? [];
-    if (!placements.some((item) => item.coordinates)) continue;
+    if (!isCollectibleBuilt({ name: pet.name, game: state })) continue;
     const { level } = getPetLevel(pet.experience);
     const requests = Array.isArray(pet.requests?.food)
       ? getPetFoodRequests(pet, level)
@@ -54,7 +53,7 @@ function collectNeeds(state: GameState): Need[] {
 
   for (const pet of Object.values(state.pets?.nfts ?? {})) {
     if (!pet) continue;
-    if (!pet.coordinates || pet.location !== "petHouse") continue;
+    if (!pet.coordinates) continue;
     const { level } = getPetLevel(pet.experience);
     const requests = Array.isArray(pet.requests?.food)
       ? getPetFoodRequests(pet, level)

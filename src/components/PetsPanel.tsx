@@ -5,6 +5,7 @@ import {
   getPetLevel,
   getPetRequestXP,
   getPetType,
+  isCollectibleBuilt,
   isPetNapping,
   isPetNeglected,
   type GameState,
@@ -32,18 +33,15 @@ type PetView = {
   pet: Pet | PetNFT;
 };
 
-// A common pet is "placed" when at least one PlacedItem for that breed
-// in `petHouse.pets` has coordinates. NFT pets carry placement on the
-// pet record itself: `coordinates` set + `location === "petHouse"`.
-// Mirrors upstream's `getPlacedCommonPetsCount` /
-// `getPlacedNFTPetsCount` predicates in `features/game/types/pets`.
+// Mirrors upstream's `isPetPlaced` gate in `feedPet`: a common pet is
+// placed when `isCollectibleBuilt` returns true (any ready PlacedItem
+// in any placeable location, including petHouse), and an NFT pet is
+// placed when its `coordinates` are set (any location).
 function collectPets(state: GameState): PetView[] {
   const out: PetView[] = [];
-  const placedCommon = state.petHouse?.pets ?? {};
   for (const pet of Object.values(state.pets?.common ?? {})) {
     if (!pet) continue;
-    const placements = placedCommon[pet.name] ?? [];
-    if (!placements.some((item) => item.coordinates)) continue;
+    if (!isCollectibleBuilt({ name: pet.name, game: state })) continue;
     out.push({
       key: `common:${pet.name}`,
       imageId: pet.name,
@@ -53,7 +51,7 @@ function collectPets(state: GameState): PetView[] {
   }
   for (const pet of Object.values(state.pets?.nfts ?? {})) {
     if (!pet) continue;
-    if (!pet.coordinates || pet.location !== "petHouse") continue;
+    if (!pet.coordinates) continue;
     out.push({
       key: `nft:${pet.id}`,
       imageId: pet.id,

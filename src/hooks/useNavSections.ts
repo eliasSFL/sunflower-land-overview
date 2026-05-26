@@ -21,6 +21,7 @@ import {
   getActiveFloatingIsland,
   getChapterTicket,
   getItemIcon,
+  isCollectibleBuilt,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { buildIdleEntries } from "../lib/idle.ts";
@@ -112,11 +113,17 @@ export function useNavSections({
       });
     }
     // Mirror the PetsPanel render gate so the chip doesn't dangle for a
-    // farm with no pets.
-    const pets = data.farm.pets;
-    const hasPets =
-      Object.keys(pets?.common ?? {}).length > 0 ||
-      Object.keys(pets?.nfts ?? {}).length > 0;
+    // farm whose pets are all unplaced. Same upstream predicates as
+    // `feedPet`'s `isPetPlaced`: `isCollectibleBuilt` for common pets
+    // (any placeable location), `coordinates` set for NFT pets.
+    const hasPlacedCommonPet = Object.values(data.farm.pets?.common ?? {}).some(
+      (pet) =>
+        pet != null && isCollectibleBuilt({ name: pet.name, game: data.farm }),
+    );
+    const hasPlacedNftPet = Object.values(data.farm.pets?.nfts ?? {}).some(
+      (pet) => pet != null && !!pet.coordinates,
+    );
+    const hasPets = hasPlacedCommonPet || hasPlacedNftPet;
     if (hasPets) {
       out.push({
         id: PET_CRAVINGS_SECTION_ID,
