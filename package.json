@@ -16,6 +16,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "tsc": "tsc -b"
   },
   "dependencies": {
@@ -48,6 +50,7 @@
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
     "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.7",
     "wrangler": "^4.90.0"
   }
 }
