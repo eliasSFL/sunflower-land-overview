@@ -194,6 +194,32 @@ export type { Order, Delivery } from "features/game/types/game";
 // (UTC-day keyed, same comparison the in-game claim uses).
 export { getActiveFloatingIsland } from "features/game/types/floatingIsland";
 export { hasClaimedPetalPrize } from "features/game/events/landExpansion/claimPetalPrize";
+// Pets. The overview reads live pet state from `state.pets.common`
+// (common breeds) and `state.pets.nfts` (NFT pets). `getPetLevel` maps
+// total experience → level/progress (the same quadratic the in-game pet
+// panel uses); `getPetType` resolves the breed (common) or NFT trait
+// type; `isPetNapping` / `isPetNeglected` mirror the two interaction
+// gates in the feed reducer; `getPetRequestXP` is the per-food XP
+// reward. `getPetFoodRequests` (from the feed reducer) narrows a pet's
+// raw request list to the foods actually active at its level — we call
+// it rather than re-deriving the level tiers. `getPetImage` returns the
+// sprite URL for a pet: a bundled asset for common breeds, a
+// CDN-rendered image for NFT pets, so we never composite trait layers
+// ourselves.
+export {
+  getPetLevel,
+  getPetType,
+  isPetNapping,
+  isPetNeglected,
+  getPetRequestXP,
+} from "features/game/types/pets";
+export { getPetFoodRequests } from "features/game/events/pets/feedPet";
+export { getPetImage } from "features/island/pets/lib/petShared";
+// `isCollectibleBuilt` is the upstream placement check for a common
+// pet (and any other collectible): true iff a ready PlacedItem exists
+// in any of the placeable locations (farm, home, interior, level_one,
+// petHouse). Matches `feedPet`'s gate for common pets.
+export { isCollectibleBuilt } from "features/game/lib/collectibleBuilt";
 // Discriminator for the `InventoryItemName | BumpkinItem` union — true
 // when the name is a collectible (i.e. lives in `state.inventory`),
 // false when it's a wearable (lives in `state.wardrobe`). Used by the
@@ -301,5 +327,15 @@ export type {
   FruitCompostName,
   CropCompostName,
   GreenhouseCompostName,
+  // Pets — `Pet`/`PetNFT` are the per-pet records on `state.pets`;
+  // `PetType` is the breed (common) or NFT trait type.
+  Pet,
+  PetNFT,
+  Pets,
+  PetName,
+  PetNFTName,
+  PetType,
+  CommonPetType,
+  PetNFTType,
 } from "./types.ts";
 export { TEAM_USERNAMES, MANAGER_IDS } from "lib/access";

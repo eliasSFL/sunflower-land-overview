@@ -11,6 +11,8 @@ import {
   IDLE_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   NEXT_UP_SECTION_ID,
+  PET_CRAVINGS_SECTION_ID,
+  PETS_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
@@ -19,6 +21,7 @@ import {
   getActiveFloatingIsland,
   getChapterTicket,
   getItemIcon,
+  isCollectibleBuilt,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { buildIdleEntries } from "../lib/idle.ts";
@@ -107,6 +110,30 @@ export function useNavSections({
         id: LOVE_ISLAND_SHOP_SECTION_ID,
         label: "Love Shop",
         icon: getItemIcon("Love Charm"),
+      });
+    }
+    // Mirror the PetsPanel render gate so the chip doesn't dangle for a
+    // farm whose pets are all unplaced. Same upstream predicates as
+    // `feedPet`'s `isPetPlaced`: `isCollectibleBuilt` for common pets
+    // (any placeable location), `coordinates` set for NFT pets.
+    const hasPlacedCommonPet = Object.values(data.farm.pets?.common ?? {}).some(
+      (pet) =>
+        pet != null && isCollectibleBuilt({ name: pet.name, game: data.farm }),
+    );
+    const hasPlacedNftPet = Object.values(data.farm.pets?.nfts ?? {}).some(
+      (pet) => pet != null && !!pet.coordinates,
+    );
+    const hasPets = hasPlacedCommonPet || hasPlacedNftPet;
+    if (hasPets) {
+      out.push({
+        id: PET_CRAVINGS_SECTION_ID,
+        label: "Pet Cravings",
+        icon: getItemIcon("Pet House"),
+      });
+      out.push({
+        id: PETS_SECTION_ID,
+        label: "Pets",
+        icon: getItemIcon("Pet House"),
       });
     }
     for (const cat of visibleCategories) {

@@ -5,13 +5,15 @@ import { IdlePanel } from "../components/IdlePanel.tsx";
 import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
 import { NextUpPanel, ReadyPanel } from "../components/NextUpPanel.tsx";
+import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
+import { PetsPanel } from "../components/PetsPanel.tsx";
 import { TimerSection } from "../components/TimerSection.tsx";
 import type { AggregatedTimer, Category } from "../timers/index.ts";
 import { FarmIdPanel } from "./FarmIdPanel.tsx";
 
 // Single CSS multi-column flow containing every panel. Source order is
 // FarmIdPanel → BumpkinSummary → Ready → NextUp → Idle → Deliveries →
-// Love Island shop → CATEGORY_ORDER timer panels; the browser
+// Love Island shop → Pet Cravings → Pets → CATEGORY_ORDER timer panels; the browser
 // auto-balances heights across
 // columns. Column count per breakpoint:
 //   <sm  : 1 col (mobile, full-width stack)
@@ -64,6 +66,8 @@ export function DashboardGrid({
       ) : null}
       {data ? <DeliveriesPanel state={data.farm} now={now} /> : null}
       {data ? <LoveIslandShopPanel state={data.farm} /> : null}
+      {data ? <PetCravingsPanel state={data.farm} /> : null}
+      {data ? <PetsPanel state={data.farm} /> : null}
       {data
         ? visibleCategories.map((cat) => (
             <TimerSection
