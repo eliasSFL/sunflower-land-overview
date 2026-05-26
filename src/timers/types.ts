@@ -158,11 +158,31 @@ export type Timer = {
   readyAt: number;
   // Set to false for informational countdown timers that belong on the
   // dashboard but should NOT generate a push notification. The cron
-  // sweep frames pushes as "{label} ready", which only makes sense for
-  // collect-this events — a Love Island live-window card ("Island
-  // closes" at endAt) would fire a nonsensical "Island closes ready"
-  // push. Defaults to notifiable when omitted.
+  // sweep frames pushes as "{label} ready" by default, which only makes
+  // sense for collect-this events — a Love Island live-window card
+  // ("Island closes" at endAt) would fire a nonsensical "Island closes
+  // ready" push. Defaults to notifiable when omitted. For timers where
+  // the dashboard countdown is wanted but a different push wording fits
+  // better, set `pushTitle` / `pushBody` instead of disabling the push.
   notify?: boolean;
+  // Inverse of `notify: false` — the timer fires a push but does NOT
+  // render a dashboard card. Used for "headsup" pushes whose dashboard
+  // signal is already covered by a sibling timer (the Love Island
+  // "closing soon" push fires 5 min before endAt; the dashboard already
+  // has an "Island closes" card counting to the real endAt, and a
+  // second card would be redundant). Filtered out in `App.tsx` before
+  // grouping; the worker keeps these so the push still schedules.
+  pushOnly?: boolean;
+  // Overrides for the default "{label} ready" title and
+  // "{headline} · {category}" body that `instancesFor` builds in the
+  // single-instance fallback. Use when the default framing reads
+  // awkwardly for an informational fire ("Island opens ready"). Only
+  // honoured on the single-instance branch — clusters and slots have
+  // their own UX and don't read these. The schedule diff in
+  // `applySnapshot` already compares the resolved `title`/`body`, so
+  // changing these between code versions naturally reschedules.
+  pushTitle?: string;
+  pushBody?: string;
   predictedYield?: { amount: number; item: TimerItemName };
   // When present, the card renders the slot list (one row per slot)
   // instead of a single yield headline. Used by cooking buildings where

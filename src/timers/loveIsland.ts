@@ -24,6 +24,11 @@ function nextUtcMidnight(now: number): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
 }
 
+// Lead time for the "closing soon" push. Fires that long before the
+// island actually leaves so a player parked in another tab gets a
+// last-call nudge with enough time to hop on the balloon.
+const CLOSING_SOON_LEAD_MS = 5 * 60 * 1000;
+
 export function extractLoveIslandTimers(
   state: GameState,
   { now }: TimerContext,
@@ -41,7 +46,8 @@ export function extractLoveIslandTimers(
   if (active) {
     // 1) Live window — count down to when the island closes. Dashboard
     //    countdown only (notify: false): an "Island closes ready" push
-    //    at the moment the event ends would be nonsense.
+    //    at the moment the event ends would be nonsense, and the
+    //    "closing soon" headsup below covers the actual notify need.
     out.push({
       id: "love-island:window",
       category: "Love Island",
@@ -51,9 +57,32 @@ export function extractLoveIslandTimers(
       notify: false,
     });
 
-    // 2) Petal Puzzle — one Bronze Love Box per UTC day, claimable only
+    // 2) Closing-soon headsup — fires 5 min before the island leaves.
+    //    `pushOnly` keeps this OFF the dashboard: the "Island closes"
+    //    card above already counts down to the real endAt, and a
+    //    second card showing a 5-min-shifted countdown would just
+    //    confuse. Custom push wording bypasses the default
+    //    "{label} ready" framing ("Island closing soon ready" reads
+    //    poorly). If the snapshot arrives with <5 min left, readyAt is
+    //    already past — the worker's at-least-once alarm fires it on
+    //    the next tick, and `seedAlreadyReady` (subscribe path) avoids
+    //    surprise-buzzing fresh subscribers for a stale event.
+    out.push({
+      id: "love-island:closing-soon",
+      category: "Love Island",
+      label: "Closing soon",
+      icon: getItemIcon("Love Charm"),
+      readyAt: active.endAt - CLOSING_SOON_LEAD_MS,
+      pushOnly: true,
+      pushTitle: "Love Island closing soon",
+      pushBody: "5 minutes left before the island leaves.",
+    });
+
+    // 3) Petal Puzzle — one Bronze Love Box per UTC day, claimable only
     //    while the island is live. readyAt = now when it's available to
     //    claim; otherwise the next UTC midnight when the daily resets.
+    //    Dashboard-only (notify: false) — players asked for the window
+    //    pushes to carry the event signal, not a daily puzzle reminder.
     const claimed = hasClaimedPetalPrize({ state, createdAt: now });
     out.push({
       id: "love-island:petal-puzzle",
@@ -62,6 +91,7 @@ export function extractLoveIslandTimers(
       icon: getItemIcon("Bronze Love Box"),
       readyAt: claimed ? nextUtcMidnight(now) : now,
       predictedYield: { amount: 1, item: "Bronze Love Box" },
+      notify: false,
     });
 
     return out;
@@ -69,7 +99,9 @@ export function extractLoveIslandTimers(
 
   // Not live — surface the next scheduled opening, if any. Off-season
   // (nothing live and nothing on the calendar) emits no timers, so the
-  // section stays hidden via the event-gating in App.tsx.
+  // section stays hidden via the event-gating in App.tsx. The dashboard
+  // card counts down to startAt; the push fires at that same moment
+  // with custom wording (the default "Island opens ready" reads badly).
   const next = state.floatingIsland.schedule
     .filter((w) => w.startAt > now)
     .sort((a, b) => a.startAt - b.startAt)[0];
@@ -81,7 +113,8 @@ export function extractLoveIslandTimers(
       label: "Island opens",
       icon: getItemIcon("Love Charm"),
       readyAt: next.startAt,
-      notify: false,
+      pushTitle: "Love Island is open",
+      pushBody: "Hop on the hot-air balloon — the Floating Island has arrived.",
     });
   }
 

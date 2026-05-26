@@ -142,11 +142,16 @@ function instancesFor(t: AggregatedTimer): Omit<PendingFire, "scheduleId">[] {
       ? ` from ${t.nodeCount}× ${t.nodeLabel}`
       : "";
   const headline = `${base}${source}`;
+  // Honour per-timer push wording overrides when the default
+  // "{label} ready" / "{headline} · {category}" framing doesn't fit
+  // (Love Island headsup pushes are the current users). The schedule
+  // diff in `applySnapshot` compares the resolved title/body so
+  // changing these between code versions naturally reschedules.
   out.push({
     fireKey: `${aggKey}@${t.readyAt}`,
     readyAt: t.readyAt,
-    title: `${t.label} ready`,
-    body: `${headline} · ${t.category}`,
+    title: t.pushTitle ?? `${t.label} ready`,
+    body: t.pushBody ?? `${headline} · ${t.category}`,
     icon: t.icon,
     category: t.category,
     count: t.count,
