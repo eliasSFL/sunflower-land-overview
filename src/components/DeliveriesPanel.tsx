@@ -15,6 +15,7 @@ import {
   type GameState,
   type Order,
 } from "../game/index.ts";
+import { useCollapsibleSection } from "../hooks/useCollapsibleSection.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
@@ -93,10 +94,15 @@ function DeliveryGroupPanel({
   state,
   now,
 }: GroupProps) {
+  const { open, onToggle } = useCollapsibleSection(id);
   if (orders.length === 0) return null;
   return (
     <InnerPanel id={id} className="scroll-mt-4">
-      <details open className="group flex flex-col gap-2">
+      <details
+        open={open}
+        onToggle={onToggle}
+        className="group flex flex-col gap-2"
+      >
         <summary className="list-none cursor-pointer marker:hidden">
           <div className="flex items-center justify-between gap-2">
             <Label type="default" icon={icon}>
