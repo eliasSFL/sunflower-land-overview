@@ -11,6 +11,7 @@ import {
   IDLE_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   NEXT_UP_SECTION_ID,
+  PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
@@ -117,6 +118,11 @@ export function useNavSections({
       Object.keys(pets?.common ?? {}).length > 0 ||
       Object.keys(pets?.nfts ?? {}).length > 0;
     if (hasPets) {
+      out.push({
+        id: PET_CRAVINGS_SECTION_ID,
+        label: "Pet Cravings",
+        icon: getItemIcon("Pet House"),
+      });
       out.push({
         id: PETS_SECTION_ID,
         label: "Pets",

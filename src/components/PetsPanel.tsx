@@ -32,10 +32,18 @@ type PetView = {
   pet: Pet | PetNFT;
 };
 
+// A common pet is "placed" when at least one PlacedItem for that breed
+// in `petHouse.pets` has coordinates. NFT pets carry placement on the
+// pet record itself: `coordinates` set + `location === "petHouse"`.
+// Mirrors upstream's `getPlacedCommonPetsCount` /
+// `getPlacedNFTPetsCount` predicates in `features/game/types/pets`.
 function collectPets(state: GameState): PetView[] {
   const out: PetView[] = [];
+  const placedCommon = state.petHouse?.pets ?? {};
   for (const pet of Object.values(state.pets?.common ?? {})) {
     if (!pet) continue;
+    const placements = placedCommon[pet.name] ?? [];
+    if (!placements.some((item) => item.coordinates)) continue;
     out.push({
       key: `common:${pet.name}`,
       imageId: pet.name,
@@ -45,6 +53,7 @@ function collectPets(state: GameState): PetView[] {
   }
   for (const pet of Object.values(state.pets?.nfts ?? {})) {
     if (!pet) continue;
+    if (!pet.coordinates || pet.location !== "petHouse") continue;
     out.push({
       key: `nft:${pet.id}`,
       imageId: pet.id,
@@ -75,20 +84,30 @@ export function PetsPanel({ state }: Props) {
   return (
     <InnerPanel
       id={PETS_SECTION_ID}
-      className="mb-2 flex w-full scroll-mt-4 break-inside-avoid flex-col gap-2"
+      className="mb-2 w-full scroll-mt-4 break-inside-avoid"
     >
-      <header className="flex items-center justify-between gap-2">
-        <Label type="default" icon={getItemIcon("Pet House")}>
-          Pets
-        </Label>
-        <span className="text-xs opacity-70 tabular-nums">{pets.length}</span>
-      </header>
-
-      <ul className="flex flex-col gap-2">
-        {pets.map((view) => (
-          <PetRow key={view.key} view={view} now={now} />
-        ))}
-      </ul>
+      <details open className="group flex flex-col gap-2">
+        <summary className="list-none cursor-pointer marker:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <Label type="default" icon={getItemIcon("Pet House")}>
+              Pets · {pets.length}
+            </Label>
+            <img
+              src={CHROME_ICONS.chevron_down}
+              alt=""
+              aria-hidden
+              title="Click to collapse / expand"
+              className="h-auto w-6 shrink-0 transition-transform group-open:rotate-180"
+              style={{ imageRendering: "pixelated" }}
+            />
+          </div>
+        </summary>
+        <ul className="mt-2 flex flex-col gap-2">
+          {pets.map((view) => (
+            <PetRow key={view.key} view={view} now={now} />
+          ))}
+        </ul>
+      </details>
     </InnerPanel>
   );
 }
@@ -147,11 +166,21 @@ function PetRow({ view, now }: { view: PetView; now: number }) {
         </span>
       </div>
 
-      {/* XP progress — fill colour matches the in-game green bar. */}
+      {/* XP progress — mirrors the in-game HUD bar (see BumpkinSummaryPanel):
+          pixel-art bordered track with the same fill/background colours. */}
       <div className="flex items-center gap-2">
         <div
-          className="relative h-2 flex-1 overflow-hidden rounded-full"
-          style={{ backgroundColor: "#193c3e" }}
+          className="relative h-4.5 flex-1"
+          style={{
+            borderStyle: "solid",
+            borderImage: `url(${CHROME_ICONS.progress_bar_border}) 20% 20% 30%`,
+            borderLeftWidth: "5.25px",
+            borderRightWidth: "5.25px",
+            borderTopWidth: "5.25px",
+            borderBottomWidth: "7.875px",
+            backgroundColor: "#193c3e",
+            imageRendering: "pixelated",
+          }}
         >
           <div
             className="h-full"
@@ -159,7 +188,7 @@ function PetRow({ view, now }: { view: PetView; now: number }) {
             aria-hidden
           />
         </div>
-        <span className="shrink-0 text-[10px] opacity-60 tabular-nums">
+        <span className="shrink-0 opacity-70 tabular-nums text-xs">
           {formatInt(currentProgress)}/{formatInt(experienceBetweenLevels)} XP
         </span>
       </div>
@@ -196,7 +225,7 @@ function PetRow({ view, now }: { view: PetView; now: number }) {
                   />
                   <span className="truncate">{food}</span>
                 </span>
-                <span className="flex shrink-0 items-center gap-1 text-[11px] whitespace-nowrap tabular-nums opacity-70">
+                <span className="flex shrink-0 items-center gap-1 text-xs whitespace-nowrap tabular-nums opacity-70">
                   +{getPetRequestXP(food)} XP
                   {fed ? (
                     <img
