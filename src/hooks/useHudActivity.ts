@@ -14,8 +14,25 @@ import { useEffect, useState } from "react";
 //
 // Starts `true` so the buttons are present on first paint, then
 // idles out on its own.
+//
+// Desktop (`sm+`) pins the discs on-screen via CSS overrides, so we
+// report visible there regardless of idle — otherwise the visibility
+// driven a11y attributes (aria-hidden / tabIndex) would hide buttons
+// that are still on-screen and clickable.
+const DESKTOP_QUERY = "(min-width: 640px)";
+
 export function useHudActivity(idleMs: number = 2000): boolean {
   const [active, setActive] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     let timer = window.setTimeout(() => setActive(false), idleMs);
@@ -43,5 +60,5 @@ export function useHudActivity(idleMs: number = 2000): boolean {
     };
   }, [idleMs]);
 
-  return active;
+  return isDesktop || active;
 }

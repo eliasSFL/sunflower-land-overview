@@ -138,7 +138,7 @@ export function NavMenu({ sections, visible = true }: Props) {
         aria-modal="true"
         aria-label="Section navigation"
         aria-hidden={!open}
-        inert={!open ? ("" as unknown as boolean) : undefined}
+        inert={!open}
         className={`fixed inset-x-0 bottom-0 z-50 max-h-[80vh] transition-transform duration-300 ease-out sm:hidden ${
           open ? "translate-y-0" : "pointer-events-none translate-y-full"
         }`}
