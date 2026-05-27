@@ -15,7 +15,6 @@ import {
   type GameState,
   type Order,
 } from "../game/index.ts";
-import { useCollapsibleSection } from "../hooks/useCollapsibleSection.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
@@ -94,36 +93,17 @@ function DeliveryGroupPanel({
   state,
   now,
 }: GroupProps) {
-  const { open, onToggle } = useCollapsibleSection(id);
   if (orders.length === 0) return null;
   return (
-    <InnerPanel id={id} className="scroll-mt-4">
-      <details
-        open={open}
-        onToggle={onToggle}
-        className="group flex flex-col gap-2"
-      >
-        <summary className="list-none cursor-pointer marker:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <Label type="default" icon={icon}>
-              {title} Deliveries · {orders.length}
-            </Label>
-            <img
-              src={CHROME_ICONS.chevron_down}
-              alt=""
-              aria-hidden
-              title="Click to collapse / expand"
-              className="h-auto w-6 shrink-0 transition-transform group-open:rotate-180"
-              style={{ imageRendering: "pixelated" }}
-            />
-          </div>
-        </summary>
-        <ul className="mt-2 flex flex-col gap-2">
-          {orders.map((order) => (
-            <DeliveryRow key={order.id} order={order} state={state} now={now} />
-          ))}
-        </ul>
-      </details>
+    <InnerPanel id={id} className="scroll-mt-4 flex flex-col gap-2">
+      <Label type="default" icon={icon}>
+        {title} Deliveries · {orders.length}
+      </Label>
+      <ul className="flex flex-col gap-2">
+        {orders.map((order) => (
+          <DeliveryRow key={order.id} order={order} state={state} now={now} />
+        ))}
+      </ul>
     </InnerPanel>
   );
 }
