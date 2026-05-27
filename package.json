@@ -29,6 +29,7 @@
     "lodash.isequal": "^4.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-router-dom": "^7.15.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

@@ -14,6 +14,10 @@ export default defineConfig([
     // a build-time vendor of the game's harvest functions, not source we
     // own. Excluding it here keeps `npm run lint` honest about overview code.
     "sunflower-land/**",
+    // `.wrangler/` holds the local wrangler dev cache (bundled worker
+    // artifacts, state db). Already in .gitignore; mirror it here so a
+    // stray `wrangler dev` run doesn't poison `npm run lint`.
+    ".wrangler/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

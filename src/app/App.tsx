@@ -1,9 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 
 import { MobileNav } from "../components/MobileNav.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
+import { TabPills } from "../components/TabPills.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
@@ -15,10 +23,34 @@ import {
   PLACEMENT_GATED_CATEGORIES,
   EVENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
-import { DashboardGrid } from "./DashboardGrid.tsx";
 import { DashboardHeader } from "./DashboardHeader.tsx";
+import { FarmIdPanel } from "./FarmIdPanel.tsx";
+import { FarmInfoPage } from "./FarmInfoPage.tsx";
+import { LiveTimersPage } from "./LiveTimersPage.tsx";
+import { INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
+
+// Resets `window.scrollTo(0)` whenever the route changes. Mounted
+// inside the router so `useLocation` works. Standard SPA pattern;
+// react-router-dom v7 doesn't ship one out-of-the-box.
+function ScrollToTopOnNavigate() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 export function App() {
+  return (
+    <BrowserRouter>
+      <ScrollToTopOnNavigate />
+      <AppShell />
+    </BrowserRouter>
+  );
+}
+
+function AppShell() {
+  const { pathname } = useLocation();
   const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
     useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,27 +115,82 @@ export function App() {
       ? Math.max(0, REFRESH_COOLDOWN_MS - (now - lastFetchedAt))
       : 0;
 
+  // Tabs only mount once a farm has loaded — pre-load the page is
+  // dominated by the FarmIdPanel and a header subtitle ("Live timers
+  // for your farm") that's tab-agnostic. Once loaded the subtitle
+  // becomes route-aware.
+  const onTimersRoute = pathname === TIMERS_PATH;
+  const subtitle = !data
+    ? "Live timers for your farm"
+    : onTimersRoute
+      ? "Live timers for your farm"
+      : "Your farm at a glance";
+
   return (
     <div className="min-h-dvh bg-[#181425]">
       <OuterPanel className="min-h-dvh">
-        <DashboardHeader data={data} lastFetchedAt={lastFetchedAt} now={now} />
-        <DashboardGrid
+        <DashboardHeader
           data={data}
-          timers={timers}
-          byCategory={byCategory}
-          visibleCategories={visibleCategories}
+          lastFetchedAt={lastFetchedAt}
           now={now}
-          farmId={farmId}
-          accessDenied={accessDenied}
-          error={error}
-          loading={loading}
-          onLoad={load}
+          subtitle={subtitle}
+          // Hide tabs until a farm has loaded — pre-load both routes
+          // would render an empty FarmIdPanel-only shell, so the tab
+          // switcher would have nothing meaningful to switch between.
+          showTabs={!!data}
         />
+        {!data ? (
+          <FarmIdPanel
+            farmId={farmId}
+            accessDenied={accessDenied}
+            error={error}
+            loading={loading}
+            onSubmit={load}
+          />
+        ) : (
+          <>
+            {/* Mobile tab pills live in the page content (sm:hidden)
+                above the first panel — keeps the header chrome
+                compact on phones while still putting the pills right
+                where the eye is starting to scan the content. The
+                desktop copy is mounted in DashboardHeader. */}
+            <div className="mb-2 sm:hidden">
+              <TabPills tabs={TABS} />
+            </div>
+            <Routes>
+              <Route
+                path={TIMERS_PATH}
+                element={
+                  <LiveTimersPage
+                    data={data}
+                    timers={timers}
+                    byCategory={byCategory}
+                    visibleCategories={visibleCategories}
+                    now={now}
+                  />
+                }
+              />
+              <Route
+                path={INFO_PATH}
+                element={<FarmInfoPage data={data} now={now} />}
+              />
+              {/* Root and any unknown path bounce to /timers — the
+                primary surface. `replace` so back-button doesn't
+                ping-pong through the redirect. */}
+              <Route path="*" element={<Navigate to={TIMERS_PATH} replace />} />
+            </Routes>
+          </>
+        )}
         {/* Extra bottom padding on `<sm` so the fixed MobileNav strip
-            doesn't cover the last section. */}
-        <div className="h-16 sm:hidden" aria-hidden />
+            doesn't cover the last section. Only matters on /timers
+            since /info doesn't render the nav strip. */}
+        {data && onTimersRoute ? (
+          <div className="h-16 sm:hidden" aria-hidden />
+        ) : null}
       </OuterPanel>
-      {data ? <MobileNav sections={navSections} /> : null}
+      {/* MobileNav is exclusive to the Live Timers page — Farm Info is
+          short enough not to need a jump nav. */}
+      {data && onTimersRoute ? <MobileNav sections={navSections} /> : null}
       {data ? (
         <>
           <RefreshButton

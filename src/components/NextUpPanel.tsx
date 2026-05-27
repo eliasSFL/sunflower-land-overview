@@ -135,7 +135,16 @@ type Props = {
   now: number;
 };
 
-export function ReadyPanel({ timers, now }: Props) {
+// `layout="banner"` lays the rows out as a responsive grid (1 col on
+// mobile, up to 4 on wide desktops) inside a full-width panel — used
+// at the top of the Live Timers page where the panel spans the whole
+// row above the column flow. `layout="list"` (the default) renders
+// the legacy single-column list used elsewhere.
+export function ReadyPanel({
+  timers,
+  now,
+  layout = "list",
+}: Props & { layout?: "list" | "banner" }) {
   const rows = useMemo(
     () => buildRows(timers).filter((r) => r.readyAt <= now),
     [timers, now],
@@ -147,7 +156,11 @@ export function ReadyPanel({ timers, now }: Props) {
       title="Ready"
       rows={rows}
       now={now}
-      expandable
+      // Banner mode shows every row up-front (the wide grid has the
+      // room) — only the list mode keeps the expandable "Show more"
+      // affordance.
+      expandable={layout === "list"}
+      layout={layout}
     />
   );
 }
@@ -172,15 +185,27 @@ type RowListProps = {
   rows: Row[];
   now: number;
   expandable?: boolean;
+  layout?: "list" | "banner";
 };
 
-function RowList({ id, title, rows, now, expandable }: RowListProps) {
+function RowList({
+  id,
+  title,
+  rows,
+  now,
+  expandable,
+  layout = "list",
+}: RowListProps) {
   const [expanded, setExpanded] = useState(false);
   // Below `sm` only the first 5 rows render; at `sm+` only the first
   // 10. When the user expands, the caps are dropped on both
   // breakpoints. NextUpPanel doesn't pass `expandable`, so its rows
   // can't be expanded — but it slices to 10 upstream, so the desktop
   // cap is a no-op there.
+  //
+  // Banner mode doesn't pass `expandable`, so both flags collapse to
+  // false and every row renders — the responsive grid below provides
+  // the horizontal room to absorb them.
   const hasMobileOverflow = expandable && rows.length > MOBILE_VISIBLE;
   const hasDesktopOverflow = expandable && rows.length > DESKTOP_VISIBLE;
   return (
@@ -188,18 +213,31 @@ function RowList({ id, title, rows, now, expandable }: RowListProps) {
       <header>
         <Label type="default">{title}</Label>
       </header>
-      <ul className="flex flex-col gap-1">
+      <ul
+        className={
+          layout === "banner"
+            ? // Banner mode: a CSS grid whose column count tracks the
+              // outer page grid (1 → 2 → 3 → 4). Each row becomes a
+              // tile inside the banner. `display: grid` overrides the
+              // per-row `flex` visibility classes so we keep using the
+              // same row markup as list mode.
+              "grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+            : "flex flex-col gap-1"
+        }
+      >
         {rows.map((row, idx) => {
           const status = statusOf(row.readyAt, now);
-          let visibilityClass = "flex";
-          if (!expanded) {
+          // Visibility caps only apply in list mode — banner mode
+          // renders every row up-front (the wide grid has the room).
+          let visibilityClass = "";
+          if (!expanded && layout === "list") {
             if (idx >= DESKTOP_VISIBLE) visibilityClass = "hidden";
             else if (idx >= MOBILE_VISIBLE) visibilityClass = "hidden sm:flex";
           }
           return (
             <li
               key={row.key}
-              className={`${visibilityClass} items-center justify-between gap-2`}
+              className={`flex ${visibilityClass} items-center justify-between gap-2`}
             >
               <span className="flex items-center gap-1 min-w-0">
                 {row.icon ? (
