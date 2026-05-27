@@ -4,6 +4,7 @@ import { getCategoryIcon } from "../components/categoryIcon.ts";
 import type { NavSection } from "../components/NavMenu.tsx";
 import {
   IDLE_SECTION_ID,
+  NEXT_UP_SECTION_ID,
   READY_SECTION_ID,
   sectionId,
 } from "../components/sectionId.ts";
@@ -14,13 +15,13 @@ import type { AggregatedTimer, Category } from "../timers/index.ts";
 
 // Build the MobileNav chip strip for the Live Timers page. With the
 // two-page split (Live Timers / Farm Info), the strip only covers what
-// renders on /timers — Ready, Idle, then per-category timer sections.
-// Bumpkin / Deliveries / Pets etc. now live on /info and have no chip
-// here.
+// renders on /timers — Ready, Next up, Idle, then per-category timer
+// sections. Bumpkin / Deliveries / Pets etc. now live on /info and
+// have no chip here.
 //
-// Order mirrors the on-page render order (Ready banner → Idle card →
-// CATEGORY_ORDER timer panels). A new panel just needs its section id
-// stamped on the panel root and a push here.
+// Order mirrors the on-page render order (Ready banner → Next up card
+// → Idle card → CATEGORY_ORDER timer panels). A new panel just needs
+// its section id stamped on the panel root and a push here.
 export function useNavSections({
   data,
   timers,
@@ -49,6 +50,22 @@ export function useNavSections({
         id: READY_SECTION_ID,
         label: "Ready",
         icon: CHROME_ICONS.expression_alerted,
+      });
+    }
+    // Mirrors NextUpPanel's filter (non-idle timers/slots not yet
+    // ready) so the chip only shows when that panel has rows to scroll
+    // to — NextUpPanel returns null otherwise.
+    const hasNextUp = timers.some((t) => {
+      if (t.idle) return false;
+      if (t.slots && t.slots.length > 0)
+        return t.slots.some((s) => s.readyAt > now);
+      return t.readyAt > now;
+    });
+    if (hasNextUp) {
+      out.push({
+        id: NEXT_UP_SECTION_ID,
+        label: "Next up",
+        icon: CHROME_ICONS.timer,
       });
     }
     const hasIdle = buildIdleEntries(data.farm, byCategory, now).length > 0;
