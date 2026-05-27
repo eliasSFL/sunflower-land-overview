@@ -95,7 +95,7 @@ export function DashboardHeader({
           on phones (title + meta only) and lets the pills feel like
           part of the content stack where the user is looking. */}
         {showTabs ? (
-          <div className="z-10 hidden sm:block sm:px-2">
+          <div className="z-10 hidden lg:block sm:px-2">
             <TabPills tabs={TABS} />
           </div>
         ) : null}

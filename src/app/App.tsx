@@ -161,7 +161,7 @@ function AppShell() {
                 compact on phones while still putting the pills right
                 where the eye is starting to scan the content. The
                 desktop copy is mounted in DashboardHeader. */}
-            <div className="mb-2 sm:hidden">
+            <div className="mb-2 lg:hidden">
               <TabPills tabs={TABS} />
             </div>
             <Routes>
