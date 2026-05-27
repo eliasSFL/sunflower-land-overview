@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { getCategoryIcon } from "../components/categoryIcon.ts";
-import type { NavSection } from "../components/MobileNav.tsx";
+import type { NavSection } from "../components/NavMenu.tsx";
 import {
   IDLE_SECTION_ID,
   READY_SECTION_ID,

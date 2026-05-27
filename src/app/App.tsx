@@ -7,15 +7,17 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { MobileNav } from "../components/MobileNav.tsx";
+import { NavMenu } from "../components/NavMenu.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
 import { TabPills } from "../components/TabPills.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
+import { useFarmInfoNavSections } from "../hooks/useFarmInfoNavSections.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
+import { useHudActivity } from "../hooks/useHudActivity.ts";
 import { usePushSubscriptionChangeSync } from "../notifications/usePushSubscriptionChangeSync.ts";
 import {
   extractAndAggregate,
@@ -109,6 +111,11 @@ function AppShell() {
     visibleCategories,
     now,
   });
+  const infoNavSections = useFarmInfoNavSections(now);
+  // Auto-hide the floating HUD buttons on mobile after the user stops
+  // interacting (scroll OR tap). Desktop always shows them — each
+  // button overrides the hidden translate at `sm+`.
+  const hudVisible = useHudActivity();
 
   const cooldownLeft =
     lastFetchedAt !== undefined
@@ -181,24 +188,28 @@ function AppShell() {
             </Routes>
           </>
         )}
-        {/* Extra bottom padding on `<sm` so the fixed MobileNav strip
-            doesn't cover the last section. Only matters on /timers
-            since /info doesn't render the nav strip. */}
-        {data && onTimersRoute ? (
-          <div className="h-16 sm:hidden" aria-hidden />
-        ) : null}
       </OuterPanel>
-      {/* MobileNav is exclusive to the Live Timers page — Farm Info is
-          short enough not to need a jump nav. */}
-      {data && onTimersRoute ? <MobileNav sections={navSections} /> : null}
+      {/* Section-jump FAB + slide-up sheet. Each route feeds its own
+          candidate list; NavMenu filters by DOM existence at open
+          time. Mobile-only (NavMenu is `sm:hidden` internally). */}
+      {data ? (
+        <NavMenu
+          sections={onTimersRoute ? navSections : infoNavSections}
+          visible={hudVisible}
+        />
+      ) : null}
       {data ? (
         <>
           <RefreshButton
             onClick={() => load(farmId)}
             loading={loading}
             cooldownLeftMs={cooldownLeft}
+            visible={hudVisible}
           />
-          <SettingsButton onClick={() => setSettingsOpen(true)} />
+          <SettingsButton
+            onClick={() => setSettingsOpen(true)}
+            visible={hudVisible}
+          />
           <SettingsModal
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}
