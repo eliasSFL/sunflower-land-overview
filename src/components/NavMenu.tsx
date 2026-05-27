@@ -87,7 +87,8 @@ export function NavMenu({ sections, visible = true }: Props) {
         onClick={handleOpen}
         aria-label="Open section menu"
         aria-expanded={open}
-        aria-hidden={!visible && !open ? true : undefined}
+        aria-hidden={!(visible || open) ? true : undefined}
+        tabIndex={visible || open ? 0 : -1}
         title="Jump to section"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 9rem)" }}
         className={`fixed right-4 z-40 cursor-pointer transition-transform duration-300 ease-out hover:scale-105 active:scale-95 sm:hidden ${
@@ -136,6 +137,8 @@ export function NavMenu({ sections, visible = true }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Section navigation"
+        aria-hidden={!open}
+        inert={!open ? ("" as unknown as boolean) : undefined}
         className={`fixed inset-x-0 bottom-0 z-50 max-h-[80vh] transition-transform duration-300 ease-out sm:hidden ${
           open ? "translate-y-0" : "pointer-events-none translate-y-full"
         }`}

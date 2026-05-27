@@ -71,6 +71,7 @@ export function RefreshButton({
         loading ? "Refreshing…" : cooling ? `Refresh in ${seconds}s` : "Refresh"
       }
       aria-hidden={!visible && !loading ? true : undefined}
+      tabIndex={visible || loading ? undefined : -1}
       // Inline `bottom` evaluates to 5rem on desktop (env() resolves
       // to 0 there) and `safe-area + 5rem` on iOS, so one rule covers
       // both breakpoints — no `sm:bottom-N` override needed.

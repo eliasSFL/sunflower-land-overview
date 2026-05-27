@@ -18,6 +18,7 @@ export function SettingsButton({ onClick, visible = true }: Props) {
       onClick={onClick}
       aria-label="Open settings"
       aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
       title="Settings"
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
       className={`fixed right-4 z-40 cursor-pointer transition-transform duration-300 ease-out hover:scale-105 active:scale-95 sm:translate-x-0 sm:pointer-events-auto ${
