@@ -6,6 +6,10 @@ type Props = {
   onClick: () => void;
   loading?: boolean;
   cooldownLeftMs?: number;
+  // Mobile auto-hide hook. While `loading` is true we override and
+  // force visible so the user can see the spinner. Desktop ignores
+  // the prop via `sm:translate-x-0`.
+  visible?: boolean;
 };
 
 // Three-state icon timing — matches the 2 s confirm flash in
@@ -20,7 +24,12 @@ const SUCCESS_FLASH_MS = 2000;
 // The cooldown is shown as a small numeric badge in the corner so the
 // user knows when it'll next be available; clicks during cooldown are
 // no-ops.
-export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
+export function RefreshButton({
+  onClick,
+  loading,
+  cooldownLeftMs = 0,
+  visible = true,
+}: Props) {
   const cooling = cooldownLeftMs > 0;
   const disabled = loading || cooling;
   const seconds = Math.ceil(cooldownLeftMs / 1000);
@@ -61,7 +70,17 @@ export function RefreshButton({ onClick, loading, cooldownLeftMs = 0 }: Props) {
       title={
         loading ? "Refreshing…" : cooling ? `Refresh in ${seconds}s` : "Refresh"
       }
-      className="fixed bottom-32 right-4 z-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:bottom-20"
+      aria-hidden={!visible && !loading ? true : undefined}
+      tabIndex={visible || loading ? undefined : -1}
+      // Inline `bottom` evaluates to 5rem on desktop (env() resolves
+      // to 0 there) and `safe-area + 5rem` on iOS, so one rule covers
+      // both breakpoints — no `sm:bottom-N` override needed.
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}
+      className={`fixed right-4 z-40 cursor-pointer transition-transform duration-300 ease-out hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:translate-x-0 sm:pointer-events-auto ${
+        visible || loading
+          ? "translate-x-0"
+          : "pointer-events-none translate-x-[150%]"
+      }`}
     >
       <div className="relative h-12 w-12 sm:h-14 sm:w-14">
         {/* Disc = filled background + outline. settings_disc.png is a

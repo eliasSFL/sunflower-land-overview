@@ -13,7 +13,6 @@ import {
   type PetName,
   type PetNFT,
 } from "../game/index.ts";
-import { useCollapsibleSection } from "../hooks/useCollapsibleSection.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
@@ -77,41 +76,22 @@ function collectPets(state: GameState): PetView[] {
 export function PetsPanel({ state }: Props) {
   const now = useNow(60_000);
   const pets = collectPets(state);
-  const { open, onToggle } = useCollapsibleSection(PETS_SECTION_ID);
 
   if (pets.length === 0) return null;
 
   return (
     <InnerPanel
       id={PETS_SECTION_ID}
-      className="mb-2 w-full scroll-mt-4 break-inside-avoid"
+      className="mb-2 w-full scroll-mt-4 break-inside-auto! flex flex-col gap-2"
     >
-      <details
-        open={open}
-        onToggle={onToggle}
-        className="group flex flex-col gap-2"
-      >
-        <summary className="list-none cursor-pointer marker:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <Label type="default" icon={getItemIcon("Pet House")}>
-              Pets · {pets.length}
-            </Label>
-            <img
-              src={CHROME_ICONS.chevron_down}
-              alt=""
-              aria-hidden
-              title="Click to collapse / expand"
-              className="h-auto w-6 shrink-0 transition-transform group-open:rotate-180"
-              style={{ imageRendering: "pixelated" }}
-            />
-          </div>
-        </summary>
-        <ul className="mt-2 flex flex-col gap-2">
-          {pets.map((view) => (
-            <PetRow key={view.key} view={view} now={now} />
-          ))}
-        </ul>
-      </details>
+      <Label type="default" icon={getItemIcon("Pet House")}>
+        Pets · {pets.length}
+      </Label>
+      <ul className="flex flex-col gap-2">
+        {pets.map((view) => (
+          <PetRow key={view.key} view={view} now={now} />
+        ))}
+      </ul>
     </InnerPanel>
   );
 }
@@ -143,7 +123,7 @@ function PetRow({ view, now }: { view: PetView; now: number }) {
   const pct = Math.min(100, Math.max(0, percentage));
 
   return (
-    <li className="flex flex-col gap-1 border-t border-black/10 pt-2 first:border-0 first:pt-0">
+    <li className="flex flex-col gap-1 border-t border-black/10 pt-2 first:border-0 first:pt-0 break-inside-avoid">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <img

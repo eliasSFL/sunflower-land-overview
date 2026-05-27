@@ -64,6 +64,9 @@ export const CHROME_ICONS = {
   // so the player sees a pending swarm bonus before they harvest.
   bee: submoduleAsset("icons/bee.webp"),
   close: `${CDN}/icons/close.png`,
+  // Pixel-art scroll sprite — used as the glyph on the mobile section-
+  // nav FAB (the "table of contents" affordance).
+  scroll: submoduleAsset("icons/scroll.webp"),
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.
   coins: submoduleAsset("icons/coins.webp"),
