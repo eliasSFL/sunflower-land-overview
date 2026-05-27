@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 
-import {
-  Button,
-  Checkbox,
-  Radio,
-  Label,
-  SectionHeader,
-  InnerPanel,
-} from "./ui/index.ts";
+import { Button, Checkbox, Radio, Label, SectionHeader } from "./ui/index.ts";
 import {
   canSubscribe,
   getPermissionState,
-  isAndroid,
   isIOS,
   isStandalone,
   type PermissionState,
@@ -37,8 +29,6 @@ import {
   saveNotificationTarget,
   loadLastRegisteredEndpoint,
   clearLastRegisteredEndpoint,
-  loadAndroidPwaTipDismissed,
-  saveAndroidPwaTipDismissed,
   type NotificationTarget,
 } from "../notifications/prefs.ts";
 import { CATEGORY_ORDER, type Category } from "../timers/types.ts";
@@ -62,22 +52,6 @@ export function NotificationSettings({ farmId }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [testStatus, setTestStatus] = useState<string | undefined>();
-  const [androidPwaTipDismissed, setAndroidPwaTipDismissed] = useState<boolean>(
-    () => loadAndroidPwaTipDismissed(),
-  );
-
-  function dismissAndroidPwaTip() {
-    saveAndroidPwaTipDismissed(true);
-    setAndroidPwaTipDismissed(true);
-  }
-
-  // Show the Android "Open supported links" tip only when it's
-  // actually actionable: the user picked the main-game target (so
-  // notifications navigate cross-origin), they're on Android (the
-  // workaround is Android-specific — iOS/desktop don't have this app
-  // links dispatcher), and they haven't already dismissed it.
-  const showAndroidPwaTip =
-    target === "play" && isAndroid() && !androidPwaTipDismissed;
 
   // Re-sync UI state with the actual browser subscription on mount.
   //
@@ -374,33 +348,6 @@ export function NotificationSettings({ farmId }: Props) {
               />
               <span>Main game (sunflower-land.com/play)</span>
             </div>
-            {showAndroidPwaTip ? (
-              <InnerPanel className="flex flex-col gap-2 text-xs">
-                <p>
-                  <strong>Have the Sunflower Land app installed?</strong> By
-                  default Android opens notification links in a browser tab. To
-                  launch them in the installed app instead:
-                </p>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li>
-                    Long-press the Sunflower Land app icon and open{" "}
-                    <strong>App info</strong>.
-                  </li>
-                  <li>
-                    Tap <strong>Set as default</strong> →{" "}
-                    <strong>Supported web addresses</strong>.
-                  </li>
-                  <li>
-                    Toggle on <strong>sunflower-land.com</strong>.
-                  </li>
-                </ol>
-                <div>
-                  <Button onClick={dismissAndroidPwaTip} disabled={busy}>
-                    Got it
-                  </Button>
-                </div>
-              </InnerPanel>
-            ) : null}
           </section>
           <Button onClick={onTest} disabled={busy}>
             Send test notification
