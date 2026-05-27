@@ -60,6 +60,20 @@ export function extractFruitTimers(
       patches: group.map(({ patchId, patch }) => ({ patchId, patch })),
       farmId: ctx.farmId,
     });
+    // Sum remaining harvests across every patch growing this fruit
+    // so the aggregated card can surface "the tree(s) still have N
+    // harvests before they're spent". Stamped on every per-patch
+    // timer because the aggregator preserves the first source's
+    // subtext via `...rest`; identical values per group make that
+    // a no-op selection rather than an arbitrary one.
+    const totalHarvestsLeft = group.reduce(
+      (sum, { patch }) => sum + (patch.fruit?.harvestsLeft ?? 0),
+      0,
+    );
+    const subtext =
+      totalHarvestsLeft > 0
+        ? `${totalHarvestsLeft} harvest${totalHarvestsLeft === 1 ? "" : "s"} left`
+        : undefined;
     for (const { patchId, readyAt } of group) {
       const entry = yields.get(patchId);
       const amount = entry?.amount ?? 1;
@@ -71,6 +85,7 @@ export function extractFruitTimers(
         readyAt,
         predictedYield: { amount, item: fruitName },
         boosts: entry?.boosts,
+        subtext,
         aggregationKey: `Fruit Patches|${fruitName}`,
       });
     }
