@@ -1,10 +1,11 @@
 import { FarmIdForm } from "../components/FarmIdForm.tsx";
 import { InnerPanel } from "../components/ui/index.ts";
 
-// The pre-data state shown inside the dashboard grid when the player
-// hasn't entered a Farm ID yet — or when the access cohort gate
-// rejected the last attempt. Lives inside DashboardGrid so it occupies
-// the first column slot just like the regular panels.
+// The pre-data state shown when the player hasn't entered a Farm ID
+// yet — or when the access cohort gate rejected the last attempt.
+// Rendered by App.tsx in place of the route tree until a farm loads,
+// since the two-tab structure (/timers and /info) has nothing to
+// show without farm data.
 export function FarmIdPanel({
   farmId,
   accessDenied,

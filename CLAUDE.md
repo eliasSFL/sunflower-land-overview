@@ -57,3 +57,38 @@ to discuss:
    variants and diff the results) — only if the user agrees.
 
 Replicating is never the answer.
+
+## Dashboard is two routed pages
+
+After a farm loads, the dashboard splits into two top-level routes
+served by `react-router-dom` (see [src/app/App.tsx](src/app/App.tsx)
+and [src/app/routes.ts](src/app/routes.ts)):
+
+- **`/timers` — Live Timers** (default; `/` redirects here). Renders
+  [LiveTimersPage](src/app/LiveTimersPage.tsx): a full-width Ready
+  banner (`ReadyPanel layout="banner"`) above the multi-column flow,
+  then `IdlePanel`, `InstallPromptPanel`, and the `TimerSection` for
+  each `visibleCategory`. The `MobileNav` bottom strip mounts here
+  only.
+- **`/info` — Farm Info**. Renders [FarmInfoPage](src/app/FarmInfoPage.tsx):
+  same multi-column flow with `BumpkinSummaryPanel`, `InstallPromptPanel`,
+  `DeliveriesPanel`, `LoveIslandShopPanel`, `PetCravingsPanel`,
+  `PetsPanel`. No `MobileNav`.
+
+The header's `TabPills` component switches between them. Tabs only
+mount once `data` exists — the pre-load shell is the `FarmIdPanel`
+rendered in place of the route tree, with no tab UI.
+
+### Adding a new panel
+
+Decide which tab it belongs on, then add it to that page's source
+order. If it has a `sectionId` and lives on `/timers`, also push a
+chip into [useNavSections](src/hooks/useNavSections.ts) so the
+mobile jump strip can scroll to it. Panels on `/info` don't need a
+nav chip — the page is short enough to scroll.
+
+### `InstallPromptPanel` is on both pages
+
+The PWA install nudge mounts on both `/timers` and `/info` (until
+dismissed or installed). It self-hides via `view.kind === "hidden"`
+so the two instances stay in sync — no extra plumbing needed.
