@@ -10,22 +10,26 @@ import { InnerPanel, Label } from "./ui/index.ts";
 
 const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
 
-// Compact "next ready" feed shown under the Farm ID panel. Fills the
-// dead space on desktop while staying useful on mobile.
+// "Soonest ready" feed. Both panels render as full-width banners at the
+// top of the Live Timers page (`layout="banner"`) — a responsive grid
+// of rows above the per-category timer column flow.
 //
 // Row source: each card contributes one row, except multi-slot cards
 // (cooking buildings) which contribute one row PER slot — the player
 // cares about which recipe is dropping next, not which building owns
 // it. Idle timers are skipped.
 //
-// Limits:
-// - Ready panel renders every ready row; only the first 5 are visible
-//   on mobile (`< sm`) and the first 10 on desktop (`sm+`). A
-//   "Show more" toggle with a rotating chevron reveals the rest.
-// - Next up panel keeps the original cap of 10 rows total with rows
-//   5–9 hidden below `sm` (no toggle) so phones see a tight widget.
+// Limits (banner mode, as rendered today):
+// - Ready: every ready row shows on all breakpoints (no toggle) — the
+//   wide grid has the room.
+// - Next up: desktop shows the full list; mobile caps at
+//   NEXT_UP_MOBILE_VISIBLE rows with a "See more" toggle (rotating
+//   chevron) that expands to show everything.
+//
+// `layout="list"` (the legacy single-column form, no longer rendered)
+// keeps the older MOBILE_VISIBLE / DESKTOP_VISIBLE caps.
 
-const MAX_ROWS = 10;
+const NEXT_UP_MOBILE_VISIBLE = 10;
 const MOBILE_VISIBLE = 5;
 const DESKTOP_VISIBLE = 10;
 // Rows with the same (source, item) that come ready within this window
@@ -156,30 +160,27 @@ export function ReadyPanel({
       title="Ready"
       rows={rows}
       now={now}
-      // Banner mode shows every row up-front (the wide grid has the
-      // room) — only the list mode keeps the expandable "Show more"
-      // affordance.
-      expandable={layout === "list"}
       layout={layout}
+      // Banner shows every ready row up-front (the wide grid has the
+      // room), so the caps are lifted and there's no toggle. List mode
+      // keeps the 5/10 caps + "Show more" affordance.
+      expandable={layout === "list"}
+      mobileVisible={layout === "banner" ? Infinity : MOBILE_VISIBLE}
+      desktopVisible={layout === "banner" ? Infinity : DESKTOP_VISIBLE}
     />
   );
 }
 
 // Like ReadyPanel, `layout="banner"` lays the rows out as a responsive
 // grid inside a full-width panel; `layout="list"` (the default) renders
-// the legacy single-column list. Either way NextUp stays non-expandable
-// (it's already capped at MAX_ROWS) — see the panel-level note above on
-// why it skips the "Show more" toggle.
+// the legacy single-column list.
 export function NextUpPanel({
   timers,
   now,
   layout = "list",
 }: Props & { layout?: "list" | "banner" }) {
   const rows = useMemo(
-    () =>
-      buildRows(timers)
-        .filter((r) => r.readyAt > now)
-        .slice(0, MAX_ROWS),
+    () => buildRows(timers).filter((r) => r.readyAt > now),
     [timers, now],
   );
   if (rows.length === 0) return null;
@@ -190,6 +191,14 @@ export function NextUpPanel({
       rows={rows}
       now={now}
       layout={layout}
+      // Banner: desktop shows the full list; mobile caps at
+      // NEXT_UP_MOBILE_VISIBLE with a "See more" toggle that expands to
+      // everything. List mode falls back to the legacy 5/10 caps.
+      expandable
+      mobileVisible={
+        layout === "banner" ? NEXT_UP_MOBILE_VISIBLE : MOBILE_VISIBLE
+      }
+      desktopVisible={layout === "banner" ? Infinity : DESKTOP_VISIBLE}
     />
   );
 }
@@ -201,6 +210,10 @@ type RowListProps = {
   now: number;
   expandable?: boolean;
   layout?: "list" | "banner";
+  // Rows past these indices are hidden until expanded. `Infinity` means
+  // "no cap" — show every row on that breakpoint.
+  mobileVisible?: number;
+  desktopVisible?: number;
 };
 
 function RowList({
@@ -210,19 +223,17 @@ function RowList({
   now,
   expandable,
   layout = "list",
+  mobileVisible = MOBILE_VISIBLE,
+  desktopVisible = DESKTOP_VISIBLE,
 }: RowListProps) {
   const [expanded, setExpanded] = useState(false);
-  // Below `sm` only the first 5 rows render; at `sm+` only the first
-  // 10. When the user expands, the caps are dropped on both
-  // breakpoints. NextUpPanel doesn't pass `expandable`, so its rows
-  // can't be expanded — but it slices to 10 upstream, so the desktop
-  // cap is a no-op there.
-  //
-  // Banner mode doesn't pass `expandable`, so both flags collapse to
-  // false and every row renders — the responsive grid below provides
-  // the horizontal room to absorb them.
-  const hasMobileOverflow = expandable && rows.length > MOBILE_VISIBLE;
-  const hasDesktopOverflow = expandable && rows.length > DESKTOP_VISIBLE;
+  // Rows past `mobileVisible` are hidden below `sm`; rows past
+  // `desktopVisible` are hidden at `sm+` too. Expanding drops both
+  // caps. A cap of `Infinity` shows every row on that breakpoint. The
+  // "Show more" toggle only appears when `expandable` and there's
+  // overflow at the relevant breakpoint.
+  const hasMobileOverflow = expandable && rows.length > mobileVisible;
+  const hasDesktopOverflow = expandable && rows.length > desktopVisible;
   return (
     <InnerPanel id={id} className="flex scroll-mt-4 flex-col gap-2">
       <header>
@@ -242,12 +253,14 @@ function RowList({
       >
         {rows.map((row, idx) => {
           const status = statusOf(row.readyAt, now);
-          // Visibility caps only apply in list mode — banner mode
-          // renders every row up-front (the wide grid has the room).
+          // `hidden` past the desktop cap; `hidden sm:flex` between the
+          // mobile and desktop caps (hidden on phones, shown at `sm+`).
+          // Banner rows are grid items, but toggling `display` to
+          // none/flex on an item still shows/hides it within the grid.
           let visibilityClass = "";
-          if (!expanded && layout === "list") {
-            if (idx >= DESKTOP_VISIBLE) visibilityClass = "hidden";
-            else if (idx >= MOBILE_VISIBLE) visibilityClass = "hidden sm:flex";
+          if (!expanded) {
+            if (idx >= desktopVisible) visibilityClass = "hidden";
+            else if (idx >= mobileVisible) visibilityClass = "hidden sm:flex";
           }
           return (
             <li
