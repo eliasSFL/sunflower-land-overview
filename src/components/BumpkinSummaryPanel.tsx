@@ -100,6 +100,8 @@ export function BumpkinSummaryPanel({ data }: Props) {
   const flower = farm.balance?.toNumber?.() ?? 0;
   const gems = getInventoryAmount(farm.inventory, "Gem");
   const loveCharms = getInventoryAmount(farm.inventory, "Love Charm");
+  const socialPoints = farm.socialFarming?.points ?? 0;
+  const weeklySocialPoints = farm.socialFarming?.weeklyPoints?.points ?? 0;
 
   const farmId = data.id;
   const nftId = data.nft_id ?? data.nftId;
@@ -235,6 +237,16 @@ export function BumpkinSummaryPanel({ data }: Props) {
           icon={CHROME_ICONS.love_charm}
           label="Love Charm"
           amount={loveCharms}
+        />
+        <CurrencyRow
+          icon={CHROME_ICONS.social_score}
+          label="Social Score"
+          amount={socialPoints}
+        />
+        <CurrencyRow
+          icon={CHROME_ICONS.cheer}
+          label="This Week"
+          amount={weeklySocialPoints}
         />
       </ul>
     </InnerPanel>

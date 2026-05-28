@@ -131,6 +131,12 @@ export type {
 } from "features/game/types/bumpkinSkills";
 export type { BudNFTName } from "features/game/types/marketplace";
 export type { SeasonalEventName } from "features/game/types/calendar";
+// Social farming — `MonumentName` keys both `villageProjects` and
+// `REQUIRED_CHEERS`; `SocialFarming` is the slice of GameState that
+// `VillageProjectsPanel` and the social-points rows on
+// `BumpkinSummaryPanel` read from.
+export type { MonumentName } from "features/game/types/monuments";
+export type { SocialFarming } from "features/game/types/game";
 
 export type GreenhousePlantName = GreenHouseCropName | GreenHouseFruitName;
 

@@ -337,5 +337,20 @@ export type {
   PetType,
   CommonPetType,
   PetNFTType,
+  // Village projects / social farming
+  MonumentName,
+  SocialFarming,
 } from "./types.ts";
 export { TEAM_USERNAMES, MANAGER_IDS } from "lib/access";
+// Village projects (social farming). `REQUIRED_CHEERS` is the per-
+// monument completion threshold; `REWARD_ITEMS` is the inventory item
+// granted at completion (only defined for the workbench-fruit and
+// cooking-pot monuments — help-limit and megastore monuments grant
+// passive boosts instead, so they don't appear here). `getProjectReward`
+// applies the Cornucopia +1 boost to Big Fruit rewards when the player
+// has an active Cornucopia monument.
+export {
+  REQUIRED_CHEERS,
+  REWARD_ITEMS,
+  getProjectReward,
+} from "features/game/types/monuments";

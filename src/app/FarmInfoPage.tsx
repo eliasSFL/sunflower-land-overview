@@ -5,13 +5,14 @@ import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
 import { PetsPanel } from "../components/PetsPanel.tsx";
+import { VillageProjectsPanel } from "../components/VillageProjectsPanel.tsx";
 
 // Page body of the /info route. Same multi-column flow as the
 // LiveTimers page so the visual rhythm carries between tabs, but
 // populated with identity / activity / event panels instead of
 // timers. Source order is Bumpkin → Install → Deliveries → Love
-// Island Shop → Pet Cravings → Pets; the browser auto-balances
-// column heights.
+// Island Shop → Village Projects → Pet Cravings → Pets; the browser
+// auto-balances column heights.
 //
 // Column count per breakpoint:
 //   <sm  : 1 col (mobile, full-width stack)
@@ -35,6 +36,7 @@ export function FarmInfoPage({
       <InstallPromptPanel farmId={data.id} />
       <DeliveriesPanel state={data.farm} now={now} />
       <LoveIslandShopPanel state={data.farm} />
+      <VillageProjectsPanel state={data.farm} />
       <PetCravingsPanel state={data.farm} />
       <PetsPanel state={data.farm} />
     </div>

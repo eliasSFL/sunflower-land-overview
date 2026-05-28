@@ -85,6 +85,12 @@ export const CHROME_ICONS = {
   goblin_emblem: submoduleAsset("icons/goblin_emblem.webp"),
   nightshade_emblem: submoduleAsset("icons/nightshade_emblem.webp"),
   vip: submoduleAsset("icons/vip.webp"),
+  // Social farming — `social_score` is the in-game points icon (used
+  // by `BumpkinSummaryPanel` for the all-time score row); `cheer` is
+  // the cheer-item sprite (used for the weekly delta row and as the
+  // header glyph on `VillageProjectsPanel`).
+  social_score: submoduleAsset("icons/social_score.webp"),
+  cheer: submoduleAsset("icons/cheer.webp"),
 } as const;
 
 export const BANNER_URLS = {
