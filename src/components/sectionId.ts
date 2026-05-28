@@ -21,3 +21,4 @@ export const DELIVERIES_TICKETS_SECTION_ID = "section-deliveries-tickets";
 export const LOVE_ISLAND_SHOP_SECTION_ID = "section-love-shop";
 export const PETS_SECTION_ID = "section-pets";
 export const PET_CRAVINGS_SECTION_ID = "section-pet-cravings";
+export const VILLAGE_PROJECTS_SECTION_ID = "section-village-projects";

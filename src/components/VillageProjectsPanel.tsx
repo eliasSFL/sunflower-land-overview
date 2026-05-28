@@ -9,6 +9,7 @@ import {
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
+import { VILLAGE_PROJECTS_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label, ProgressBar } from "./ui/index.ts";
 
 type Props = {
@@ -56,7 +57,10 @@ export function VillageProjectsPanel({ state }: Props) {
   if (active.length === 0 && completed.length === 0) return null;
 
   return (
-    <InnerPanel className="mb-2 w-full scroll-mt-4 break-inside-avoid flex flex-col gap-2">
+    <InnerPanel
+      id={VILLAGE_PROJECTS_SECTION_ID}
+      className="mb-2 w-full scroll-mt-4 break-inside-avoid flex flex-col gap-2"
+    >
       <Label type="default" icon={CHROME_ICONS.cheer}>
         Village Projects · {active.length}
       </Label>

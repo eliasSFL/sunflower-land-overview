@@ -10,6 +10,7 @@ import {
   LOVE_ISLAND_SHOP_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
+  VILLAGE_PROJECTS_SECTION_ID,
 } from "../components/sectionId.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 
@@ -26,6 +27,11 @@ export function useFarmInfoNavSections(now: number): NavSection[] {
         id: BUMPKIN_SECTION_ID,
         label: "Bumpkin",
         icon: CHROME_ICONS.player,
+      },
+      {
+        id: VILLAGE_PROJECTS_SECTION_ID,
+        label: "Village Projects",
+        icon: CHROME_ICONS.cheer,
       },
       {
         id: DELIVERIES_COINS_SECTION_ID,
