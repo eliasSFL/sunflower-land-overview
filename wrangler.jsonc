@@ -42,6 +42,7 @@
   },
   "vars": {
     "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
+    "APP_NAME": "Sunflower Land Overview",
   },
   "ratelimits": [
     {
@@ -58,6 +59,7 @@
       "name": "sunflower-land-overview-dev",
       "vars": {
         "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
+        "APP_NAME": "Sunflower Land Overview (Dev)",
       },
       "d1_databases": [
         {

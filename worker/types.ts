@@ -30,6 +30,11 @@ export interface Env {
   // mailto: address used as the JWT subject in VAPID-signed pushes.
   // Plain var (not a secret) — see wrangler.jsonc.
   VAPID_SUBJECT: string;
+  // Display name used as the push notification `title`. Set per
+  // environment in wrangler.jsonc so dev pushes read "Sunflower Land
+  // Overview (Dev)" — keeps an installed dev PWA distinguishable from
+  // the prod one on the lockscreen.
+  APP_NAME: string;
   // Shared secret gating admin-only endpoints (currently just
   // POST /push/sweep). Sent by the caller in the `x-admin-secret`
   // header; absence on the env fails the check closed.

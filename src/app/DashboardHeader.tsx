@@ -85,7 +85,8 @@ export function DashboardHeader({
     >
       <div className="z-10 min-w-0 flex flex-col pl-3 sm:pl-4">
         <p className="text-base text-white text-shadow">
-          Sunflower Land Overview
+          {(import.meta.env.VITE_APP_NAME as string | undefined) ??
+            "Sunflower Land Overview"}
         </p>
         <p className="text-xs text-white text-shadow">{subtitle}</p>
       </div>

@@ -505,7 +505,7 @@ export class FarmPushDO extends Agent<Env, State> {
       return Response.json({ error: "Unknown endpoint" }, { status: 404 });
     }
     const payload: PushPayload = {
-      title: "Sunflower Land Overview",
+      title: this.env.APP_NAME,
       body: "Test notification — your device is set up for ready-timer pushes.",
       tag: "sfl-overview:test",
       url: clickUrl(target.notificationTarget, this.state.farmId),

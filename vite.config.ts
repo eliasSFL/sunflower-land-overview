@@ -42,6 +42,19 @@ const shortSha = gitCommit.slice(0, 7);
 const appVersion =
   process.env.WORKERS_CI_BRANCH === "master" && gitTag ? gitTag : shortSha;
 
+// Non-master Workers Builds deploy to the `sunflower-land-overview-dev`
+// environment (see wrangler.jsonc `env.development`). Local builds —
+// no WORKERS_CI_BRANCH — also get the "(Dev)" suffix so installed PWAs
+// and tab titles stay distinguishable when testing locally. Only the
+// master deploy uses the clean production name.
+const IS_PROD_DEPLOY = process.env.WORKERS_CI_BRANCH === "master";
+const APP_NAME = IS_PROD_DEPLOY
+  ? "Sunflower Land Overview"
+  : "Sunflower Land Overview (Dev)";
+const APP_SHORT_NAME = IS_PROD_DEPLOY
+  ? "SFL Overview"
+  : "SFL Overview (Dev)";
+
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 const ASSET_STUB = r("./src/game/stubs/asset-stub.ts");
@@ -74,6 +87,8 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
       "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
       "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
+      "import.meta.env.VITE_APP_NAME": JSON.stringify(APP_NAME),
+      "import.meta.env.VITE_APP_SHORT_NAME": JSON.stringify(APP_SHORT_NAME),
     },
     plugins: [
       react(),
@@ -98,6 +113,13 @@ export default defineConfig(({ mode }) => {
             source: JSON.stringify({ commit: gitCommit }),
           });
         },
+        // Substitute %APP_NAME% in index.html so the browser tab title
+        // reflects the dev/prod branch. Vite's built-in %VITE_*%
+        // replacement only reads .env files, not `define`, so we apply
+        // it here ourselves.
+        transformIndexHtml(html) {
+          return html.replaceAll("%APP_NAME%", APP_NAME);
+        },
       },
       VitePWA({
         registerType: "autoUpdate",
@@ -117,8 +139,8 @@ export default defineConfig(({ mode }) => {
         },
         includeAssets: ["favicon.webp", "icons/sfl_overview-180.webp"],
         manifest: {
-          name: "Sunflower Land Overview",
-          short_name: "SFL Overview",
+          name: APP_NAME,
+          short_name: APP_SHORT_NAME,
           description:
             "Live timers for your Sunflower Land farm — crops, animals, cooking, composters, deliveries and more.",
           start_url: "/",
