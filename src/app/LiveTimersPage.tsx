@@ -48,8 +48,8 @@ export function LiveTimersPage({
         <NextUpPanel timers={timers} now={now} layout="banner" />
       </div>
       <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
-        <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
         <InstallPromptPanel farmId={data.id} />
+        <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
         {visibleCategories.map((cat) => (
           <TimerSection
             key={cat}

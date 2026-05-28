@@ -32,11 +32,11 @@ export function FarmInfoPage({
 }) {
   return (
     <div className="columns-1 gap-2 sm:columns-2 lg:columns-3 2xl:columns-4 *:break-inside-avoid *:mb-2">
-      <BumpkinSummaryPanel data={data} />
       <InstallPromptPanel farmId={data.id} />
+      <BumpkinSummaryPanel data={data} />
+      <VillageProjectsPanel state={data.farm} />
       <DeliveriesPanel state={data.farm} now={now} />
       <LoveIslandShopPanel state={data.farm} />
-      <VillageProjectsPanel state={data.farm} />
       <PetCravingsPanel state={data.farm} />
       <PetsPanel state={data.farm} />
     </div>
