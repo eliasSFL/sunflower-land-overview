@@ -24,10 +24,18 @@
     },
   ],
   "durable_objects": {
-    "bindings": [{ "name": "FARM_PUSH_DO", "class_name": "FarmPushDO" }],
+    "bindings": [
+      {
+        "name": "FARM_PUSH_DO",
+        "class_name": "FarmPushDO",
+      },
+    ],
   },
   "migrations": [
-    { "tag": "v3-add-farm-push-do", "new_sqlite_classes": ["FarmPushDO"] },
+    {
+      "tag": "v3-add-farm-push-do",
+      "new_sqlite_classes": ["FarmPushDO"],
+    },
   ],
   "triggers": {
     "crons": ["*/10 * * * *"],
@@ -39,7 +47,44 @@
     {
       "name": "PUSH_RATE_LIMITER",
       "namespace_id": "1001",
-      "simple": { "limit": 60, "period": 60 },
+      "simple": {
+        "limit": 60,
+        "period": 60,
+      },
     },
   ],
+  "env": {
+    "development": {
+      "name": "sunflower-land-overview-dev",
+      "vars": {
+        "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
+      },
+      "d1_databases": [
+        {
+          "binding": "sfl_overview_push",
+          "database_name": "sfl-overview-push-dev",
+          "database_id": "fc687043-28c7-4cd4-8502-e065c7309d1d",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "FARM_PUSH_DO",
+            "class_name": "FarmPushDO",
+          },
+        ],
+      },
+      "ratelimits": [
+        {
+          "name": "PUSH_RATE_LIMITER",
+          "namespace_id": "1002",
+          "simple": {
+            "limit": 60,
+            "period": 60,
+          },
+        },
+      ],
+    },
+  },
 }

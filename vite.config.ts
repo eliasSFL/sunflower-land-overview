@@ -21,6 +21,27 @@ const gitCommit = (() => {
 })();
 const GITHUB_REPO = "eliasSFL/sunflower-land-overview";
 
+// Header chip shows the latest git tag on prod (Workers Builds for the
+// master branch), short commit SHA everywhere else — dev branch
+// deploys and local builds. WORKERS_CI_BRANCH is set by Cloudflare
+// Workers Builds; missing locally, so the SHA fallback kicks in. The
+// CI build command runs `git fetch --tags` first because Workers
+// Builds checkouts are shallow and would otherwise miss the tag.
+const gitTag = (() => {
+  try {
+    return execSync("git describe --tags --abbrev=0", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+})();
+const shortSha = gitCommit.slice(0, 7);
+const appVersion =
+  process.env.WORKERS_CI_BRANCH === "master" && gitTag ? gitTag : shortSha;
+
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 const ASSET_STUB = r("./src/game/stubs/asset-stub.ts");
@@ -51,6 +72,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_NETWORK": JSON.stringify(SFL_NETWORK),
       "import.meta.env.VITE_ANIMATION_URL": JSON.stringify(SFL_ANIMATION_URL),
       "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
+      "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
       "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
     },
     plugins: [

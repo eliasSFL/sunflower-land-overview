@@ -34,8 +34,8 @@ jobs:
           git add sunflower-land
           git commit -m "Bump sunflower-land submodule to ${NEW_SHA}"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin master
-            if git push origin HEAD:master; then
+            git pull --rebase origin development
+            if git push origin HEAD:development; then
               exit 0
             fi
             echo "Push attempt ${attempt} failed (likely a race with a concurrent merge); retrying..."

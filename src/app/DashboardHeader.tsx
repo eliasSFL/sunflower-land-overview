@@ -47,9 +47,15 @@ export function DashboardHeader({
   showTabs: boolean;
 }) {
   const { bundleSha, isStale } = useVersionCheck();
-  const shortSha = bundleSha.slice(0, 7);
-  const commitUrl = bundleSha
-    ? `https://github.com/${GITHUB_REPO}/tree/${bundleSha}`
+  // Falls back to the short SHA when no app version was injected at
+  // build time (dev branch deploys, local builds) — see vite.config.ts.
+  const versionLabel =
+    (import.meta.env.VITE_APP_VERSION as string | undefined) ||
+    bundleSha.slice(0, 7);
+  // `/tree/<ref>` accepts tags, branches, and SHAs interchangeably, so
+  // the link follows whatever the chip is showing.
+  const versionUrl = versionLabel
+    ? `https://github.com/${GITHUB_REPO}/tree/${versionLabel}`
     : `https://github.com/${GITHUB_REPO}`;
 
   // "Saved" reflects FarmModel.updatedAt from the BE — bumps only on
@@ -100,17 +106,17 @@ export function DashboardHeader({
           </div>
         ) : null}
         <div className="z-10 flex shrink-0 flex-col items-start gap-1 pl-3 sm:items-end sm:pl-0 sm:pr-4 sm:text-right">
-          {shortSha ? (
+          {versionLabel ? (
             <span className="text-xs text-white text-shadow">
               <span>Version: </span>
               <a
-                href={commitUrl}
+                href={versionUrl}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-                title="View this commit on GitHub"
+                title="View this release on GitHub"
               >
-                {shortSha}
+                {versionLabel}
               </a>
             </span>
           ) : null}
