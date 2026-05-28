@@ -59,7 +59,7 @@
       "name": "sunflower-land-overview-dev",
       "vars": {
         "VAPID_SUBJECT": "mailto:elias@sunflower-land.com",
-        "APP_NAME": "Sunflower Land Overview (Dev)",
+        "APP_NAME": "(DEV) Sunflower Land Overview",
       },
       "d1_databases": [
         {

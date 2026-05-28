@@ -50,10 +50,10 @@ const appVersion =
 const IS_PROD_DEPLOY = process.env.WORKERS_CI_BRANCH === "master";
 const APP_NAME = IS_PROD_DEPLOY
   ? "Sunflower Land Overview"
-  : "Sunflower Land Overview (Dev)";
+  : "(DEV) Sunflower Land Overview";
 const APP_SHORT_NAME = IS_PROD_DEPLOY
   ? "SFL Overview"
-  : "SFL Overview (Dev)";
+  : "(DEV) SFL Overview";
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
