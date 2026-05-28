@@ -9,7 +9,7 @@ import {
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
-import { InnerPanel, Label } from "./ui/index.ts";
+import { InnerPanel, Label, ProgressBar } from "./ui/index.ts";
 
 type Props = {
   state: GameState;
@@ -112,19 +112,7 @@ function ProjectRow({ row, state }: { row: ActiveRow; state: GameState }) {
           {formatYield(cheers)}/{formatYield(required)}
         </span>
       </div>
-      <div
-        className="h-1.5 w-full rounded-sm"
-        style={{ backgroundColor: "#193c3e" }}
-        aria-hidden
-      >
-        <div
-          className="h-full rounded-sm"
-          style={{
-            width: `${Math.max(0, Math.min(100, pct))}%`,
-            backgroundColor: "#63c74d",
-          }}
-        />
-      </div>
+      <ProgressBar pct={pct} className="w-full" />
       {reward && isRewarded(name) ? (
         <div className="flex items-center justify-end gap-1">
           <Label type="default" icon={getItemIcon(REWARD_ITEMS[name].item)}>

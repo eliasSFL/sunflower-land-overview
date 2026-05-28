@@ -14,7 +14,7 @@ import { useNow } from "../hooks/useNow.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatYield } from "../lib/format.ts";
 import { BUMPKIN_SECTION_ID } from "./sectionId.ts";
-import { InnerPanel, Label } from "./ui/index.ts";
+import { InnerPanel, Label, ProgressBar } from "./ui/index.ts";
 
 const ISLAND_ICONS: Record<IslandType, string> = {
   basic: CHROME_ICONS.island_basic,
@@ -178,13 +178,8 @@ export function BumpkinSummaryPanel({ data }: Props) {
         </div>
       ) : null}
 
-      {/* XP progress bar — mirrors the in-game HUD style.
-          - level_up icon + pixel-art bordered bar (progress_bar_border)
-          - Fill colour and dark-green track match upstream's
-            PROGRESS_COLORS.progress (#63c74d on #193c3e).
-          - Border widths from upstream's progressBarBorderStyle:
-            2/2/2/3 game px × PIXEL_SCALE 2.625 = 5.25 / 5.25 / 5.25 / 7.875
-            CSS px. borderImageSlice keeps the chrome from stretching. */}
+      {/* XP progress bar — mirrors the in-game HUD style: level_up icon
+          beside the shared `ProgressBar` chrome. */}
       <div className="flex items-center gap-1">
         <img
           src={CHROME_ICONS.level_up}
@@ -193,25 +188,7 @@ export function BumpkinSummaryPanel({ data }: Props) {
           className="h-5 w-5 shrink-0 object-contain"
           style={{ imageRendering: "pixelated" }}
         />
-        <div
-          className="relative h-4.5 flex-1"
-          style={{
-            borderStyle: "solid",
-            borderImage: `url(${CHROME_ICONS.progress_bar_border}) 20% 20% 30%`,
-            borderLeftWidth: "5.25px",
-            borderRightWidth: "5.25px",
-            borderTopWidth: "5.25px",
-            borderBottomWidth: "7.875px",
-            backgroundColor: "#193c3e",
-            imageRendering: "pixelated",
-          }}
-        >
-          <div
-            className="h-full"
-            style={{ width: `${pct}%`, backgroundColor: "#63c74d" }}
-            aria-hidden
-          />
-        </div>
+        <ProgressBar pct={pct} className="flex-1" />
       </div>
       <p className="text-xs opacity-70">
         {atMax

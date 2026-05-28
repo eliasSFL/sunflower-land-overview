@@ -6,4 +6,5 @@ export { Radio } from "./Radio.tsx";
 export { Label } from "./Label.tsx";
 export type { LabelType } from "./Label.tsx";
 export { Modal } from "./Modal.tsx";
+export { ProgressBar } from "./ProgressBar.tsx";
 export { SectionHeader } from "./SectionHeader.tsx";
