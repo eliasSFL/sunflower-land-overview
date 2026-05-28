@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   bump:
@@ -16,6 +16,7 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+          ssh-key: ${{ secrets.SUBMODULE_BUMP_DEPLOY_KEY }}
           persist-credentials: true
 
       - name: Fast-forward submodule to upstream main
