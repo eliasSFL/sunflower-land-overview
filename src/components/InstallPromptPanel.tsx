@@ -204,8 +204,8 @@ export function InstallPromptPanel({ farmId }: Props) {
             Install{" "}
             {(import.meta.env.VITE_APP_NAME as string | undefined) ??
               "Sunflower Land Overview"}{" "}
-            to get push notifications when your timers are ready — even with
-            the app closed.
+            to get push notifications when your timers are ready — even with the
+            app closed.
           </p>
           <Button onClick={() => void onInstall()} disabled={busy}>
             Install app
