@@ -20,16 +20,14 @@ const CHEVRON_DOWN = CHROME_ICONS.chevron_down;
 // it. Idle timers are skipped.
 //
 // Limits (banner mode, as rendered today):
-// - Ready: every ready row shows on all breakpoints (no toggle) — the
-//   wide grid has the room.
-// - Next up: desktop shows the full list; mobile caps at
-//   NEXT_UP_MOBILE_VISIBLE rows with a "See more" toggle (rotating
-//   chevron) that expands to show everything.
+// - Desktop shows every row.
+// - Mobile caps at BANNER_MOBILE_VISIBLE rows with a "Show more" toggle
+//   (rotating chevron) that expands to show everything.
 //
 // `layout="list"` (the legacy single-column form, no longer rendered)
 // keeps the older MOBILE_VISIBLE / DESKTOP_VISIBLE caps.
 
-const NEXT_UP_MOBILE_VISIBLE = 10;
+const BANNER_MOBILE_VISIBLE = 10;
 const MOBILE_VISIBLE = 5;
 const DESKTOP_VISIBLE = 10;
 // Rows with the same (source, item) that come ready within this window
@@ -161,11 +159,13 @@ export function ReadyPanel({
       rows={rows}
       now={now}
       layout={layout}
-      // Banner shows every ready row up-front (the wide grid has the
-      // room), so the caps are lifted and there's no toggle. List mode
-      // keeps the 5/10 caps + "Show more" affordance.
-      expandable={layout === "list"}
-      mobileVisible={layout === "banner" ? Infinity : MOBILE_VISIBLE}
+      // Banner: desktop shows the full list; mobile caps at
+      // BANNER_MOBILE_VISIBLE with a "Show more" toggle that expands to
+      // everything. List mode keeps the legacy 5/10 caps.
+      expandable
+      mobileVisible={
+        layout === "banner" ? BANNER_MOBILE_VISIBLE : MOBILE_VISIBLE
+      }
       desktopVisible={layout === "banner" ? Infinity : DESKTOP_VISIBLE}
     />
   );
@@ -192,11 +192,11 @@ export function NextUpPanel({
       now={now}
       layout={layout}
       // Banner: desktop shows the full list; mobile caps at
-      // NEXT_UP_MOBILE_VISIBLE with a "See more" toggle that expands to
+      // BANNER_MOBILE_VISIBLE with a "Show more" toggle that expands to
       // everything. List mode falls back to the legacy 5/10 caps.
       expandable
       mobileVisible={
-        layout === "banner" ? NEXT_UP_MOBILE_VISIBLE : MOBILE_VISIBLE
+        layout === "banner" ? BANNER_MOBILE_VISIBLE : MOBILE_VISIBLE
       }
       desktopVisible={layout === "banner" ? Infinity : DESKTOP_VISIBLE}
     />
