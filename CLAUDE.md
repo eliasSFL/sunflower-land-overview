@@ -65,11 +65,11 @@ served by `react-router-dom` (see [src/app/App.tsx](src/app/App.tsx)
 and [src/app/routes.ts](src/app/routes.ts)):
 
 - **`/timers` — Live Timers** (default; `/` redirects here). Renders
-  [LiveTimersPage](src/app/LiveTimersPage.tsx): a full-width Ready
-  banner (`ReadyPanel layout="banner"`) above the multi-column flow,
-  then `IdlePanel`, `InstallPromptPanel`, and the `TimerSection` for
-  each `visibleCategory`. The `MobileNav` bottom strip mounts here
-  only.
+  [LiveTimersPage](src/app/LiveTimersPage.tsx): full-width Ready and
+  Next up banners (`ReadyPanel` / `NextUpPanel`, both `layout="banner"`)
+  stacked above the multi-column flow, then `IdlePanel`,
+  `InstallPromptPanel`, and the `TimerSection` for each
+  `visibleCategory`. The `MobileNav` bottom strip mounts here only.
 - **`/info` — Farm Info**. Renders [FarmInfoPage](src/app/FarmInfoPage.tsx):
   same multi-column flow with `BumpkinSummaryPanel`, `InstallPromptPanel`,
   `DeliveriesPanel`, `LoveIslandShopPanel`, `PetCravingsPanel`,

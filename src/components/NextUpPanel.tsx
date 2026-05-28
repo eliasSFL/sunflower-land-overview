@@ -165,7 +165,16 @@ export function ReadyPanel({
   );
 }
 
-export function NextUpPanel({ timers, now }: Props) {
+// Like ReadyPanel, `layout="banner"` lays the rows out as a responsive
+// grid inside a full-width panel; `layout="list"` (the default) renders
+// the legacy single-column list. Either way NextUp stays non-expandable
+// (it's already capped at MAX_ROWS) — see the panel-level note above on
+// why it skips the "Show more" toggle.
+export function NextUpPanel({
+  timers,
+  now,
+  layout = "list",
+}: Props & { layout?: "list" | "banner" }) {
   const rows = useMemo(
     () =>
       buildRows(timers)
@@ -175,7 +184,13 @@ export function NextUpPanel({ timers, now }: Props) {
   );
   if (rows.length === 0) return null;
   return (
-    <RowList id={NEXT_UP_SECTION_ID} title="Next up" rows={rows} now={now} />
+    <RowList
+      id={NEXT_UP_SECTION_ID}
+      title="Next up"
+      rows={rows}
+      now={now}
+      layout={layout}
+    />
   );
 }
 
