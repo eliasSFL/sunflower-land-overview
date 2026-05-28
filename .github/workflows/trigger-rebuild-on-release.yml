@@ -22,12 +22,11 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
-          # The default GITHUB_TOKEN can push to non-protected branches.
-          # If master has a ruleset blocking direct pushes, either add
-          # `github-actions[bot]` to its bypass list or swap this for a
-          # PAT stored as a secret (e.g. RELEASE_PUSH_TOKEN) with the
-          # bypass permission.
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Reuses the deploy key the submodule-bump workflow uses to
+          # push past branch protection. Deploy keys are per-repo, not
+          # per-branch, so the same key bypasses master's ruleset.
+          ssh-key: ${{ secrets.SUBMODULE_BUMP_DEPLOY_KEY }}
+          persist-credentials: true
 
       - name: Verify tag is reachable from master
         env:
