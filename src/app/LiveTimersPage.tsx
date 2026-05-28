@@ -40,7 +40,10 @@ export function LiveTimersPage({
       {/* Banners sit OUTSIDE the column container so they span the full
           row above the grid. Each panel's internal layout (rows vs
           grid) is governed by its `layout="banner"` prop. */}
-      <div className="mb-2 flex flex-col gap-2">
+      {/* `empty:hidden` collapses the wrapper (including its `mb-2`)
+          when both banners return null — otherwise the margin would
+          leak above the column flow on farms with no ready/next rows. */}
+      <div className="mb-2 flex flex-col gap-2 empty:hidden">
         <ReadyPanel timers={timers} now={now} layout="banner" />
         <NextUpPanel timers={timers} now={now} layout="banner" />
       </div>
