@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { CHROME_ICONS } from "../lib/assets.ts";
-import { pixelDarkBorderStyle } from "./ui/borderStyles.ts";
-import { OuterPanel, InnerPanel } from "./ui/index.ts";
+import { Button, OuterPanel, InnerPanel } from "./ui/index.ts";
 
 // Section-jump menu for mobile. A floating disc button at the
 // bottom-right pops a bottom-sheet panel that slides up; tapping a
@@ -170,25 +169,18 @@ export function NavMenu({ sections, visible = true }: Props) {
               <ul className="flex max-h-[60vh] flex-col gap-1 overflow-y-auto">
                 {liveSections.map((section) => (
                   <li key={section.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleJump(section.id)}
-                      className="flex w-full items-center gap-2 text-left text-sm"
-                      style={{
-                        ...pixelDarkBorderStyle,
-                        background: "#c28569",
-                        padding: "6px 8px",
-                      }}
-                    >
-                      <img
-                        src={section.icon}
-                        alt=""
-                        aria-hidden
-                        className="h-5 w-5 shrink-0 object-contain"
-                        style={{ imageRendering: "pixelated" }}
-                      />
-                      <span>{section.label}</span>
-                    </button>
+                    <Button onClick={() => handleJump(section.id)}>
+                      <span className="flex items-center gap-2">
+                        <img
+                          src={section.icon}
+                          alt=""
+                          aria-hidden
+                          className="h-5 w-5 shrink-0 object-contain"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                        <span>{section.label}</span>
+                      </span>
+                    </Button>
                   </li>
                 ))}
               </ul>
