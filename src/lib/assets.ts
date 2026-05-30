@@ -91,6 +91,10 @@ export const CHROME_ICONS = {
   // header glyph on `VillageProjectsPanel`).
   social_score: submoduleAsset("icons/social_score.webp"),
   cheer: submoduleAsset("icons/cheer.webp"),
+  // Telegram glyph — header/card icon for the daily Telegram quest.
+  // Mirrors the submodule's `SUNNYSIDE.icons.telegram`; bundled from the
+  // submodule so it doesn't depend on the CDN copy being present.
+  telegram: submoduleAsset("icons/telegram.webp"),
 } as const;
 
 export const BANNER_URLS = {

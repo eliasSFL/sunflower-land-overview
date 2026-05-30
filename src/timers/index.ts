@@ -17,6 +17,7 @@ import { extractLavaPitTimers } from "./lavaPits.ts";
 import { extractLoveIslandTimers } from "./loveIsland.ts";
 import { extractPetTimers } from "./pets.ts";
 import { extractPowerSkillTimers } from "./powerSkills.ts";
+import { extractQuestTimers } from "./quests.ts";
 import { extractResourceTimers } from "./resources.ts";
 import { extractSaltTimers } from "./salt.ts";
 import type { AggregatedTimer, Timer, TimerContext } from "./types.ts";
@@ -70,6 +71,7 @@ export function extractAllTimers(
     ...extractCrabTrapTimers(state, ctx),
     ...extractLoveIslandTimers(state, ctx),
     ...extractPowerSkillTimers(state, ctx),
+    ...extractQuestTimers(state, ctx),
   ];
 }
 

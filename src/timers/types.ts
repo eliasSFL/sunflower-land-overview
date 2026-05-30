@@ -44,7 +44,8 @@ export type Category =
   | "Crafting Box"
   | "Crab Traps"
   | "Love Island"
-  | "Power Skills";
+  | "Power Skills"
+  | "Quests";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -90,6 +91,11 @@ export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
 export const EVENT_GATED_CATEGORIES: readonly Category[] = [
   "Love Island",
   "Power Skills",
+  // "Quests" surfaces the daily Telegram quest cooldown — its extractor
+  // emits a row only once the player has started the Telegram bot (i.e.
+  // `telegram.quest` exists). Farms that never linked Telegram show no
+  // section at all.
+  "Quests",
 ];
 
 export const CATEGORY_ORDER: Category[] = [
@@ -111,6 +117,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Crafting Box",
   "Love Island",
   "Power Skills",
+  "Quests",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
