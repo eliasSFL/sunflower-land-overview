@@ -22,7 +22,9 @@ const ctx: TimerContext = {
 // `telegram.quest` isn't on the FE GameState type (backend-written), so
 // fixtures cast through unknown — mirrors how the extractor reads it.
 function stateWithQuest(quest: unknown): GameState {
-  return { telegram: { linkedAt: NOW - HOUR_MS, quest } } as unknown as GameState;
+  return {
+    telegram: { linkedAt: NOW - HOUR_MS, quest },
+  } as unknown as GameState;
 }
 
 describe("extractQuestTimers", () => {
