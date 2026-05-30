@@ -9,6 +9,20 @@ export type Arrangement = { order: string[]; hidden: string[] };
 
 export const EMPTY_ARRANGEMENT: Arrangement = { order: [], hidden: [] };
 
+// Shape guard for persisted arrangements — both fields must be string
+// arrays, since `order`/`hidden` are spread and Set-constructed downstream.
+// Used to reject corrupt/legacy localStorage payloads on load.
+export function isArrangement(v: unknown): v is Arrangement {
+  if (typeof v !== "object" || v === null) return false;
+  const a = v as Record<string, unknown>;
+  return (
+    Array.isArray(a.order) &&
+    a.order.every((x) => typeof x === "string") &&
+    Array.isArray(a.hidden) &&
+    a.hidden.every((x) => typeof x === "string")
+  );
+}
+
 // Merge the saved explicit order with the currently-live id set. Saved
 // order wins; any live id missing from it is spliced in right after its
 // default predecessor, so a newly-shipped panel (or a category that just

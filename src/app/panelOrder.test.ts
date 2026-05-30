@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PanelDescriptor } from "./panelRegistry.tsx";
 import {
+  isArrangement,
   mergeOrder,
   resolveArrangement,
   sortByArrangement,
@@ -72,6 +73,21 @@ describe("resolveArrangement", () => {
     );
     // `gone` is dropped; new `c` slots in after its default predecessor b.
     expect(orderedLiveIds).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("isArrangement", () => {
+  it("accepts a well-formed arrangement", () => {
+    expect(isArrangement({ order: ["a"], hidden: [] })).toBe(true);
+    expect(isArrangement({ order: [], hidden: [] })).toBe(true);
+  });
+
+  it("rejects corrupt/legacy payloads", () => {
+    expect(isArrangement(null)).toBe(false);
+    expect(isArrangement("nope")).toBe(false);
+    expect(isArrangement({})).toBe(false);
+    expect(isArrangement({ order: "a", hidden: [] })).toBe(false);
+    expect(isArrangement({ order: [1], hidden: [] })).toBe(false);
   });
 });
 

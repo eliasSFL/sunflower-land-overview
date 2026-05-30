@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PanelDescriptor } from "../app/panelRegistry.tsx";
 import {
   EMPTY_ARRANGEMENT,
+  isArrangement,
   resolveArrangement,
   spliceVisibleOrder,
   type Arrangement,
@@ -38,7 +39,7 @@ export function usePanelArrangement(
 ) {
   const storageKey = `panel-arrangement:${pageKey}`;
   const [saved, setSaved] = useState<Arrangement>(
-    () => loadPref<Arrangement>(storageKey) ?? EMPTY_ARRANGEMENT,
+    () => loadPref<Arrangement>(storageKey, isArrangement) ?? EMPTY_ARRANGEMENT,
   );
 
   const resolved = useMemo(
