@@ -64,6 +64,9 @@ export const CHROME_ICONS = {
   // so the player sees a pending swarm bonus before they harvest.
   bee: submoduleAsset("icons/bee.webp"),
   close: `${CDN}/icons/close.png`,
+  // Treasure-chest sprite — the "Open Sunflower Land" row glyph on the
+  // Settings home list. Bundled from the submodule (not on the CDN).
+  chest: submoduleAsset("icons/chest.png"),
   // Pixel-art scroll sprite — used as the glyph on the mobile section-
   // nav FAB (the "table of contents" affordance).
   scroll: submoduleAsset("icons/scroll.webp"),

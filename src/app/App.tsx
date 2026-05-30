@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -7,7 +7,6 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { ArrangePanelsSheet } from "../components/ArrangePanelsSheet.tsx";
 import { NavMenu } from "../components/NavMenu.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
@@ -65,14 +64,11 @@ function AppShell() {
   const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
     useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [arrangeOpen, setArrangeOpen] = useState(false);
-  // Stable so the memoized ArrangePanelsSheet doesn't re-render each tick.
-  const closeArrange = useCallback(() => setArrangeOpen(false), []);
 
-  // Freeze the clock while the Arrange modal is open: it hides the
+  // Freeze the clock while Settings is open: the modal covers the
   // countdowns, and pausing the per-second timer recompute keeps the main
-  // thread free so dragging panels stays smooth.
-  const now = useNow(1000, !arrangeOpen);
+  // thread free so dragging panels in the Layout sub-screen stays smooth.
+  const now = useNow(1000, !settingsOpen);
 
   usePushSubscriptionChangeSync(data?.id);
 
@@ -121,9 +117,9 @@ function AppShell() {
 
   // Resolve each page's panel list into reorderable descriptors, then run
   // the per-page arrangement (persisted order + hidden set). The pages
-  // render `renderPanels`; the Arrange sheet drives the same arrangement,
-  // so board and sheet share one source of truth. Built unconditionally
-  // (empty list pre-load) to keep the hooks order stable.
+  // render `renderPanels`; the Settings → Layout sub-screen (LayoutPanelGrid)
+  // drives the same arrangement, so board and grid share one source of truth.
+  // Built unconditionally (empty list pre-load) to keep the hooks order stable.
   const timersPanels = useMemo(
     () =>
       data
@@ -251,6 +247,10 @@ function AppShell() {
             onClick={() => setSettingsOpen(true)}
             visible={hudVisible}
           />
+          {/* The Layout sub-screen arranges whichever page is in view —
+              both arrangements are always live; we hand the active one's
+              stable `sheet` bundle (not the whole arrangement) so the
+              drag list stays off the 1 Hz re-render path. */}
           <SettingsModal
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}
@@ -259,22 +259,11 @@ function AppShell() {
             onLoad={load}
             loading={loading}
             error={error}
-            onArrange={() => {
-              setSettingsOpen(false);
-              setArrangeOpen(true);
-            }}
-          />
-          {/* Arranges whichever page is in view — both arrangements are
-              always live; we hand the sheet the active one's stable
-              `sheet` bundle (not the whole arrangement) so it stays off
-              the 1 Hz re-render path. */}
-          <ArrangePanelsSheet
-            open={arrangeOpen}
-            onClose={closeArrange}
-            title={onTimersRoute ? "Arrange Live Timers" : "Arrange Farm Info"}
             sheet={
               onTimersRoute ? timersArrangement.sheet : infoArrangement.sheet
             }
+            lastFetchedAt={lastFetchedAt}
+            now={now}
           />
         </>
       ) : null}
