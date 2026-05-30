@@ -4,6 +4,7 @@ import { TabPills } from "../components/TabPills.tsx";
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import { hardReload } from "../lib/hardReload.ts";
+import { formatRefreshedAgo } from "../lib/relativeTime.ts";
 import { TABS } from "./routes.ts";
 
 const GITHUB_REPO =
@@ -15,17 +16,6 @@ const DONATION_ADDRESS = (
 )?.trim();
 
 const BANNER_URL = BANNER_URLS.marketplace;
-
-// Short "Refreshed X ago" label for the header. Updates each render
-// since `now` ticks every second.
-function formatRefreshedAgo(at: number, now: number): string {
-  const diff = Math.max(0, now - at);
-  if (diff < 5_000) return "just now";
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return new Date(at).toLocaleDateString();
-}
 
 export function DashboardHeader({
   data,

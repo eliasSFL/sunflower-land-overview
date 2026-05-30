@@ -263,98 +263,96 @@ export function NotificationSettings({ farmId }: Props) {
     }
   }
 
+  // Rendered as the body of the SettingsModal "Notifications" sub-screen,
+  // so the modal's screen header already carries the title — this view
+  // opens straight on the status chip + one-line summary, then the
+  // per-category opt-out, destination and actions when enabled.
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <section className="flex flex-col gap-2">
-        <SectionHeader>Notifications</SectionHeader>
-        <p>
-          Get a push notification when timers on your farm are ready — even
-          while the app is closed.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Label type={enabled ? "success" : "warning"}>
-            {enabled ? "Enabled" : "Disabled"}
-          </Label>
-          {permission === "denied" ? (
-            <Label type="danger">Permission denied</Label>
-          ) : null}
-        </div>
-        {enabled ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs">Notify me about:</span>
-            <ul className="scrollable flex flex-col gap-2 overflow-auto max-h-44 px-2">
-              {CATEGORY_ORDER.map((cat) => {
-                const checked = !muted.has(cat);
-                return (
-                  <li key={cat} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={checked}
-                      onChange={(c) => void onToggleCategory(cat, c)}
-                      disabled={busy}
-                    />
-                    <img
-                      src={getCategoryIcon(cat)}
-                      alt=""
-                      className="w-6 h-6"
-                      style={{ imageRendering: "pixelated" }}
-                    />
-                    <span>{cat}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+    <div className="flex flex-col gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <Label type={enabled ? "success" : "warning"}>
+          {enabled ? "Enabled" : "Disabled"}
+        </Label>
+        {permission === "denied" ? (
+          <Label type="danger">Permission denied</Label>
         ) : null}
-      </section>
+        <span className="flex-1 text-xs">
+          Push when timers are ready, even while the app is closed.
+        </span>
+      </div>
       {enabled ? (
         <>
-          <section className="flex flex-col gap-2">
-            <SectionHeader>When opened</SectionHeader>
-            <div
-              role="button"
-              tabIndex={busy ? -1 : 0}
-              onClick={() => void onChangeTarget("overview")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  void onChangeTarget("overview");
-                }
-              }}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Radio
-                checked={target === "overview"}
-                onChange={() => void onChangeTarget("overview")}
-                disabled={busy}
-              />
-              <span>Overview (this app)</span>
-            </div>
-            <div
-              role="button"
-              tabIndex={busy ? -1 : 0}
-              onClick={() => void onChangeTarget("play")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  void onChangeTarget("play");
-                }
-              }}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Radio
-                checked={target === "play"}
-                onChange={() => void onChangeTarget("play")}
-                disabled={busy}
-              />
-              <span>Main game (sunflower-land.com/play)</span>
-            </div>
-          </section>
-          <Button onClick={onTest} disabled={busy}>
-            Send test notification
-          </Button>
-          <Button onClick={onDisable} disabled={busy}>
-            Disable notifications
-          </Button>
+          <span className="text-xs uppercase tracking-wider opacity-70">
+            Notify me about
+          </span>
+          <ul className="scrollable flex max-h-[150px] flex-col gap-2 overflow-auto px-2">
+            {CATEGORY_ORDER.map((cat) => {
+              const checked = !muted.has(cat);
+              return (
+                <li key={cat} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={checked}
+                    onChange={(c) => void onToggleCategory(cat, c)}
+                    disabled={busy}
+                  />
+                  <img
+                    src={getCategoryIcon(cat)}
+                    alt=""
+                    className="h-8 w-8"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                  <span>{cat}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <SectionHeader>When opened</SectionHeader>
+          <div
+            role="button"
+            tabIndex={busy ? -1 : 0}
+            onClick={() => void onChangeTarget("overview")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                void onChangeTarget("overview");
+              }
+            }}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Radio
+              checked={target === "overview"}
+              onChange={() => void onChangeTarget("overview")}
+              disabled={busy}
+            />
+            <span>Overview (this app)</span>
+          </div>
+          <div
+            role="button"
+            tabIndex={busy ? -1 : 0}
+            onClick={() => void onChangeTarget("play")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                void onChangeTarget("play");
+              }
+            }}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Radio
+              checked={target === "play"}
+              onChange={() => void onChangeTarget("play")}
+              disabled={busy}
+            />
+            <span>Main game (sunflower-land.com/play)</span>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onTest} disabled={busy}>
+              Test
+            </Button>
+            <Button onClick={onDisable} disabled={busy}>
+              Disable
+            </Button>
+          </div>
         </>
       ) : (
         <Button onClick={onEnable} disabled={busy || permission === "denied"}>
