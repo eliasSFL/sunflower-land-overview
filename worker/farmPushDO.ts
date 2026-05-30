@@ -6,6 +6,7 @@ import { getFarm, mintFarmKey } from "./communityApi.ts";
 import { addOptIn, removeOptIn } from "./registry.ts";
 import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
+import { detectCompletedProjects } from "../src/notifications/villageProjects.ts";
 import { clusterReadyAts } from "../src/timers/cluster.ts";
 import type { AggregatedTimer } from "../src/timers/types.ts";
 import type {
@@ -230,6 +231,16 @@ type State = {
   // `handleOnSnapshot` falls back to `snapshot.fetchedAt` and grants
   // a single TTL of grace.
   lastActivityAt?: number;
+  // The `socialFarming.completedProjects` set we last observed. Village
+  // projects have no `readyAt` — they complete when other players cheer,
+  // at an unpredictable time — so completion is detected by diffing this
+  // against each snapshot rather than scheduled against an alarm. A name
+  // newly absent here fires a one-off "project complete" push. Optional /
+  // `undefined` on a DO's first observation: that pass silently seeds the
+  // set instead of firing, so enabling notifications on a farm with
+  // already-completed projects doesn't blast a backlog of pushes (mirrors
+  // the `seedAlreadyReady` crop-backlog guard).
+  completedProjectsSeen?: string[];
 };
 
 // One Durable Object per farmId. Responsibilities:
@@ -794,6 +805,22 @@ export class FarmPushDO extends Agent<Env, State> {
     const hydrated = makeGame(raw.farm as Parameters<typeof makeGame>[0]);
     const aggregated = extractAndAggregate(hydrated, farmId, now);
 
+    // Village-project completions. Unlike timers these have no readyAt —
+    // they complete when other players cheer — so we diff the snapshot's
+    // `completedProjects` against what we last saw. `undefined` means this
+    // is our first observation of the farm (brand-new DO, or a DO from
+    // before this field existed): seed silently so we don't blast a push
+    // for every already-completed project. We always re-record the
+    // current set below, even on the seed pass.
+    const currentCompleted = (
+      hydrated.socialFarming?.completedProjects ?? []
+    ).map(String);
+    const seenProjects = this.state.completedProjectsSeen;
+    const completedNotifs =
+      seenProjects === undefined
+        ? []
+        : detectCompletedProjects(hydrated, seenProjects);
+
     // Build the fresh fire-key map.
     type FreshFire = Omit<PendingFire, "scheduleId">;
     const fresh = new Map<string, FreshFire>();
@@ -889,6 +916,29 @@ export class FarmPushDO extends Agent<Env, State> {
       }
     }
 
+    // Fire a one-off push for each newly-completed village project.
+    // `delay=1` rides the same `fireTimer` path as scheduled timers
+    // (per-device targeting / mute / endpoint pruning). These don't go in
+    // `scheduled` — they're transient and self-clear after firing — so
+    // they never count against MAX_SCHEDULED_PER_DO. The fireKey embeds
+    // `updatedAt` so a restart-then-recomplete fires again rather than
+    // being deduped by `notified`.
+    for (const n of completedNotifs) {
+      try {
+        await this.schedule(1, "fireTimer", {
+          fireKey: `vp:${n.name}@${upstreamUpdatedAt ?? now}`,
+          readyAt: now,
+          title: n.title,
+          body: n.body,
+          category: "Village Projects",
+          count: 1,
+        } satisfies FirePayload);
+      } catch {
+        // Schedule failure (e.g. transient storage error). The next sweep
+        // re-detects it (still unseen) and retries.
+      }
+    }
+
     this.setState({
       ...this.state,
       farmId,
@@ -896,6 +946,7 @@ export class FarmPushDO extends Agent<Env, State> {
       snapshotUpdatedAt: upstreamUpdatedAt,
       scheduled: nextScheduled,
       notified: seededCount > 0 ? notified : this.state.notified,
+      completedProjectsSeen: currentCompleted,
     });
   }
 

@@ -45,7 +45,8 @@ export type Category =
   | "Crab Traps"
   | "Love Island"
   | "Power Skills"
-  | "Quests";
+  | "Quests"
+  | "Village Projects";
 
 // Each cooking / processing building is its own top-level category so
 // the layout flows them as independent panels and MobileNav gets a chip
@@ -96,6 +97,12 @@ export const EVENT_GATED_CATEGORIES: readonly Category[] = [
   // `telegram.quest` exists). Farms that never linked Telegram show no
   // section at all.
   "Quests",
+  // "Village Projects" never emits a dashboard Timer — it exists only so
+  // the completed-project push (fired from farmPushDO on the cron sweep,
+  // not from an extractor) gets a mute toggle in NotificationSettings.
+  // Event-gating it keeps App.tsx from rendering a permanently-empty
+  // section, since `byCategory` never holds a row for it.
+  "Village Projects",
 ];
 
 export const CATEGORY_ORDER: Category[] = [
@@ -118,6 +125,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Love Island",
   "Power Skills",
   "Quests",
+  "Village Projects",
 ];
 
 // One boost as returned by upstream yield functions. `name` is a
