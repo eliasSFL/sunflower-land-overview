@@ -86,8 +86,15 @@ describe("isArrangement", () => {
     expect(isArrangement(null)).toBe(false);
     expect(isArrangement("nope")).toBe(false);
     expect(isArrangement({})).toBe(false);
+    // Missing either field.
+    expect(isArrangement({ hidden: [] })).toBe(false);
+    expect(isArrangement({ order: [] })).toBe(false);
+    // Bad `order`.
     expect(isArrangement({ order: "a", hidden: [] })).toBe(false);
     expect(isArrangement({ order: [1], hidden: [] })).toBe(false);
+    // Bad `hidden`.
+    expect(isArrangement({ order: [], hidden: "bad" })).toBe(false);
+    expect(isArrangement({ order: [], hidden: [1] })).toBe(false);
   });
 });
 
