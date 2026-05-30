@@ -22,6 +22,11 @@ export type NavSection = {
   id: string;
   label: string;
   icon: string;
+  // Owning panel id for arrangement ranking. Defaults to `id`; set
+  // explicitly when several chips belong to one reorderable panel (the
+  // three Deliveries chips share `DELIVERIES_PANEL_ID`) so they sort and
+  // move together with the board.
+  panelId?: string;
 };
 
 type Props = {

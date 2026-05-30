@@ -14,6 +14,8 @@ type Props = {
   onLoad: (id: string) => void;
   loading: boolean;
   error?: string;
+  // Closes Settings and opens the Arrange Panels sheet for the current page.
+  onArrange: () => void;
 };
 
 // Modal opened by the floating gear. Two views:
@@ -29,6 +31,7 @@ export function SettingsModal({
   onLoad,
   loading,
   error,
+  onArrange,
 }: Props) {
   const [switching, setSwitching] = useState(false);
 
@@ -82,6 +85,10 @@ export function SettingsModal({
         >
           Open Sunflower Land
         </Button>
+      </section>
+      <section className="flex flex-col gap-2">
+        <SectionHeader>Layout</SectionHeader>
+        <Button onClick={onArrange}>Arrange panels</Button>
       </section>
       <NotificationSettings farmId={data.id} />
     </Modal>
