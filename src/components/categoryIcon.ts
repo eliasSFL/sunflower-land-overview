@@ -10,7 +10,7 @@ import type { Category } from "../timers/index.ts";
 // it resolves to the lightning chrome icon below, matching the in-game
 // power-skills iconography — so it's excluded from this map.
 const CATEGORY_ICON_NAME: Record<
-  Exclude<Category, "Power Skills" | "Quests">,
+  Exclude<Category, "Power Skills" | "Quests" | "Village Projects">,
   InventoryItemName
 > = {
   Crops: "Sunflower",
@@ -47,5 +47,8 @@ export function getCategoryIcon(category: Category): string {
   // Quests aren't backed by an inventory item — use the Telegram glyph,
   // matching the daily-quest card.
   if (category === "Quests") return CHROME_ICONS.telegram;
+  // Village Projects fire a completion push but have no timer item — use
+  // the cheer sprite, matching the VillageProjectsPanel header.
+  if (category === "Village Projects") return CHROME_ICONS.cheer;
   return getItemIcon(CATEGORY_ICON_NAME[category]);
 }
