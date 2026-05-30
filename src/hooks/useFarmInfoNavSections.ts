@@ -12,6 +12,7 @@ import {
   PETS_SECTION_ID,
   VILLAGE_PROJECTS_SECTION_ID,
 } from "../components/sectionId.ts";
+import { DELIVERIES_PANEL_ID } from "../app/panelRegistry.tsx";
 import { CHROME_ICONS } from "../lib/assets.ts";
 
 // Candidate sections for the Farm Info page's mobile section-jump
@@ -37,16 +38,19 @@ export function useFarmInfoNavSections(now: number): NavSection[] {
         id: DELIVERIES_COINS_SECTION_ID,
         label: "Coin Deliveries",
         icon: CHROME_ICONS.coins,
+        panelId: DELIVERIES_PANEL_ID,
       },
       {
         id: DELIVERIES_FLOWER_SECTION_ID,
         label: "FLOWER Deliveries",
         icon: CHROME_ICONS.flower_token,
+        panelId: DELIVERIES_PANEL_ID,
       },
       {
         id: DELIVERIES_TICKETS_SECTION_ID,
         label: `${ticket} Deliveries`,
         icon: getItemIcon(ticket),
+        panelId: DELIVERIES_PANEL_ID,
       },
       {
         id: LOVE_ISLAND_SHOP_SECTION_ID,
