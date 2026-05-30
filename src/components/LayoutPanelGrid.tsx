@@ -3,7 +3,6 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -30,7 +29,6 @@ type Props = {
 // across renders; inline option objects would make `useSensors` return a
 // fresh array and re-seed the DndContext on every render.
 const POINTER_OPTS = { activationConstraint: { distance: 5 } };
-const TOUCH_OPTS = { activationConstraint: { delay: 120, tolerance: 6 } };
 const KEYBOARD_OPTS = { coordinateGetter: sortableKeyboardCoordinates };
 // Grid reorder moves cards in 2D, so (unlike the old vertical list) we
 // don't restrict to the vertical axis — just keep the drag inside the grid.
@@ -55,7 +53,7 @@ const TOGGLE_STYLE: CSSProperties = {
 // The Layout sub-screen's panel arranger: a grid + Shown/Hidden split.
 // Two labeled sections — "On your board" and "Hidden" — each a dense 2-up
 // card grid, so ordering and visibility never share a gesture. Drag cards
-// to reorder within the board (dnd-kit pointer/touch/keyboard); a card's
+// to reorder within the board (dnd-kit pointer + keyboard); a card's
 // corner arrow sends it to Hidden (down) or restores it (up). Reordering
 // rewrites the persisted source order; the board re-flows its masonry
 // columns from it, and a hidden panel drops its mobile jump-nav chip for
@@ -76,9 +74,11 @@ export const LayoutPanelGrid = memo(function LayoutPanelGrid({ sheet }: Props) {
     return { visible, hidden, visibleIds: visible.map((i) => i.id) };
   }, [items]);
 
+  // PointerSensor covers mouse + touch (the grip handle carries `touch-none`
+  // so a touch-drag activates cleanly), so no separate TouchSensor is needed.
+  // KeyboardSensor keeps the grid reorderable without a pointer.
   const sensors = useSensors(
     useSensor(PointerSensor, POINTER_OPTS),
-    useSensor(TouchSensor, TOUCH_OPTS),
     useSensor(KeyboardSensor, KEYBOARD_OPTS),
   );
 

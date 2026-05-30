@@ -117,9 +117,9 @@ function AppShell() {
 
   // Resolve each page's panel list into reorderable descriptors, then run
   // the per-page arrangement (persisted order + hidden set). The pages
-  // render `renderPanels`; the Arrange sheet drives the same arrangement,
-  // so board and sheet share one source of truth. Built unconditionally
-  // (empty list pre-load) to keep the hooks order stable.
+  // render `renderPanels`; the Settings → Layout sub-screen (LayoutPanelGrid)
+  // drives the same arrangement, so board and grid share one source of truth.
+  // Built unconditionally (empty list pre-load) to keep the hooks order stable.
   const timersPanels = useMemo(
     () =>
       data
