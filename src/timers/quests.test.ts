@@ -72,4 +72,15 @@ describe("extractQuestTimers", () => {
     expect(result[0].readyAt).toBe(startAt);
     expect(result[0].subtext).toBe("Whispers In The Wind");
   });
+
+  it("tolerates a non-string quest name without throwing", () => {
+    // `name` is an untyped backend field — a malformed (non-string) value
+    // must not make prettifyQuestName throw and take down the whole pass.
+    const result = extractQuestTimers(
+      stateWithQuest({ name: 123, startAt: NOW + HOUR_MS }),
+      ctx,
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].subtext).toBeUndefined();
+  });
 });

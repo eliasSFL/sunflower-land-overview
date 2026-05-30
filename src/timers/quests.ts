@@ -54,7 +54,12 @@ export function extractQuestTimers(
       // Before startAt → countdown to "next quest"; after → "Ready".
       readyAt: quest.startAt,
       // Slug hint only — the real title/description are backend-only.
-      subtext: quest.name ? prettifyQuestName(quest.name) : undefined,
+      // `name` is untyped (backend field); guard the type so a non-string
+      // can't make prettifyQuestName throw and take down the whole pass.
+      subtext:
+        typeof quest.name === "string"
+          ? prettifyQuestName(quest.name)
+          : undefined,
       pushTitle: "Telegram daily quest ready",
       pushBody: "Today's quest is ready — play it in Telegram.",
     },
