@@ -992,6 +992,10 @@ export class FarmPushDO extends Agent<Env, State> {
   // Resets `snapshotUpdatedAt` so a future resubscribe — which re-runs
   // applySnapshot — doesn't trip the "same updatedAt, skip reschedule"
   // short-circuit and leave the DO with zero fires for ready timers.
+  //
+  // Resets `completedProjectsSeen` to undefined for the same reason: a
+  // resubscribe must re-seed it silently, otherwise any project that
+  // completed while unsubscribed would fire as a backlog push.
   private async cleanup(): Promise<void> {
     for (const fire of Object.values(this.state.scheduled ?? {})) {
       await this.cancelSchedule(fire.scheduleId).catch(() => {});
@@ -1001,6 +1005,7 @@ export class FarmPushDO extends Agent<Env, State> {
       subscriptions: [],
       scheduled: {},
       snapshotUpdatedAt: undefined,
+      completedProjectsSeen: undefined,
     });
     if (this.state.farmId !== null) {
       // DO state is already clear; a D1 failure here leaves a phantom
