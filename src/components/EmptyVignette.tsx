@@ -127,6 +127,14 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "No quests right now",
     subtitle: "No active Telegram quest.",
   },
+  // "Village Projects" never renders a dashboard section — it has no
+  // extractor and is event-gated (see EVENT_GATED_CATEGORIES); the
+  // category exists only to give the completion push a mute toggle. This
+  // entry exists solely to satisfy the exhaustive Category map.
+  "Village Projects": {
+    headline: "No village projects",
+    subtitle: "No projects in progress.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders
