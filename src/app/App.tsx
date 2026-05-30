@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import { ArrangePanelsSheet } from "../components/ArrangePanelsSheet.tsx";
 import { NavMenu } from "../components/NavMenu.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
@@ -18,6 +19,7 @@ import { useFarmInfoNavSections } from "../hooks/useFarmInfoNavSections.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { useHudActivity } from "../hooks/useHudActivity.ts";
+import { usePanelArrangement } from "../hooks/usePanelArrangement.ts";
 import { usePushSubscriptionChangeSync } from "../notifications/usePushSubscriptionChangeSync.ts";
 import {
   extractAndAggregate,
@@ -29,6 +31,13 @@ import { DashboardHeader } from "./DashboardHeader.tsx";
 import { FarmIdPanel } from "./FarmIdPanel.tsx";
 import { FarmInfoPage } from "./FarmInfoPage.tsx";
 import { LiveTimersPage } from "./LiveTimersPage.tsx";
+import { sortByArrangement } from "./panelOrder.ts";
+import {
+  buildInfoPanels,
+  buildTimersPanels,
+  INFO_PAGE_KEY,
+  TIMERS_PAGE_KEY,
+} from "./panelRegistry.tsx";
 import { INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
 
 // Resets `window.scrollTo(0)` whenever the route changes. Mounted
@@ -56,8 +65,14 @@ function AppShell() {
   const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
     useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [arrangeOpen, setArrangeOpen] = useState(false);
+  // Stable so the memoized ArrangePanelsSheet doesn't re-render each tick.
+  const closeArrange = useCallback(() => setArrangeOpen(false), []);
 
-  const now = useNow(1000);
+  // Freeze the clock while the Arrange modal is open: it hides the
+  // countdowns, and pausing the per-second timer recompute keeps the main
+  // thread free so dragging panels stays smooth.
+  const now = useNow(1000, !arrangeOpen);
 
   usePushSubscriptionChangeSync(data?.id);
 
@@ -104,6 +119,25 @@ function AppShell() {
     [byCategory],
   );
 
+  // Resolve each page's panel list into reorderable descriptors, then run
+  // the per-page arrangement (persisted order + hidden set). The pages
+  // render `renderPanels`; the Arrange sheet drives the same arrangement,
+  // so board and sheet share one source of truth. Built unconditionally
+  // (empty list pre-load) to keep the hooks order stable.
+  const timersPanels = useMemo(
+    () =>
+      data
+        ? buildTimersPanels({ data, byCategory, visibleCategories, now })
+        : [],
+    [data, byCategory, visibleCategories, now],
+  );
+  const infoPanels = useMemo(
+    () => (data ? buildInfoPanels({ data, now }) : []),
+    [data, now],
+  );
+  const timersArrangement = usePanelArrangement(TIMERS_PAGE_KEY, timersPanels);
+  const infoArrangement = usePanelArrangement(INFO_PAGE_KEY, infoPanels);
+
   const navSections = useNavSections({
     data,
     timers,
@@ -112,6 +146,15 @@ function AppShell() {
     now,
   });
   const infoNavSections = useFarmInfoNavSections(now);
+  // Keep the mobile jump-nav order in step with the board arrangement.
+  const orderedNavSections = useMemo(
+    () => sortByArrangement(navSections, timersArrangement.orderedLiveIds),
+    [navSections, timersArrangement.orderedLiveIds],
+  );
+  const orderedInfoNavSections = useMemo(
+    () => sortByArrangement(infoNavSections, infoArrangement.orderedLiveIds),
+    [infoNavSections, infoArrangement.orderedLiveIds],
+  );
   // Auto-hide the floating HUD buttons on mobile after the user stops
   // interacting (scroll OR tap). Desktop always shows them — each
   // button overrides the hidden translate at `sm+`.
@@ -169,17 +212,15 @@ function AppShell() {
                 path={TIMERS_PATH}
                 element={
                   <LiveTimersPage
-                    data={data}
+                    panels={timersArrangement.renderPanels}
                     timers={timers}
-                    byCategory={byCategory}
-                    visibleCategories={visibleCategories}
                     now={now}
                   />
                 }
               />
               <Route
                 path={INFO_PATH}
-                element={<FarmInfoPage data={data} now={now} />}
+                element={<FarmInfoPage panels={infoArrangement.renderPanels} />}
               />
               {/* Root and any unknown path bounce to /timers — the
                 primary surface. `replace` so back-button doesn't
@@ -194,7 +235,7 @@ function AppShell() {
           time. Mobile-only (NavMenu is `sm:hidden` internally). */}
       {data ? (
         <NavMenu
-          sections={onTimersRoute ? navSections : infoNavSections}
+          sections={onTimersRoute ? orderedNavSections : orderedInfoNavSections}
           visible={hudVisible}
         />
       ) : null}
@@ -218,6 +259,22 @@ function AppShell() {
             onLoad={load}
             loading={loading}
             error={error}
+            onArrange={() => {
+              setSettingsOpen(false);
+              setArrangeOpen(true);
+            }}
+          />
+          {/* Arranges whichever page is in view — both arrangements are
+              always live; we hand the sheet the active one's stable
+              `sheet` bundle (not the whole arrangement) so it stays off
+              the 1 Hz re-render path. */}
+          <ArrangePanelsSheet
+            open={arrangeOpen}
+            onClose={closeArrange}
+            title={onTimersRoute ? "Arrange Live Timers" : "Arrange Farm Info"}
+            sheet={
+              onTimersRoute ? timersArrangement.sheet : infoArrangement.sheet
+            }
           />
         </>
       ) : null}
