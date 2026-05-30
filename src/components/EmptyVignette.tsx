@@ -119,6 +119,14 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "No powers learned",
     subtitle: "No power skills unlocked yet.",
   },
+  // Event-gated: the Quests section is hidden unless the player has an
+  // active Telegram quest (see EVENT_GATED_CATEGORIES), and its extractor
+  // emits exactly one card when present — so this vignette won't normally
+  // render. It exists to satisfy the exhaustive Category map.
+  Quests: {
+    headline: "No quests right now",
+    subtitle: "No active Telegram quest.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders

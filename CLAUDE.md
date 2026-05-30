@@ -6,6 +6,23 @@ When opening a pull request, create it as **ready for review** by
 default — not as a draft — unless the user explicitly asks for a
 draft. This overrides the harness default of opening PRs as drafts.
 
+## Run PR validation checks before committing to main or opening a PR
+
+Before committing to a main branch (`master` / `development`) or
+creating a pull request, run the same checks as
+[.github/workflows/pr-validation.yml](.github/workflows/pr-validation.yml),
+in this order:
+
+1. `npm run lint`
+2. `npm run format:check`
+3. `npm test`
+4. `npm run build` (typecheck + bundle)
+
+All four must pass. If any fails, fix it (e.g. `npm run format` for
+formatting) and re-run before committing or opening the PR — do not
+proceed with a red check. Keep this list in sync with the workflow if
+its steps change.
+
 ## `sunflower-land-api` is read-only
 
 For the purposes of work in this repo, treat the
