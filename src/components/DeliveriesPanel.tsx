@@ -95,7 +95,10 @@ function DeliveryGroupPanel({
 }: GroupProps) {
   if (orders.length === 0) return null;
   return (
-    <InnerPanel id={id} className="scroll-mt-4 flex flex-col gap-2">
+    <InnerPanel
+      id={id}
+      className="scroll-mt-4 flex flex-col gap-2 break-inside-auto! box-decoration-clone"
+    >
       <Label type="default" icon={icon}>
         {title} Deliveries · {orders.length}
       </Label>
@@ -143,7 +146,7 @@ function DeliveryRow({ order, state, now }: RowProps) {
   const allMet = ingredients.every((i) => i.met);
 
   return (
-    <li className="flex items-start justify-between gap-3">
+    <li className="flex items-start justify-between gap-3 break-inside-avoid">
       <div className="flex items-start gap-2 min-w-0">
         <NPCIcon npc={order.from} />
         <div className="flex flex-col min-w-0 gap-1">

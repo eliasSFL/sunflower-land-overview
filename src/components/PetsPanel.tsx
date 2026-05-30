@@ -82,7 +82,7 @@ export function PetsPanel({ state }: Props) {
   return (
     <InnerPanel
       id={PETS_SECTION_ID}
-      className="mb-2 w-full scroll-mt-4 break-inside-auto! flex flex-col gap-2"
+      className="mb-2 w-full scroll-mt-4 break-inside-auto! box-decoration-clone flex flex-col gap-2"
     >
       <Label type="default" icon={getItemIcon("Pet House")}>
         Pets · {pets.length}
