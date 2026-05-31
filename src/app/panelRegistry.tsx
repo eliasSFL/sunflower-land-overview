@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
+import { AnimalBountiesPanel } from "../components/AnimalBountiesPanel.tsx";
+import { BountiesPanel } from "../components/BountiesPanel.tsx";
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
+import { ChoresPanel } from "../components/ChoresPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { IdlePanel } from "../components/IdlePanel.tsx";
 import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
@@ -9,7 +12,10 @@ import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
 import { PetsPanel } from "../components/PetsPanel.tsx";
 import {
+  ANIMAL_BOUNTIES_SECTION_ID,
+  BOUNTIES_SECTION_ID,
   BUMPKIN_SECTION_ID,
+  CHORES_SECTION_ID,
   IDLE_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
@@ -135,6 +141,24 @@ export function buildInfoPanels(ctx: InfoCtx): PanelDescriptor[] {
       label: "Deliveries",
       icon: CHROME_ICONS.coins,
       render: () => <DeliveriesPanel state={ctx.data.farm} now={ctx.now} />,
+    },
+    {
+      id: CHORES_SECTION_ID,
+      label: "Chores",
+      icon: CHROME_ICONS.scroll,
+      render: () => <ChoresPanel state={ctx.data.farm} now={ctx.now} />,
+    },
+    {
+      id: BOUNTIES_SECTION_ID,
+      label: "Bounties",
+      icon: CHROME_ICONS.chest,
+      render: () => <BountiesPanel state={ctx.data.farm} now={ctx.now} />,
+    },
+    {
+      id: ANIMAL_BOUNTIES_SECTION_ID,
+      label: "Animal Bounties",
+      icon: getItemIcon("Cow"),
+      render: () => <AnimalBountiesPanel state={ctx.data.farm} now={ctx.now} />,
     },
     {
       id: LOVE_ISLAND_SHOP_SECTION_ID,
