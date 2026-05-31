@@ -75,6 +75,26 @@ to discuss:
 
 Replicating is never the answer.
 
+## Push `sunflower-land` submodule branches to upstream, not a fork
+
+When an overview task needs a change in the `sunflower-land` game
+submodule (e.g. extracting a helper so we can call it instead of
+replicating — see above), push the branch to the **upstream repo**
+(`origin` → `sunflower-land/sunflower-land`) and open the PR from
+there. The maintainer has write access to upstream, so do **not** push
+to a personal fork (`eliasSFL/sunflower-land`) — a fork + cross-repo PR
+only adds friction, and leaves the overview pinning a fork-only commit
+SHA that CI can't resolve until the PR merges.
+
+```sh
+git -C sunflower-land push origin <branch>
+gh pr create --repo sunflower-land/sunflower-land --base main --head <branch>
+```
+
+Opening the PR is still an outward-facing action — confirm with the
+user first unless they've already said to proceed. Once it merges, bump
+the overview's submodule pointer to the merged SHA on `main`.
+
 ## Dashboard is two routed pages
 
 After a farm loads, the dashboard splits into two top-level routes

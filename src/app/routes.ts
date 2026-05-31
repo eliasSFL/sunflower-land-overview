@@ -8,6 +8,7 @@ import type { TabPillsTab } from "../components/TabPills.tsx";
 // here in App.tsx's <Routes> tree.
 export const TIMERS_PATH = "/timers";
 export const INFO_PATH = "/info";
+export const DIGGING_PATH = "/digging";
 
 // Tab definition consumed by every TabPills instance — both the
 // desktop pills rendered in the header and the mobile pills rendered
@@ -16,4 +17,5 @@ export const INFO_PATH = "/info";
 export const TABS: TabPillsTab[] = [
   { to: TIMERS_PATH, label: "Live Timers" },
   { to: INFO_PATH, label: "Farm Info" },
+  { to: DIGGING_PATH, label: "Digging" },
 ];

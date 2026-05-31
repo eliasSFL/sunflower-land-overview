@@ -27,6 +27,7 @@ import {
   EVENT_GATED_CATEGORIES,
 } from "../timers/index.ts";
 import { DashboardHeader } from "./DashboardHeader.tsx";
+import { DiggingPage } from "./DiggingPage.tsx";
 import { FarmIdPanel } from "./FarmIdPanel.tsx";
 import { FarmInfoPage } from "./FarmInfoPage.tsx";
 import { LiveTimersPage } from "./LiveTimersPage.tsx";
@@ -37,7 +38,7 @@ import {
   INFO_PAGE_KEY,
   TIMERS_PAGE_KEY,
 } from "./panelRegistry.tsx";
-import { INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
+import { DIGGING_PATH, INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
 
 // Resets `window.scrollTo(0)` whenever the route changes. Mounted
 // inside the router so `useLocation` works. Standard SPA pattern;
@@ -166,11 +167,14 @@ function AppShell() {
   // for your farm") that's tab-agnostic. Once loaded the subtitle
   // becomes route-aware.
   const onTimersRoute = pathname === TIMERS_PATH;
+  const onDiggingRoute = pathname === DIGGING_PATH;
   const subtitle = !data
     ? "Live timers for your farm"
     : onTimersRoute
       ? "Live timers for your farm"
-      : "Your farm at a glance";
+      : onDiggingRoute
+        ? "Read the sand & crabs — dig the sure things"
+        : "Your farm at a glance";
 
   return (
     <div className="min-h-dvh bg-[#181425]">
@@ -218,6 +222,10 @@ function AppShell() {
                 path={INFO_PATH}
                 element={<FarmInfoPage panels={infoArrangement.renderPanels} />}
               />
+              <Route
+                path={DIGGING_PATH}
+                element={<DiggingPage data={data} now={now} />}
+              />
               {/* Root and any unknown path bounce to /timers — the
                 primary surface. `replace` so back-button doesn't
                 ping-pong through the redirect. */}
@@ -229,7 +237,9 @@ function AppShell() {
       {/* Section-jump FAB + slide-up sheet. Each route feeds its own
           candidate list; NavMenu filters by DOM existence at open
           time. Mobile-only (NavMenu is `sm:hidden` internally). */}
-      {data ? (
+      {/* The Digging page is a single bespoke screen with no jump-nav
+          sections, so the FAB only mounts on /timers and /info. */}
+      {data && !onDiggingRoute ? (
         <NavMenu
           sections={onTimersRoute ? orderedNavSections : orderedInfoNavSections}
           visible={hudVisible}

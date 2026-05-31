@@ -84,7 +84,21 @@ export type {
   // through batch loops so an AOE that fired on plot N can't fire
   // again on plot N+1.
   AOE,
+  // Desert digging — `Desert` is the `state.desert` slice; `DugHole`
+  // is a single revealed hole (x/y on the 10×10 grid + the revealed
+  // `items`); `StreakReward` tracks the daily completion streak.
+  Desert,
+  DugHole,
+  StreakReward,
 } from "features/game/types/game";
+
+// Desert digging formations — `DiggingFormationName` keys both today's
+// `digging.patterns` and `DIGGING_FORMATIONS`; `DiggingFormation` is the
+// relative-plot shape of a single formation.
+export type {
+  DiggingFormationName,
+  DiggingFormation,
+} from "features/game/types/desert";
 
 export type { AnimalType, AnimalLevel } from "features/game/types/animals";
 export type { BumpkinItem } from "features/game/types/bumpkin";
