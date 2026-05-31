@@ -104,60 +104,73 @@ explicitly approved/coordinated it for that feature — otherwise let the
 bot carry the new SHA, and hold the dependent overview change until it
 has.
 
-## Dashboard is two routed pages
+## Dashboard is five routed pages (the "action" scheme)
 
-After a farm loads, the dashboard splits into two top-level routes
+After a farm loads, the dashboard splits into five top-level routes
 served by `react-router-dom` (see [src/app/App.tsx](src/app/App.tsx)
-and [src/app/routes.ts](src/app/routes.ts)):
+and [src/app/routes.ts](src/app/routes.ts)), organised by **what you're
+doing** rather than timers-vs-info:
 
-- **`/timers` — Live Timers** (default; `/` redirects here). Renders
-  [LiveTimersPage](src/app/LiveTimersPage.tsx): full-width Ready and
-  Next up banners (`ReadyPanel` / `NextUpPanel`, both `layout="banner"`)
-  stacked above the multi-column flow. The banners are fixed; the column
-  flow is the arrangeable panels (Install, Idle, per-category
-  `TimerSection`). The `MobileNav` bottom strip mounts here only.
-- **`/info` — Farm Info**. Renders [FarmInfoPage](src/app/FarmInfoPage.tsx):
-  same multi-column flow with the arrangeable Bumpkin, Village Projects,
-  Deliveries, Love Island Shop, Pet Cravings, Pets panels (plus pinned
-  Install). No `MobileNav`.
+- **`/now` — Now** (default; `/` and unknown paths redirect here).
+  Renders [NowPage](src/app/NowPage.tsx): a bespoke (non-arrangeable)
+  stack — `CollectNowPanel` (every ready item across the whole farm,
+  grouped by category), `NowTimelinePanel` (a next-4h horizontal
+  timeline), and the existing `IdlePanel` (wasted-capacity nudge). Each
+  self-hides when empty. No `NavMenu`.
+- **`/producing` — Producing**. Arrangeable multi-column flow of the
+  per-category `TimerSection`s (Install pinned first). "What's
+  mid-timer." Ready-now aggregation lives on `/now`, not here.
+- **`/quests` — Quests**. Arrangeable flow: Deliveries, Chores,
+  Bounties, Animal Bounties (plus pinned Install). "What you owe."
+- **`/digging` — Digging**. The bespoke Digby's dig-site board (see
+  [DiggingPage](src/app/DiggingPage.tsx)). No arrangeable flow.
+- **`/farm` — Farm**. Arrangeable flow: Bumpkin, Village Projects, Love
+  Island Shop, Pet Cravings, Pets (plus pinned Install). "Your standing."
 
-The header's `TabPills` component switches between them. Tabs only
-mount once `data` exists — the pre-load shell is the `FarmIdPanel`
-rendered in place of the route tree, with no tab UI.
+The three arrangeable pages (Producing, Quests, Farm) render through the
+generic [PanelGridPage](src/app/PanelGridPage.tsx); Now and Digging are
+bespoke. The **`PageNavMenu`** FAB (bottom-right HUD) switches routes on
+every breakpoint. Pages only mount once `data` exists — the pre-load
+shell is the `FarmIdPanel` rendered in place of the route tree. The old
+`/timers` and `/info` paths redirect to `/producing` and `/farm`.
 
 ### Panels are arrangeable (drag-to-reorder + hide)
 
-The column-flow panels on each page are **not** hardcoded JSX anymore.
-Each page's panels are declared as descriptors in
-[panelRegistry.tsx](src/app/panelRegistry.tsx) (`buildTimersPanels` /
-`buildInfoPanels`), and App runs [usePanelArrangement](src/hooks/usePanelArrangement.ts)
-per page to resolve the player's saved order + hidden set against the
-live panel list. The pages just render the resolved `renderPanels`.
-Players reorder/hide via the **Arrange panels** sheet
-([ArrangePanelsSheet](src/components/ArrangePanelsSheet.tsx), opened from
-Settings), persisted with the **no-TTL** [prefs.ts](src/lib/prefs.ts)
-store — do NOT use `storage.ts` for prefs, its 7-day TTL would reset
-layouts. Pure reconcile logic lives in
+The column-flow panels on each arrangeable page are **not** hardcoded
+JSX. Each page's panels are declared as descriptors in
+[panelRegistry.tsx](src/app/panelRegistry.tsx) (`buildProducingPanels` /
+`buildQuestsPanels` / `buildFarmPanels`), and App runs
+[usePanelArrangement](src/hooks/usePanelArrangement.ts) per page
+(keys `producing` / `quests` / `farm`) to resolve the player's saved
+order + hidden set against the live panel list. The pages just render
+the resolved `renderPanels`. Players reorder/hide via the **Arrange
+panels** sheet ([ArrangePanelsSheet](src/components/ArrangePanelsSheet.tsx),
+opened from Settings), persisted with the **no-TTL**
+[prefs.ts](src/lib/prefs.ts) store — do NOT use `storage.ts` for prefs,
+its 7-day TTL would reset layouts. Pure reconcile logic lives in
 [panelOrder.ts](src/app/panelOrder.ts) (tested in `panelOrder.test.ts`).
+Bespoke pages (Now, Digging) have no arrangement and hand the Settings →
+Layout screen a neutral, no-op sheet.
 
 ### Adding a new panel
 
-Decide which tab it belongs on, then add a descriptor to that page's
+Decide which page it belongs on, then add a descriptor to that page's
 builder in [panelRegistry.tsx](src/app/panelRegistry.tsx) at the desired
 default position. Give it a stable `id` (reuse the panel's `sectionId`
 constant where it stamps a single DOM id, so the jump-nav and
 arrangement share one id space), a `label`, and an `icon`. Mark it
 `pinned: true` only if it must never be reordered/hidden (like Install).
-If it lives on `/timers` and has a `sectionId`, also push a chip into
-[useNavSections](src/hooks/useNavSections.ts) so the mobile jump strip
-can scroll to it (set `panelId` on the chip if several chips map to one
-panel, as Deliveries does). Hiding is automatic — a hidden panel's DOM
-id is absent, so `NavMenu` drops its chip with no extra work. Panels on
-`/info` get their chip from
-[useFarmInfoNavSections](src/hooks/useFarmInfoNavSections.ts).
+If it has a `sectionId`, also push a chip into that page's nav hook —
+[useNavSections](src/hooks/useNavSections.ts) (Producing),
+[useQuestsNavSections](src/hooks/useQuestsNavSections.ts), or
+[useFarmNavSections](src/hooks/useFarmNavSections.ts) — so the mobile
+jump strip can scroll to it (set `panelId` on the chip if several chips
+map to one panel, as Deliveries does). Hiding is automatic — a hidden
+panel's DOM id is absent, so `NavMenu` drops its chip with no extra work.
 
-### `InstallPromptPanel` is on both pages
+### `InstallPromptPanel` is on every arrangeable page
 
-The PWA install nudge mounts on both `/timers` and `/info` (until
-dismissed or installed). It self-hides via `view.kind === "hidden"`
-so the two instances stay in sync — no extra plumbing needed.
+The PWA install nudge mounts (pinned first) on `/producing`, `/quests`,
+and `/farm` until dismissed or installed. It self-hides via
+`view.kind === "hidden"` so the instances stay in sync — no extra
+plumbing needed.

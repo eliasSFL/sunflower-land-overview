@@ -14,9 +14,10 @@ import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
-import { useFarmInfoNavSections } from "../hooks/useFarmInfoNavSections.ts";
+import { useFarmNavSections } from "../hooks/useFarmNavSections.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
+import { useQuestsNavSections } from "../hooks/useQuestsNavSections.ts";
 import { useHudActivity } from "../hooks/useHudActivity.ts";
 import {
   usePanelArrangement,
@@ -32,21 +33,32 @@ import {
 import { DashboardHeader } from "./DashboardHeader.tsx";
 import { DiggingPage } from "./DiggingPage.tsx";
 import { FarmIdPanel } from "./FarmIdPanel.tsx";
-import { FarmInfoPage } from "./FarmInfoPage.tsx";
-import { LiveTimersPage } from "./LiveTimersPage.tsx";
+import { NowPage } from "./NowPage.tsx";
+import { PanelGridPage } from "./PanelGridPage.tsx";
 import { sortByArrangement } from "./panelOrder.ts";
 import {
-  buildInfoPanels,
-  buildTimersPanels,
-  INFO_PAGE_KEY,
-  TIMERS_PAGE_KEY,
+  buildFarmPanels,
+  buildProducingPanels,
+  buildQuestsPanels,
+  FARM_PAGE_KEY,
+  PRODUCING_PAGE_KEY,
+  QUESTS_PAGE_KEY,
 } from "./panelRegistry.tsx";
-import { DIGGING_PATH, INFO_PATH, TIMERS_PATH } from "./routes.ts";
+import {
+  DIGGING_PATH,
+  FARM_PATH,
+  LEGACY_INFO_PATH,
+  LEGACY_TIMERS_PATH,
+  NOW_PATH,
+  PRODUCING_PATH,
+  QUESTS_PATH,
+} from "./routes.ts";
 
-// The Digging page has no arrangeable panels, so its Settings → Layout
-// sub-screen must edit nothing. This neutral sheet renders an empty arrange
-// list and no-ops every mutation — without it the Layout screen would fall
-// back to the Farm Info arrangement and silently reorder it.
+// Bespoke pages (Now, Digging) have no arrangeable flow, so their
+// Settings → Layout sub-screen must edit nothing. This neutral sheet
+// renders an empty arrange list and no-ops every mutation — without it
+// the Layout screen would fall back to another page's arrangement and
+// silently reorder it.
 const NEUTRAL_SHEET: PanelSheet = {
   items: [],
   reorderVisible: () => {},
@@ -130,41 +142,56 @@ function AppShell() {
     [byCategory],
   );
 
-  // Resolve each page's panel list into reorderable descriptors, then run
-  // the per-page arrangement (persisted order + hidden set). The pages
-  // render `renderPanels`; the Settings → Layout sub-screen (LayoutPanelGrid)
-  // drives the same arrangement, so board and grid share one source of truth.
-  // Built unconditionally (empty list pre-load) to keep the hooks order stable.
-  const timersPanels = useMemo(
+  // Resolve each arrangeable page's panel list into reorderable
+  // descriptors, then run the per-page arrangement (persisted order +
+  // hidden set). The pages render `renderPanels`; the Settings → Layout
+  // sub-screen drives the same arrangement, so board and grid share one
+  // source of truth. Built unconditionally (empty list pre-load) to keep
+  // the hooks order stable. The Now and Digging pages are bespoke and
+  // have no arrangement.
+  const producingPanels = useMemo(
     () =>
       data
-        ? buildTimersPanels({ data, byCategory, visibleCategories, now })
+        ? buildProducingPanels({ data, byCategory, visibleCategories, now })
         : [],
     [data, byCategory, visibleCategories, now],
   );
-  const infoPanels = useMemo(
-    () => (data ? buildInfoPanels({ data, now }) : []),
+  const questsPanels = useMemo(
+    () => (data ? buildQuestsPanels({ data, now }) : []),
     [data, now],
   );
-  const timersArrangement = usePanelArrangement(TIMERS_PAGE_KEY, timersPanels);
-  const infoArrangement = usePanelArrangement(INFO_PAGE_KEY, infoPanels);
-
-  const navSections = useNavSections({
-    data,
-    timers,
-    byCategory,
-    visibleCategories,
-    now,
-  });
-  const infoNavSections = useFarmInfoNavSections(now);
-  // Keep the mobile jump-nav order in step with the board arrangement.
-  const orderedNavSections = useMemo(
-    () => sortByArrangement(navSections, timersArrangement.orderedLiveIds),
-    [navSections, timersArrangement.orderedLiveIds],
+  const farmPanels = useMemo(
+    () => (data ? buildFarmPanels({ data, now }) : []),
+    [data, now],
   );
-  const orderedInfoNavSections = useMemo(
-    () => sortByArrangement(infoNavSections, infoArrangement.orderedLiveIds),
-    [infoNavSections, infoArrangement.orderedLiveIds],
+  const producingArrangement = usePanelArrangement(
+    PRODUCING_PAGE_KEY,
+    producingPanels,
+  );
+  const questsArrangement = usePanelArrangement(QUESTS_PAGE_KEY, questsPanels);
+  const farmArrangement = usePanelArrangement(FARM_PAGE_KEY, farmPanels);
+
+  const producingNavSections = useNavSections({ visibleCategories });
+  const questsNavSections = useQuestsNavSections(now);
+  const farmNavSections = useFarmNavSections();
+  // Keep each page's mobile jump-nav order in step with its board
+  // arrangement.
+  const orderedProducingNav = useMemo(
+    () =>
+      sortByArrangement(
+        producingNavSections,
+        producingArrangement.orderedLiveIds,
+      ),
+    [producingNavSections, producingArrangement.orderedLiveIds],
+  );
+  const orderedQuestsNav = useMemo(
+    () =>
+      sortByArrangement(questsNavSections, questsArrangement.orderedLiveIds),
+    [questsNavSections, questsArrangement.orderedLiveIds],
+  );
+  const orderedFarmNav = useMemo(
+    () => sortByArrangement(farmNavSections, farmArrangement.orderedLiveIds),
+    [farmNavSections, farmArrangement.orderedLiveIds],
   );
   // Auto-hide the floating HUD buttons on mobile after the user stops
   // interacting (scroll OR tap). Desktop always shows them — each
@@ -176,19 +203,45 @@ function AppShell() {
       ? Math.max(0, REFRESH_COOLDOWN_MS - (now - lastFetchedAt))
       : 0;
 
-  // Tabs only mount once a farm has loaded — pre-load the page is
-  // dominated by the FarmIdPanel and a header subtitle ("Live timers
-  // for your farm") that's tab-agnostic. Once loaded the subtitle
-  // becomes route-aware.
-  const onTimersRoute = pathname === TIMERS_PATH;
+  const onNowRoute = pathname === NOW_PATH;
+  const onProducingRoute = pathname === PRODUCING_PATH;
+  const onQuestsRoute = pathname === QUESTS_PATH;
+  const onFarmRoute = pathname === FARM_PATH;
   const onDiggingRoute = pathname === DIGGING_PATH;
+
+  // Subtitle is route-aware once a farm has loaded. Pre-load it's a
+  // tab-agnostic default while the FarmIdPanel is the whole screen.
   const subtitle = !data
     ? "Live timers for your farm"
-    : onTimersRoute
-      ? "Live timers for your farm"
-      : onDiggingRoute
-        ? "Read the sand & crabs — dig the sure things"
-        : "Your farm at a glance";
+    : onNowRoute
+      ? "What's ready, and what's next"
+      : onProducingRoute
+        ? "Everything that's mid-timer"
+        : onQuestsRoute
+          ? "Deliveries, chores & bounties"
+          : onDiggingRoute
+            ? "Read the sand & crabs — dig the sure things"
+            : "Your farm at a glance";
+
+  // The NavMenu (mobile section-jump) mounts only on the arrangeable
+  // pages — the bespoke Now and Digging pages have no jump sections.
+  const navSections = onProducingRoute
+    ? orderedProducingNav
+    : onQuestsRoute
+      ? orderedQuestsNav
+      : onFarmRoute
+        ? orderedFarmNav
+        : [];
+
+  // The Layout sub-screen arranges whichever arrangeable page is in
+  // view; bespoke pages hand it the neutral (empty, no-op) sheet.
+  const activeSheet = onProducingRoute
+    ? producingArrangement.sheet
+    : onQuestsRoute
+      ? questsArrangement.sheet
+      : onFarmRoute
+        ? farmArrangement.sheet
+        : NEUTRAL_SHEET;
 
   return (
     <div className="min-h-dvh bg-[#181425]">
@@ -209,52 +262,72 @@ function AppShell() {
           />
         ) : (
           <>
-            {/* Page switching now lives entirely in the PageNavMenu FAB
-                (bottom-right HUD stack) on every breakpoint — see below.
-                The old top/header pills are gone. */}
+            {/* Page switching lives entirely in the PageNavMenu FAB
+                (bottom-right HUD stack) on every breakpoint — see below. */}
             <Routes>
               <Route
-                path={TIMERS_PATH}
+                path={NOW_PATH}
                 element={
-                  <LiveTimersPage
-                    panels={timersArrangement.renderPanels}
+                  <NowPage
+                    data={data}
                     timers={timers}
+                    byCategory={byCategory}
                     now={now}
                   />
                 }
               />
               <Route
-                path={INFO_PATH}
-                element={<FarmInfoPage panels={infoArrangement.renderPanels} />}
+                path={PRODUCING_PATH}
+                element={
+                  <PanelGridPage panels={producingArrangement.renderPanels} />
+                }
+              />
+              <Route
+                path={QUESTS_PATH}
+                element={
+                  <PanelGridPage panels={questsArrangement.renderPanels} />
+                }
+              />
+              <Route
+                path={FARM_PATH}
+                element={
+                  <PanelGridPage panels={farmArrangement.renderPanels} />
+                }
               />
               <Route
                 path={DIGGING_PATH}
                 element={<DiggingPage data={data} now={now} />}
               />
-              {/* Root and any unknown path bounce to /timers — the
-                primary surface. `replace` so back-button doesn't
-                ping-pong through the redirect. */}
-              <Route path="*" element={<Navigate to={TIMERS_PATH} replace />} />
+              {/* Legacy two-page paths redirect to their action-scheme
+                  home so old bookmarks / shared links still land. */}
+              <Route
+                path={LEGACY_TIMERS_PATH}
+                element={<Navigate to={PRODUCING_PATH} replace />}
+              />
+              <Route
+                path={LEGACY_INFO_PATH}
+                element={<Navigate to={FARM_PATH} replace />}
+              />
+              {/* Root and any unknown path bounce to /now — the primary
+                surface. `replace` so back-button doesn't ping-pong
+                through the redirect. */}
+              <Route path="*" element={<Navigate to={NOW_PATH} replace />} />
             </Routes>
           </>
         )}
       </OuterPanel>
       {/* Section-jump FAB + slide-up sheet. Each route feeds its own
-          candidate list; NavMenu filters by DOM existence at open
-          time. Mobile-only (NavMenu is `sm:hidden` internally). */}
-      {/* The Digging page is a single bespoke screen with no jump-nav
-          sections, so the FAB only mounts on /timers and /info. */}
-      {data && !onDiggingRoute ? (
-        <NavMenu
-          sections={onTimersRoute ? orderedNavSections : orderedInfoNavSections}
-          visible={hudVisible}
-        />
+          candidate list; NavMenu filters by DOM existence at open time.
+          Mobile-only (NavMenu is `sm:hidden` internally). Bespoke pages
+          (Now, Digging) have no jump sections, so it doesn't mount. */}
+      {data && navSections.length > 0 ? (
+        <NavMenu sections={navSections} visible={hudVisible} />
       ) : null}
       {data ? (
         <>
-          {/* Page-switch FAB — the replacement for the old header pills.
-              Mounts on every route (including Digging, so it's how you
-              leave that page) and on every breakpoint. */}
+          {/* Page-switch FAB — mounts on every route (including the
+              bespoke pages, so it's how you leave them) and every
+              breakpoint. */}
           <PageNavMenu visible={hudVisible} />
           <RefreshButton
             onClick={() => load(farmId)}
@@ -266,10 +339,6 @@ function AppShell() {
             onClick={() => setSettingsOpen(true)}
             visible={hudVisible}
           />
-          {/* The Layout sub-screen arranges whichever page is in view —
-              both arrangements are always live; we hand the active one's
-              stable `sheet` bundle (not the whole arrangement) so the
-              drag list stays off the 1 Hz re-render path. */}
           <SettingsModal
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}
@@ -278,13 +347,7 @@ function AppShell() {
             onLoad={load}
             loading={loading}
             error={error}
-            sheet={
-              onDiggingRoute
-                ? NEUTRAL_SHEET
-                : onTimersRoute
-                  ? timersArrangement.sheet
-                  : infoArrangement.sheet
-            }
+            sheet={activeSheet}
             lastFetchedAt={lastFetchedAt}
             now={now}
           />
