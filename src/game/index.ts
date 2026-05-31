@@ -185,8 +185,34 @@ export {
   generateDeliveryTickets,
 } from "features/game/events/landExpansion/deliver";
 export { isTicketNPC } from "features/island/delivery/lib/delivery";
-export { getChapterTicket } from "features/game/types/chapters";
+export {
+  getChapterTicket,
+  getCurrentChapter,
+} from "features/game/types/chapters";
 export type { Order, Delivery } from "features/game/types/game";
+// Desert digging. The overview's /digging page mirrors `state.desert.
+// digging.grid` (a sparse list of revealed `DugHole`s on a 10×10 site)
+// and overlays its own sand/crab deduction. These helpers are the
+// canonical game facts we surface alongside that deduction:
+// `getRemainingDigs` is the boosted daily digs-left (just extracted into
+// the pure `desert.ts` so we can call it without dragging the HUD's
+// React graph in), `getTreasuresFound` / `getArtefactsFound` count what's
+// been revealed, `hasClaimedReward` reports whether today's streak reward
+// is already banked, and `getTreasureCount` totals the plots across
+// today's formations. `DIGGING_FORMATIONS` is the relative-plot table;
+// `CHAPTER_ARTEFACT` maps the active chapter to its "Seasonal Artefact".
+export {
+  getRemainingDigs,
+  getTreasuresFound,
+  getArtefactsFound,
+  hasClaimedReward,
+  getTreasureCount,
+  secondsTillDesertStorm,
+  DIGGING_FORMATIONS,
+  CHAPTER_ARTEFACT,
+  DESERT_GRID_WIDTH,
+  DESERT_GRID_HEIGHT,
+} from "features/game/types/desert";
 // Floating Island ("Love Island") event. `getActiveFloatingIsland`
 // returns the schedule window covering `now` (or undefined when the
 // island isn't currently reachable); `hasClaimedPetalPrize` reports
@@ -340,6 +366,15 @@ export type {
   // Village projects / social farming
   MonumentName,
   SocialFarming,
+  // Desert digging — `Desert` is the `state.desert` slice; `DugHole` a
+  // single revealed hole; `StreakReward` the daily streak tracker;
+  // `DiggingFormationName` keys today's `digging.patterns`;
+  // `DiggingFormation` the relative-plot layout of one formation.
+  Desert,
+  DugHole,
+  StreakReward,
+  DiggingFormationName,
+  DiggingFormation,
 } from "./types.ts";
 export { TEAM_USERNAMES, MANAGER_IDS } from "lib/access";
 // Village projects (social farming). `REQUIRED_CHEERS` is the per-

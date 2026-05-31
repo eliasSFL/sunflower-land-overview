@@ -75,6 +75,35 @@ to discuss:
 
 Replicating is never the answer.
 
+## Push `sunflower-land` submodule branches to upstream, not a fork
+
+When an overview task needs a change in the `sunflower-land` game
+submodule (e.g. extracting a helper so we can call it instead of
+replicating — see above), push the branch to the **upstream repo**
+(`origin` → `sunflower-land/sunflower-land`) and open the PR from
+there. The maintainer has write access to upstream, so do **not** push
+to a personal fork (`eliasSFL/sunflower-land`) — a fork + cross-repo PR
+only adds friction, and leaves the overview pinning a fork-only commit
+SHA that CI can't resolve until the PR merges.
+
+```sh
+git -C sunflower-land push origin <branch>
+gh pr create --repo sunflower-land/sunflower-land --base main --head <branch>
+```
+
+Opening the PR is still an outward-facing action — confirm with the
+user first unless they've already said to proceed.
+
+By default, do **not** bump the overview's submodule pointer to pick up
+the merge yourself. A scheduled
+[bot](.github/workflows/bump-sunflower-land-submodule.yml) advances the
+SHA, and a manual pointer bump in a feature PR conflicts with its next
+run and forces a coordination round (see CONTRIBUTING.md → "Submodule
+pointer changes"). Only include a pointer bump when the user has
+explicitly approved/coordinated it for that feature — otherwise let the
+bot carry the new SHA, and hold the dependent overview change until it
+has.
+
 ## Dashboard is two routed pages
 
 After a farm loads, the dashboard splits into two top-level routes

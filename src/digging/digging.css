@@ -1,0 +1,202 @@
+/* ============================================================
+   Digby's dig site — the grid and its three tile-status
+   treatments. Switch by setting data-treat="flag|heat|glow"
+   on .dig-grid. The sand texture is injected per-element via
+   the --dig-site-bg custom property (keeps the CDN URL out of
+   this stylesheet). Ported from the Claude Design prototype.
+   ============================================================ */
+
+.dig-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-image: var(--dig-site-bg);
+  background-size: 10% 10%;
+  image-rendering: pixelated;
+  border-radius: 4px;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.dig-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: 1px solid rgba(62, 39, 49, 0.16);
+  outline-offset: -1px;
+  -webkit-tap-highlight-color: transparent;
+}
+.dig-cell:focus-visible {
+  outline: 2px solid #1e6dd5;
+  z-index: 3;
+}
+
+.dig-cell-fill {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+/* Top-right corner ribbon carrying the status colour. */
+.dig-cell-flag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 13px 13px 0;
+  border-color: transparent;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.dig-cell-sprite {
+  position: absolute;
+  width: 74%;
+  height: 74%;
+  left: 13%;
+  top: 13%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.25));
+}
+/* Formation-proven tile: the predicted treasure, ghosted so it reads as
+   "not yet dug" while still showing what's coming. */
+.dig-cell-sprite.dig-cell-predicted {
+  opacity: 0.5;
+}
+.dig-cell-dot {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.dig-cell-dot img {
+  width: 52%;
+  height: 52%;
+  opacity: 0.9;
+}
+
+.dig-grid.is-interactive .dig-cell.is-undug:hover {
+  filter: brightness(1.06);
+}
+.dig-cell:active {
+  transform: scale(0.96);
+}
+
+/* Status colour tokens (red empty, orange possible, green dig/treasure). */
+.dig-cell.is-empty {
+  --col: #e43b44;
+}
+.dig-cell.is-possible {
+  --col: #f09100;
+}
+.dig-cell.is-guaranteed {
+  --col: #3e8948;
+}
+.dig-cell.is-treasure {
+  --col: #3e8948;
+}
+
+/* ---- Treatment A — FLAG (default): sandy tile keeps the in-game look;
+   a thin coloured inner ring + corner ribbon carries the status. ---- */
+.dig-grid[data-treat="flag"] .dig-cell.is-empty,
+.dig-grid[data-treat="flag"] .dig-cell.is-possible,
+.dig-grid[data-treat="flag"] .dig-cell.is-guaranteed,
+.dig-grid[data-treat="flag"] .dig-cell.is-treasure {
+  box-shadow: inset 0 0 0 2.5px var(--col);
+}
+.dig-grid[data-treat="flag"] .dig-cell.is-empty .dig-cell-fill,
+.dig-grid[data-treat="flag"] .dig-cell.is-possible .dig-cell-fill {
+  opacity: 0.14;
+  background: var(--col);
+}
+.dig-grid[data-treat="flag"] .dig-cell.is-empty .dig-cell-flag,
+.dig-grid[data-treat="flag"] .dig-cell.is-possible .dig-cell-flag,
+.dig-grid[data-treat="flag"] .dig-cell.is-guaranteed .dig-cell-flag,
+.dig-grid[data-treat="flag"] .dig-cell.is-treasure .dig-cell-flag {
+  opacity: 1;
+  border-right-color: var(--col);
+}
+.dig-grid[data-treat="flag"] .dig-cell.is-guaranteed .dig-cell-dot {
+  display: flex;
+}
+
+/* ---- Treatment B — HEAT: bold translucent fills, a probability map
+   laid over the sand. ---- */
+.dig-grid[data-treat="heat"] .dig-cell.is-empty .dig-cell-fill,
+.dig-grid[data-treat="heat"] .dig-cell.is-possible .dig-cell-fill,
+.dig-grid[data-treat="heat"] .dig-cell.is-guaranteed .dig-cell-fill,
+.dig-grid[data-treat="heat"] .dig-cell.is-treasure .dig-cell-fill {
+  opacity: 0.62;
+  background: var(--col);
+}
+.dig-grid[data-treat="heat"] .dig-cell.is-guaranteed .dig-cell-fill {
+  opacity: 0.82;
+}
+.dig-grid[data-treat="heat"] .dig-cell.is-guaranteed {
+  box-shadow: inset 0 0 0 2.5px #1f5b2a;
+}
+.dig-grid[data-treat="heat"] .dig-cell.is-guaranteed .dig-cell-dot {
+  display: flex;
+}
+
+/* ---- Treatment C — GLOW: sand stays; status reads as a soft inner
+   glow ring. Subtle, atmospheric. ---- */
+.dig-grid[data-treat="glow"] .dig-cell.is-empty,
+.dig-grid[data-treat="glow"] .dig-cell.is-possible,
+.dig-grid[data-treat="glow"] .dig-cell.is-guaranteed,
+.dig-grid[data-treat="glow"] .dig-cell.is-treasure {
+  box-shadow:
+    inset 0 0 11px 1px var(--col),
+    inset 0 0 0 1.5px var(--col);
+}
+.dig-grid[data-treat="glow"] .dig-cell.is-guaranteed .dig-cell-dot {
+  display: flex;
+}
+
+/* Guaranteed "dig here" tiles pulse on every treatment. */
+.dig-cell.is-guaranteed {
+  animation: dig-pulse 1.25s ease-in-out infinite;
+  z-index: 2;
+}
+@keyframes dig-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.18);
+  }
+}
+
+/* Dug clue tiles get a faint pressed-in look. */
+.dig-cell.is-clue-sand,
+.dig-cell.is-clue-crab {
+  box-shadow: inset 0 2px 5px rgba(62, 39, 49, 0.22);
+}
+
+/* Tap-to-inspect: the selected tile + its 4 cardinal neighbours. */
+.dig-cell.is-selected {
+  outline: 2.5px solid #1e6dd5;
+  outline-offset: -2px;
+  z-index: 5;
+}
+.dig-cell.is-peek {
+  outline: 2px dashed rgba(30, 109, 213, 0.75);
+  outline-offset: -2px;
+  z-index: 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-cell.is-guaranteed {
+    animation: none;
+  }
+}
