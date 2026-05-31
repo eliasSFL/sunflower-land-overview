@@ -190,6 +190,55 @@ export {
   getCurrentChapter,
 } from "features/game/types/chapters";
 export type { Order, Delivery } from "features/game/types/game";
+// Chore Board. Each NPC offers one chore at a time (`choreBoard.chores`,
+// keyed by NPCName). `NPC_CHORES[name].requirement` is the goal and
+// `.progress(game)` the lifetime activity count; `getChoreProgress`
+// subtracts the chore's stored `initialProgress` to give the count earned
+// since it was issued (so we never re-derive the activity math). The chore
+// `name` is itself the human-readable task ("Harvest Sunflowers 150 times")
+// — we render it verbatim rather than pull in the i18n'd CHORE_DETAILS.
+// `generateChoreRewards` returns the reward items with the chapter-ticket
+// amount already boosted (VIP +2, chapter collectibles / wearables +1 each)
+// — the same value the player banks on completion.
+export { NPC_CHORES, getChoreProgress } from "features/game/types/choreBoard";
+export { generateChoreRewards } from "features/game/events/landExpansion/completeNPCChore";
+export type {
+  ChoreBoard,
+  NpcChore,
+  ChoreName,
+} from "features/game/types/choreBoard";
+// Bounties (Poppy's exchange board). `bounties.requests` holds the active
+// asks; `bounties.completed` the fulfilled ids. `BOUNTY_CATEGORIES` is the
+// set of upstream type-guards that bucket a request by the item wanted —
+// animal bounties match none (they're exchanged at the barn, not Poppy's
+// board), so we use the guards both to keep the board's non-animal subset
+// and to narrow the Mark (has `quantity`) / Obsidian (has `sfl`) variants.
+// `canSellBounty` is the single eligibility check (request exists, not
+// already sold, enough owned); `generateBountyTicket` / `generateBountyCoins`
+// apply the same boosts the server does at claim time. `getCountAndType` is
+// upstream's "how many of this does the player actually have" (counts placed
+// collectibles, not just raw inventory).
+export {
+  BOUNTY_CATEGORIES,
+  canSellBounty,
+  generateBountyTicket,
+  generateBountyCoins,
+} from "features/game/events/landExpansion/sellBounty";
+export { getCountAndType } from "features/island/hud/components/inventory/utils/inventory";
+export type { Bounties, BountyRequest } from "features/game/types/game";
+// Animal bounties (grabnab's barn board). Unlike Poppy's item bounties,
+// these are fulfilled by exchanging a *placed* animal at or above the
+// requested level — `isValidDeal` is upstream's eligibility check (type
+// match, the level gate with its "ready"-state off-by-one, and the awake
+// gate against the live clock). Reward computation is shared with item
+// bounties (`generateBountyCoins`/`generateBountyTicket` above; the +50%
+// Bountiful Bounties skill only fires for these). `ANIMALS` keys the three
+// animal types, so `name in ANIMALS` positively identifies an animal
+// bounty (its `name` is an AnimalType, matching none of the item-only
+// `BOUNTY_CATEGORIES`).
+export { isValidDeal } from "features/game/events/landExpansion/sellAnimal";
+export { ANIMALS } from "features/game/types/animals";
+export type { AnimalBounty } from "features/game/types/game";
 // Desert digging. The overview's /digging page mirrors `state.desert.
 // digging.grid` (a sparse list of revealed `DugHole`s on a 10×10 site)
 // and overlays its own sand/crab deduction. These helpers are the

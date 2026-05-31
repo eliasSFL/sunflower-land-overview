@@ -3,7 +3,10 @@ import { useMemo } from "react";
 import { getChapterTicket, getItemIcon } from "../game/index.ts";
 import type { NavSection } from "../components/NavMenu.tsx";
 import {
+  ANIMAL_BOUNTIES_SECTION_ID,
+  BOUNTIES_SECTION_ID,
   BUMPKIN_SECTION_ID,
+  CHORES_SECTION_ID,
   DELIVERIES_COINS_SECTION_ID,
   DELIVERIES_FLOWER_SECTION_ID,
   DELIVERIES_TICKETS_SECTION_ID,
@@ -51,6 +54,21 @@ export function useFarmInfoNavSections(now: number): NavSection[] {
         label: `${ticket} Deliveries`,
         icon: getItemIcon(ticket),
         panelId: DELIVERIES_PANEL_ID,
+      },
+      {
+        id: CHORES_SECTION_ID,
+        label: "Chores",
+        icon: CHROME_ICONS.scroll,
+      },
+      {
+        id: BOUNTIES_SECTION_ID,
+        label: "Bounties",
+        icon: CHROME_ICONS.chest,
+      },
+      {
+        id: ANIMAL_BOUNTIES_SECTION_ID,
+        label: "Animal Bounties",
+        icon: getItemIcon("Cow"),
       },
       {
         id: LOVE_ISLAND_SHOP_SECTION_ID,
