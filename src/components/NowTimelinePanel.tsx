@@ -93,7 +93,7 @@ export function NowTimelinePanel({
           bottom room for the hour labels under the gridlines. The bar is
           inset by `mx-2` (= a dot's radius) so dots at the 0%/100% ends
           stay inside the panel instead of bleeding over its border. */}
-      <div className="relative mx-1 mt-10 mb-7">
+      <div className="relative mx-1 mt-10 mb-8">
         <div className="relative mx-2 h-3 rounded-full bg-[#3e2731]/20">
           {hourMarks.map((h) => {
             const isFirst = h === 0;
@@ -101,14 +101,16 @@ export function NowTimelinePanel({
             return (
               <div
                 key={h}
-                className="absolute -top-2 -bottom-6 w-px bg-[#3e2731]/25"
+                className="absolute -top-2 -bottom-2 w-px bg-[#3e2731]/25"
                 style={{ left: `${(h / WINDOW_HOURS) * 100}%` }}
               >
-                {/* End ticks anchor inward (left edge / right edge) so
-                    their wider clock labels don't overflow the panel;
-                    middle ticks centre on the line. */}
+                {/* Label hangs just below the tick (`top-full`) so it
+                    stays inside the panel's reserved bottom space. End
+                    ticks anchor inward (left/right edge) so their wider
+                    clock labels don't overflow the sides; middle ticks
+                    centre on the line. */}
                 <span
-                  className="absolute -bottom-6 whitespace-nowrap text-xxs opacity-60"
+                  className="absolute top-full mt-1 whitespace-nowrap text-xxs opacity-60"
                   style={{
                     left: isLast ? undefined : 0,
                     right: isLast ? 0 : undefined,
