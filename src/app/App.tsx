@@ -18,7 +18,10 @@ import { useFarmInfoNavSections } from "../hooks/useFarmInfoNavSections.ts";
 import { useNavSections } from "../hooks/useNavSections.ts";
 import { useNow } from "../hooks/useNow.ts";
 import { useHudActivity } from "../hooks/useHudActivity.ts";
-import { usePanelArrangement } from "../hooks/usePanelArrangement.ts";
+import {
+  usePanelArrangement,
+  type PanelSheet,
+} from "../hooks/usePanelArrangement.ts";
 import { usePushSubscriptionChangeSync } from "../notifications/usePushSubscriptionChangeSync.ts";
 import {
   extractAndAggregate,
@@ -39,6 +42,17 @@ import {
   TIMERS_PAGE_KEY,
 } from "./panelRegistry.tsx";
 import { DIGGING_PATH, INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
+
+// The Digging page has no arrangeable panels, so its Settings → Layout
+// sub-screen must edit nothing. This neutral sheet renders an empty arrange
+// list and no-ops every mutation — without it the Layout screen would fall
+// back to the Farm Info arrangement and silently reorder it.
+const NEUTRAL_SHEET: PanelSheet = {
+  items: [],
+  reorderVisible: () => {},
+  toggleHidden: () => {},
+  reset: () => {},
+};
 
 // Resets `window.scrollTo(0)` whenever the route changes. Mounted
 // inside the router so `useLocation` works. Standard SPA pattern;
@@ -270,7 +284,11 @@ function AppShell() {
             loading={loading}
             error={error}
             sheet={
-              onTimersRoute ? timersArrangement.sheet : infoArrangement.sheet
+              onDiggingRoute
+                ? NEUTRAL_SHEET
+                : onTimersRoute
+                  ? timersArrangement.sheet
+                  : infoArrangement.sheet
             }
             lastFetchedAt={lastFetchedAt}
             now={now}

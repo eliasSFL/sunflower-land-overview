@@ -92,8 +92,17 @@ gh pr create --repo sunflower-land/sunflower-land --base main --head <branch>
 ```
 
 Opening the PR is still an outward-facing action — confirm with the
-user first unless they've already said to proceed. Once it merges, bump
-the overview's submodule pointer to the merged SHA on `main`.
+user first unless they've already said to proceed.
+
+By default, do **not** bump the overview's submodule pointer to pick up
+the merge yourself. A scheduled
+[bot](.github/workflows/bump-sunflower-land-submodule.yml) advances the
+SHA, and a manual pointer bump in a feature PR conflicts with its next
+run and forces a coordination round (see CONTRIBUTING.md → "Submodule
+pointer changes"). Only include a pointer bump when the user has
+explicitly approved/coordinated it for that feature — otherwise let the
+bot carry the new SHA, and hold the dependent overview change until it
+has.
 
 ## Dashboard is two routed pages
 

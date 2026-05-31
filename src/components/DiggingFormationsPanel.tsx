@@ -76,8 +76,9 @@ export function DiggingFormationsPanel({
     remaining[name] = (remaining[name] ?? 0) + 1;
   }
   const completedByIndex = patterns.map((name) => {
-    if ((remaining[name] ?? 0) > 0) {
-      remaining[name] = (remaining[name] ?? 0) - 1;
+    const avail = remaining[name] ?? 0;
+    if (avail > 0) {
+      remaining[name] = avail - 1;
       return true;
     }
     return false;

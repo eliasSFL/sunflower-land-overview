@@ -164,10 +164,10 @@
 
 /* Guaranteed "dig here" tiles pulse on every treatment. */
 .dig-cell.is-guaranteed {
-  animation: digPulse 1.25s ease-in-out infinite;
+  animation: dig-pulse 1.25s ease-in-out infinite;
   z-index: 2;
 }
-@keyframes digPulse {
+@keyframes dig-pulse {
   0%,
   100% {
     filter: brightness(1);
