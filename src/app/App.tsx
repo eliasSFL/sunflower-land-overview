@@ -12,6 +12,7 @@ import { PageNavMenu } from "../components/PageNavMenu.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
+import { TopTabBar } from "../components/TopTabBar.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
 import { useFarmNavSections } from "../hooks/useFarmNavSections.ts";
@@ -262,8 +263,10 @@ function AppShell() {
           />
         ) : (
           <>
-            {/* Page switching lives entirely in the PageNavMenu FAB
-                (bottom-right HUD stack) on every breakpoint — see below. */}
+            {/* Desktop page switcher — the pill bar under the header.
+                Mobile reaches the same routes through the PageNavMenu
+                FAB (hidden at `sm+`), so the two never both show. */}
+            <TopTabBar />
             <Routes>
               <Route
                 path={NOW_PATH}
@@ -325,10 +328,13 @@ function AppShell() {
       ) : null}
       {data ? (
         <>
-          {/* Page-switch FAB — mounts on every route (including the
-              bespoke pages, so it's how you leave them) and every
-              breakpoint. */}
-          <PageNavMenu visible={hudVisible} />
+          {/* Page-switch FAB — mobile only (`sm:hidden`). Desktop uses
+              the TopTabBar pills instead. `contents` keeps the FAB's own
+              fixed positioning while letting the breakpoint toggle hide
+              all its parts at once. */}
+          <div className="contents sm:hidden">
+            <PageNavMenu visible={hudVisible} />
+          </div>
           <RefreshButton
             onClick={() => load(farmId)}
             loading={loading}

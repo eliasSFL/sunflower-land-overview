@@ -129,8 +129,9 @@ doing** rather than timers-vs-info:
 
 The three arrangeable pages (Producing, Quests, Farm) render through the
 generic [PanelGridPage](src/app/PanelGridPage.tsx); Now and Digging are
-bespoke. The **`PageNavMenu`** FAB (bottom-right HUD) switches routes on
-every breakpoint. Pages only mount once `data` exists — the pre-load
+bespoke. Desktop switches pages via the **`TopTabBar`** pill bar under
+the header; mobile uses the **`PageNavMenu`** FAB (bottom-right HUD,
+`sm:hidden`). Pages only mount once `data` exists — the pre-load
 shell is the `FarmIdPanel` rendered in place of the route tree. The old
 `/timers` and `/info` paths redirect to `/producing` and `/farm`.
 

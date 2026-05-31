@@ -11,9 +11,9 @@ import { Button, OuterPanel, InnerPanel } from "./ui/index.ts";
 //
 // Deliberately mirrors NavMenu's "Jump to section" affordance (same
 // disc chrome + slide-up sheet) so the two read as one family. The
-// differences: this switches react-router routes instead of scrolling
-// to a section, and it shows on desktop too (the page switcher used to
-// live as header pills — this replaces them on every breakpoint).
+// difference: this switches react-router routes instead of scrolling to
+// a section. It's the mobile page switcher — App wraps it in a
+// `sm:hidden` container; desktop switches pages via the TopTabBar pills.
 //
 // The current route renders in the pressed state so it reads as
 // selected, matching how the old TabPills marked the active tab.
