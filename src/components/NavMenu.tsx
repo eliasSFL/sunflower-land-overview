@@ -94,7 +94,10 @@ export function NavMenu({ sections, visible = true }: Props) {
         aria-hidden={!(visible || open) ? true : undefined}
         tabIndex={visible || open ? 0 : -1}
         title="Jump to section"
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 9rem)" }}
+        // 13rem (4th slot up): Settings 1 → Refresh 5 → PageNav 9 → here.
+        // PageNav owns the 9rem slot because it shows on desktop too;
+        // this jump FAB is mobile-only so it sits above it.
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 13rem)" }}
         className={`fixed right-4 z-40 cursor-pointer transition-transform duration-300 ease-out hover:scale-105 active:scale-95 sm:hidden ${
           visible || open
             ? "translate-x-0"

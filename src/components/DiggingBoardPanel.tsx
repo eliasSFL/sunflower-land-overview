@@ -67,8 +67,9 @@ const SEG_STYLE: CSSProperties = {
   color: "#674544",
 };
 
-// Compact segmented-control pill (Flag / Heat / Glow). Mirrors TabPills'
-// pressed-for-active treatment, but a plain button (no routing).
+// Compact segmented-control pill (Flag / Heat / Glow). Uses the same
+// pressed-for-active border-image treatment as the PageNavMenu sheet
+// rows, but a plain button (no routing).
 function SegPill({
   label,
   active,

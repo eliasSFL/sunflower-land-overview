@@ -70,6 +70,12 @@ export const CHROME_ICONS = {
   // Pixel-art scroll sprite — used as the glyph on the mobile section-
   // nav FAB (the "table of contents" affordance).
   scroll: submoduleAsset("icons/scroll.webp"),
+  // Folded map sprite — glyph on the page-nav FAB (PageNavMenu), the
+  // "navigate the site" affordance that sits alongside the scroll FAB.
+  map: submoduleAsset("icons/map.webp"),
+  // Sand pile — Digging page's row icon in the page-nav sheet; mirrors
+  // the dig board's sand tiles.
+  sand: submoduleAsset("resources/sand.webp"),
   // Currency icons live alongside the submodule's other inventory
   // sprites — not on the CDN — so we bundle them at build time.
   coins: submoduleAsset("icons/coins.webp"),

@@ -8,10 +8,10 @@ import {
 } from "react-router-dom";
 
 import { NavMenu } from "../components/NavMenu.tsx";
+import { PageNavMenu } from "../components/PageNavMenu.tsx";
 import { RefreshButton } from "../components/RefreshButton.tsx";
 import { SettingsButton } from "../components/SettingsButton.tsx";
 import { SettingsModal } from "../components/SettingsModal.tsx";
-import { TabPills } from "../components/TabPills.tsx";
 import { OuterPanel } from "../components/ui/index.ts";
 import { useFarmData, REFRESH_COOLDOWN_MS } from "../hooks/useFarmData.ts";
 import { useFarmInfoNavSections } from "../hooks/useFarmInfoNavSections.ts";
@@ -41,7 +41,7 @@ import {
   INFO_PAGE_KEY,
   TIMERS_PAGE_KEY,
 } from "./panelRegistry.tsx";
-import { DIGGING_PATH, INFO_PATH, TABS, TIMERS_PATH } from "./routes.ts";
+import { DIGGING_PATH, INFO_PATH, TIMERS_PATH } from "./routes.ts";
 
 // The Digging page has no arrangeable panels, so its Settings → Layout
 // sub-screen must edit nothing. This neutral sheet renders an empty arrange
@@ -198,10 +198,6 @@ function AppShell() {
           lastFetchedAt={lastFetchedAt}
           now={now}
           subtitle={subtitle}
-          // Hide tabs until a farm has loaded — pre-load both routes
-          // would render an empty FarmIdPanel-only shell, so the tab
-          // switcher would have nothing meaningful to switch between.
-          showTabs={!!data}
         />
         {!data ? (
           <FarmIdPanel
@@ -213,14 +209,9 @@ function AppShell() {
           />
         ) : (
           <>
-            {/* Mobile tab pills live in the page content (sm:hidden)
-                above the first panel — keeps the header chrome
-                compact on phones while still putting the pills right
-                where the eye is starting to scan the content. The
-                desktop copy is mounted in DashboardHeader. */}
-            <div className="mb-2 lg:hidden">
-              <TabPills tabs={TABS} />
-            </div>
+            {/* Page switching now lives entirely in the PageNavMenu FAB
+                (bottom-right HUD stack) on every breakpoint — see below.
+                The old top/header pills are gone. */}
             <Routes>
               <Route
                 path={TIMERS_PATH}
@@ -261,6 +252,10 @@ function AppShell() {
       ) : null}
       {data ? (
         <>
+          {/* Page-switch FAB — the replacement for the old header pills.
+              Mounts on every route (including Digging, so it's how you
+              leave that page) and on every breakpoint. */}
+          <PageNavMenu visible={hudVisible} />
           <RefreshButton
             onClick={() => load(farmId)}
             loading={loading}

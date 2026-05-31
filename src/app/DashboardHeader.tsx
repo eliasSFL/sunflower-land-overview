@@ -1,11 +1,9 @@
 import type { FarmResponse } from "../api/fetchFarm.ts";
 import { DonationAddress } from "../components/DonationAddress.tsx";
-import { TabPills } from "../components/TabPills.tsx";
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 import { BANNER_URLS } from "../lib/assets.ts";
 import { hardReload } from "../lib/hardReload.ts";
 import { formatRefreshedAgo } from "../lib/relativeTime.ts";
-import { TABS } from "./routes.ts";
 
 const GITHUB_REPO =
   (import.meta.env.VITE_GITHUB_REPO as string | undefined) ??
@@ -22,7 +20,6 @@ export function DashboardHeader({
   lastFetchedAt,
   now,
   subtitle,
-  showTabs,
 }: {
   data: FarmResponse | undefined;
   lastFetchedAt: number | undefined;
@@ -31,10 +28,6 @@ export function DashboardHeader({
   // for the per-route copy. Passed in rather than read from
   // useLocation here to keep this component a dumb sink.
   subtitle: string;
-  // Tabs only render after a farm has loaded; pre-load the page is
-  // dominated by FarmIdPanel and the tabs would have nothing useful
-  // to switch between.
-  showTabs: boolean;
 }) {
   const { bundleSha, isStale } = useVersionCheck();
   // Falls back to the short SHA when no app version was injected at
@@ -84,18 +77,10 @@ export function DashboardHeader({
       {/* Build hash + last-refreshed time + stale-version nag.
           On mobile this stacks below the title (single column flow);
           on sm+ it sits in the top-right corner of the header.
-          `shrink-0` prevents it from squeezing the title at sm+. */}
+          `shrink-0` prevents it from squeezing the title at sm+. Page
+          switching no longer lives here — it moved to the PageNavMenu
+          FAB (bottom-right HUD stack); see App.tsx. */}
       <div className="flex flex-row gap-2 items-center">
-        {/* Desktop tab pills only — on mobile the same TabPills component
-          is rendered in the page content above the first panel (see
-          App.tsx). Splitting the mount point keeps the header compact
-          on phones (title + meta only) and lets the pills feel like
-          part of the content stack where the user is looking. */}
-        {showTabs ? (
-          <div className="z-10 hidden lg:block sm:px-2">
-            <TabPills tabs={TABS} />
-          </div>
-        ) : null}
         <div className="z-10 flex shrink-0 flex-col items-start gap-1 pl-3 sm:items-end sm:pl-0 sm:pr-4 sm:text-right">
           {versionLabel ? (
             <span className="text-xs text-white text-shadow">
