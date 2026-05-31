@@ -25,6 +25,15 @@ function itemText(item: FeedItem): string {
     : item.label;
 }
 
+// Wall-clock label for an axis tick, e.g. "3:45 PM" — the projected time
+// each gridline lands at, in the viewer's locale.
+function clockLabel(ts: number): string {
+  return new Date(ts).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 // A cluster of items that land close enough together to share a dot. We
 // bucket by rounded position rather than exact `readyAt` so things that
 // finish a few seconds apart (and would visually overlap) merge into one
@@ -81,20 +90,37 @@ export function NowTimelinePanel({
         Next {WINDOW_HOURS} hours
       </Label>
       {/* The track sits in a padded box: top room for the popovers,
-          bottom room for the hour labels under the gridlines. */}
+          bottom room for the hour labels under the gridlines. The bar is
+          inset by `mx-2` (= a dot's radius) so dots at the 0%/100% ends
+          stay inside the panel instead of bleeding over its border. */}
       <div className="relative mx-1 mt-10 mb-7">
-        <div className="relative h-3 rounded-full bg-[#3e2731]/20">
-          {hourMarks.map((h) => (
-            <div
-              key={h}
-              className="absolute -top-2 -bottom-6 w-px bg-[#3e2731]/25"
-              style={{ left: `${(h / WINDOW_HOURS) * 100}%` }}
-            >
-              <span className="absolute -bottom-6 left-1 whitespace-nowrap text-xxs opacity-60">
-                {h === 0 ? "now" : `+${h}h`}
-              </span>
-            </div>
-          ))}
+        <div className="relative mx-2 h-3 rounded-full bg-[#3e2731]/20">
+          {hourMarks.map((h) => {
+            const isFirst = h === 0;
+            const isLast = h === WINDOW_HOURS;
+            return (
+              <div
+                key={h}
+                className="absolute -top-2 -bottom-6 w-px bg-[#3e2731]/25"
+                style={{ left: `${(h / WINDOW_HOURS) * 100}%` }}
+              >
+                {/* End ticks anchor inward (left edge / right edge) so
+                    their wider clock labels don't overflow the panel;
+                    middle ticks centre on the line. */}
+                <span
+                  className="absolute -bottom-6 whitespace-nowrap text-xxs opacity-60"
+                  style={{
+                    left: isLast ? undefined : 0,
+                    right: isLast ? 0 : undefined,
+                    transform:
+                      isFirst || isLast ? undefined : "translateX(-50%)",
+                  }}
+                >
+                  {isFirst ? "now" : clockLabel(now + h * HOUR_MS)}
+                </span>
+              </div>
+            );
+          })}
           {buckets.map((bucket) => {
             const count = bucket.items.length;
             // The marker is a real <button> so keyboard and touch users
