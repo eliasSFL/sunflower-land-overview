@@ -31,9 +31,7 @@ export function CollectNowPanel({
           style={{ imageRendering: "pixelated" }}
         />
         <div className="flex min-w-0 flex-col">
-          <span className="text-base">
-            {total} ready to collect
-          </span>
+          <span className="text-base">{total} ready to collect</span>
           <span className="text-xs">
             across {groups.length} {groups.length === 1 ? "part" : "parts"} of
             your farm
