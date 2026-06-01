@@ -103,8 +103,14 @@ export function useFarmData(): FarmData {
       try {
         const resp = await fetchFarm(id);
         setData(resp);
-        setFarmId(id);
-        storage.save(FARM_ID_KEY, id);
+        // Persist the id we actually loaded, not the one that was typed:
+        // in offline mode `fetchFarm` ignores `id` and returns the
+        // snapshot's own farm, so keying the input/cooldown/storage off
+        // `resp.id` keeps them consistent with `data`. Online, `resp.id`
+        // is just the canonical numeric form of the requested id.
+        const actualId = resp.id != null ? String(resp.id) : id;
+        setFarmId(actualId);
+        storage.save(FARM_ID_KEY, actualId);
         setLastFetchedAt(Date.now());
       } catch (e) {
         if (e instanceof AccessDeniedError) {
