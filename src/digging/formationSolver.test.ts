@@ -5,6 +5,7 @@ import { DIG_GRID, type DiggingCell } from "./solver.ts";
 import {
   solveFormations,
   applyForcedTiles,
+  type ForcedTile,
   type ResolvedFormation,
 } from "./formationSolver.ts";
 
@@ -71,11 +72,7 @@ const SEA_CUCUMBERS: ResolvedFormation = {
   ],
 };
 
-function itemAt(
-  forced: ReturnType<typeof solveFormations>,
-  x: number,
-  y: number,
-) {
+function itemAt(forced: ForcedTile[], x: number, y: number) {
   return forced.find((f) => f.x === x && f.y === y)?.item;
 }
 
@@ -87,7 +84,7 @@ describe("solveFormations", () => {
     const cells = blankCells();
     reveal(cells, 4, 8, "Sea Cucumber"); // E9
     reveal(cells, 6, 8, "Pipi"); // G9
-    const forced = solveFormations(cells, [SEA_CUCUMBERS]);
+    const { forced } = solveFormations(cells, [SEA_CUCUMBERS]);
     expect(forced).toEqual(
       expect.arrayContaining([
         { x: 3, y: 8, item: "Sea Cucumber", formation: "SEA_CUCUMBERS" },
@@ -102,7 +99,7 @@ describe("solveFormations", () => {
     // nothing is pinned.
     const cells = blankCells();
     reveal(cells, 4, 8, "Sea Cucumber");
-    expect(solveFormations(cells, [SEA_CUCUMBERS])).toEqual([]);
+    expect(solveFormations(cells, [SEA_CUCUMBERS]).forced).toEqual([]);
   });
 
   it("forces a formation that fits exactly one spot", () => {
@@ -119,7 +116,7 @@ describe("solveFormations", () => {
       [0, 0],
       [1, 0],
     ]);
-    const forced = solveFormations(cells, [PAIR]);
+    const { forced } = solveFormations(cells, [PAIR]);
     expect(forced).toEqual(
       expect.arrayContaining([
         { x: 0, y: 0, item: "Pearl", formation: "PAIR" },
@@ -137,7 +134,7 @@ describe("solveFormations", () => {
       cells,
       Array.from({ length: 8 }, (_, x): [number, number] => [x, 0]),
     );
-    const forced = solveFormations(cells, [SEA_CUCUMBERS, SEA_CUCUMBERS]);
+    const { forced } = solveFormations(cells, [SEA_CUCUMBERS, SEA_CUCUMBERS]);
     expect(forced).toHaveLength(8);
     expect(itemAt(forced, 3, 0)).toBe("Pipi");
     expect(itemAt(forced, 7, 0)).toBe("Pipi");
@@ -166,7 +163,7 @@ describe("solveFormations", () => {
         ],
       },
     ];
-    expect(solveFormations(cells, shared)).toEqual([]);
+    expect(solveFormations(cells, shared).forced).toEqual([]);
   });
 
   it("ignores tiles the crab pass already proved empty", () => {
@@ -175,7 +172,37 @@ describe("solveFormations", () => {
     reveal(cells, 4, 8, "Sea Cucumber");
     reveal(cells, 6, 8, "Pipi");
     cells[8][5].status = "empty"; // F9
-    expect(solveFormations(cells, [SEA_CUCUMBERS])).toEqual([]);
+    expect(solveFormations(cells, [SEA_CUCUMBERS]).forced).toEqual([]);
+  });
+});
+
+describe("solveFormations excludedTreasure", () => {
+  const k = (x: number, y: number) => y * DIG_GRID + x;
+
+  it("excludes undug cells no layout can cover with a treasure", () => {
+    // E9 cucumber + G9 Pipi pins the lone instance to the D9–G9 footprint.
+    // A tile off that footprint (e.g. E8, directly above E9) can never be a
+    // treasure, while the undug footprint cells (D9, F9) still can.
+    const cells = blankCells();
+    reveal(cells, 4, 8, "Sea Cucumber"); // E9
+    reveal(cells, 6, 8, "Pipi"); // G9
+    const { excludedTreasure } = solveFormations(cells, [SEA_CUCUMBERS]);
+    expect(excludedTreasure.has(k(4, 7))).toBe(true); // E8 — off footprint
+    expect(excludedTreasure.has(k(3, 8))).toBe(false); // D9 — undug cucumber
+    expect(excludedTreasure.has(k(5, 8))).toBe(false); // F9 — undug cucumber
+  });
+
+  it("is empty when the layout is still ambiguous near a treasure", () => {
+    // A lone cucumber leaves three possible rows, so the tiles it might span
+    // are all still "possibly treasure" — none can be excluded there.
+    const cells = blankCells();
+    reveal(cells, 4, 8, "Sea Cucumber"); // E9
+    const { excludedTreasure } = solveFormations(cells, [SEA_CUCUMBERS]);
+    // The revealed cucumber can be the 1st/2nd/3rd plot, so C9..H9 (x2..x7)
+    // can each host a cucumber/Pipi under some placement — none excluded.
+    for (let x = 2; x <= 7; x++) {
+      expect(excludedTreasure.has(k(x, 8))).toBe(false);
+    }
   });
 });
 

@@ -42,6 +42,18 @@ export type ForcedTile = {
   formation: string;
 };
 
+// What the formation enumeration proves about the board.
+export type FormationDeduction = {
+  // Undug tiles whose treasure every valid layout agrees on.
+  forced: ForcedTile[];
+  // Undug tiles *no* valid layout can place a treasure on — proven
+  // treasure-free, so (if they border a treasure) they must reveal a Crab.
+  // Keys are `key(x, y)`. Empty whenever the search bails or finds no layout:
+  // exclusion needs the complete solution set to be sound, so we never guess
+  // it from a partial one.
+  excludedTreasure: Set<number>;
+};
+
 const key = (x: number, y: number) => y * DIG_GRID + x;
 
 type Placement = {
@@ -184,12 +196,18 @@ function fastForced(
 const MAX_SOLUTIONS = 4000;
 const MAX_STEPS = 1_000_000;
 
-// Find tiles whose treasure is proven across every valid global layout.
+// Find tiles whose treasure is proven across every valid global layout, plus
+// the undug tiles no layout can place a treasure on (see FormationDeduction).
 export function solveFormations(
   cells: DiggingCell[][],
   instances: ResolvedFormation[],
-): ForcedTile[] {
-  if (instances.length === 0) return [];
+): FormationDeduction {
+  const noExclusion = (forced: ForcedTile[]): FormationDeduction => ({
+    forced,
+    excludedTreasure: new Set(),
+  });
+
+  if (instances.length === 0) return noExclusion([]);
 
   const byName = new Map<string, ResolvedFormation>();
   for (const f of instances) if (!byName.has(f.name)) byName.set(f.name, f);
@@ -205,7 +223,8 @@ export function solveFormations(
   // Placements per instance. A 0-placement instance means the board is
   // inconsistent with our model — bail to the fast pass.
   const perInstance = instances.map((f) => placementsOf(cells, f));
-  if (perInstance.some((p) => p.length === 0)) return fastForced(cells, byName);
+  if (perInstance.some((p) => p.length === 0))
+    return noExclusion(fastForced(cells, byName));
 
   // Most-constrained instance first.
   const order = perInstance
@@ -223,7 +242,7 @@ export function solveFormations(
       }
   });
   for (const c of need)
-    if (!lastCoverer.has(c)) return fastForced(cells, byName);
+    if (!lastCoverer.has(c)) return noExclusion(fastForced(cells, byName));
   // Needed cells grouped by the depth after which they're uncoverable.
   const deadlineAt: number[][] = ordered.map(() => []);
   for (const c of need) deadlineAt[lastCoverer.get(c)!].push(c);
@@ -287,7 +306,7 @@ export function solveFormations(
   };
   search(0);
 
-  if (bailed) return fastForced(cells, byName);
+  if (bailed) return noExclusion(fastForced(cells, byName));
 
   // Forced = undug cells covered in EVERY solution, with one agreed item.
   const items = new Map<number, Set<InventoryItemName>>();
@@ -323,7 +342,26 @@ export function solveFormations(
       formation: ns.size === 1 ? [...ns][0] : "",
     });
   }
-  return acc.result();
+
+  // Excluded = undug cells in NO solution's footprint. Since the true board is
+  // one of the enumerated solutions, a cell no solution ever covers with a
+  // formation can't hold a treasure. Guard on a non-empty solution set: an
+  // empty one means an inconsistent board, not "everything is treasure-free".
+  const excludedTreasure = new Set<number>();
+  if (solutions.length > 0) {
+    const possibleTreasure = new Set<number>();
+    for (const sol of solutions)
+      for (const pl of sol) for (const c of pl.cells) possibleTreasure.add(c);
+    for (let y = 0; y < DIG_GRID; y++) {
+      for (let x = 0; x < DIG_GRID; x++) {
+        const k = key(x, y);
+        if (!cells[y][x].dug && !possibleTreasure.has(k))
+          excludedTreasure.add(k);
+      }
+    }
+  }
+
+  return { forced: acc.result(), excludedTreasure };
 }
 
 // Overlay the forced tiles onto a solved board: each becomes a guaranteed
