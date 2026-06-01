@@ -195,12 +195,17 @@ export type { Order, Delivery } from "features/game/types/game";
 // `.progress(game)` the lifetime activity count; `getChoreProgress`
 // subtracts the chore's stored `initialProgress` to give the count earned
 // since it was issued (so we never re-derive the activity math). The chore
-// `name` is itself the human-readable task ("Harvest Sunflowers 150 times")
-// — we render it verbatim rather than pull in the i18n'd CHORE_DETAILS.
+// `name` is itself the human-readable task ("Harvest Sunflowers 150 times"),
+// which we render verbatim (CHORE_DETAILS' i18n'd `description` resolves to
+// "" under our stubbed i18n). We do pull in `CHORE_DETAILS` for its `icon`,
+// though — it's the canonical chore → item-image map the in-game Codex board
+// renders, so the panel shows the same per-chore icon without us replicating
+// the 300-entry chore → item lookup locally.
 // `generateChoreRewards` returns the reward items with the chapter-ticket
 // amount already boosted (VIP +2, chapter collectibles / wearables +1 each)
 // — the same value the player banks on completion.
 export { NPC_CHORES, getChoreProgress } from "features/game/types/choreBoard";
+export { CHORE_DETAILS } from "features/island/hud/components/codex/lib/choreDetails";
 export { generateChoreRewards } from "features/game/events/landExpansion/completeNPCChore";
 export type {
   ChoreBoard,
