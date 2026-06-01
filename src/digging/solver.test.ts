@@ -4,6 +4,7 @@ import type { DugHole, InventoryItemName } from "../game/index.ts";
 import {
   DIG_GRID,
   buildHoleGrid,
+  markCrabs,
   solveDiggingGrid,
   type DiggingCell,
 } from "./solver.ts";
@@ -111,5 +112,62 @@ describe("solveDiggingGrid", () => {
     ]);
     expect(cellAt(solved, 0, 6).status).not.toBe("guaranteed");
     expect(solved.tally.guaranteed).toBe(0);
+  });
+});
+
+describe("markCrabs", () => {
+  it("marks an empty tile that borders a revealed treasure as a crab", () => {
+    // (4,1) is empty (the Sand at (4,2) clears it) AND borders the treasure
+    // at (4,0) — so it can only reveal a crab when dug.
+    const base = solveDiggingGrid([
+      hole(4, 0, "Camel Bone"),
+      hole(4, 2, "Sand"),
+    ]);
+    expect(cellAt(base, 4, 1).status).toBe("empty");
+
+    const solved = markCrabs(base);
+    expect(cellAt(solved, 4, 1).status).toBe("crab");
+    expect(solved.tally.crabPredicted).toBe(1);
+    // The relabel moves the tile out of the empty count.
+    expect(solved.tally.empty).toBe(base.tally.empty - 1);
+  });
+
+  it("leaves empty tiles with no treasure neighbour untouched", () => {
+    // A lone Sand clears its 4 neighbours, but none borders a treasure.
+    const base = solveDiggingGrid([hole(1, 1, "Sand")]);
+    const solved = markCrabs(base);
+    expect(solved.tally.crabPredicted).toBe(0);
+    expect(cellAt(solved, 1, 0).status).toBe("empty");
+    // Nothing changed — same board reference is returned.
+    expect(solved).toBe(base);
+  });
+
+  it("does not touch a 'possible' tile beside a treasure (could be treasure)", () => {
+    // (5,4) borders the treasure at (5,5) but has no Sand proving it empty —
+    // it's still "possible", because a formation could place a treasure here
+    // (treasures sit side by side). We must not guess it's a crab.
+    const base = solveDiggingGrid([
+      hole(5, 5, "Camel Bone"),
+      hole(5, 3, "Crab"), // makes (5,4) "possible"
+    ]);
+    expect(cellAt(base, 5, 4).status).toBe("possible");
+    const solved = markCrabs(base);
+    expect(cellAt(solved, 5, 4).status).toBe("possible");
+  });
+
+  it("predicts crabs around a forced (guaranteed) treasure too", () => {
+    // The crab at (0,5) forces a guaranteed treasure at (0,6). The tile
+    // (1,6) is then empty (Sand at (2,6)) AND borders that proven treasure.
+    const base = solveDiggingGrid([
+      hole(0, 5, "Crab"),
+      hole(0, 3, "Sand"), // clears (0,4)
+      hole(2, 5, "Sand"), // clears (1,5)
+      hole(2, 6, "Sand"), // clears (1,6)
+    ]);
+    expect(cellAt(base, 0, 6).status).toBe("guaranteed");
+    expect(cellAt(base, 1, 6).status).toBe("empty");
+
+    const solved = markCrabs(base);
+    expect(cellAt(solved, 1, 6).status).toBe("crab");
   });
 });

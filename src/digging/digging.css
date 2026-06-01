@@ -98,6 +98,12 @@
 .dig-cell.is-possible {
   --col: #f09100;
 }
+/* Predicted crab — provably no treasure, but borders one. A muted lavender
+   so it reads as "skip, not a dig target" yet stays distinct from the red
+   safe-empty tiles. */
+.dig-cell.is-crab {
+  --col: #83769c;
+}
 .dig-cell.is-guaranteed {
   --col: #3e8948;
 }
@@ -109,17 +115,20 @@
    a thin coloured inner ring + corner ribbon carries the status. ---- */
 .dig-grid[data-treat="flag"] .dig-cell.is-empty,
 .dig-grid[data-treat="flag"] .dig-cell.is-possible,
+.dig-grid[data-treat="flag"] .dig-cell.is-crab,
 .dig-grid[data-treat="flag"] .dig-cell.is-guaranteed,
 .dig-grid[data-treat="flag"] .dig-cell.is-treasure {
   box-shadow: inset 0 0 0 2.5px var(--col);
 }
 .dig-grid[data-treat="flag"] .dig-cell.is-empty .dig-cell-fill,
-.dig-grid[data-treat="flag"] .dig-cell.is-possible .dig-cell-fill {
+.dig-grid[data-treat="flag"] .dig-cell.is-possible .dig-cell-fill,
+.dig-grid[data-treat="flag"] .dig-cell.is-crab .dig-cell-fill {
   opacity: 0.14;
   background: var(--col);
 }
 .dig-grid[data-treat="flag"] .dig-cell.is-empty .dig-cell-flag,
 .dig-grid[data-treat="flag"] .dig-cell.is-possible .dig-cell-flag,
+.dig-grid[data-treat="flag"] .dig-cell.is-crab .dig-cell-flag,
 .dig-grid[data-treat="flag"] .dig-cell.is-guaranteed .dig-cell-flag,
 .dig-grid[data-treat="flag"] .dig-cell.is-treasure .dig-cell-flag {
   opacity: 1;
@@ -133,6 +142,7 @@
    laid over the sand. ---- */
 .dig-grid[data-treat="heat"] .dig-cell.is-empty .dig-cell-fill,
 .dig-grid[data-treat="heat"] .dig-cell.is-possible .dig-cell-fill,
+.dig-grid[data-treat="heat"] .dig-cell.is-crab .dig-cell-fill,
 .dig-grid[data-treat="heat"] .dig-cell.is-guaranteed .dig-cell-fill,
 .dig-grid[data-treat="heat"] .dig-cell.is-treasure .dig-cell-fill {
   opacity: 0.62;
@@ -152,6 +162,7 @@
    glow ring. Subtle, atmospheric. ---- */
 .dig-grid[data-treat="glow"] .dig-cell.is-empty,
 .dig-grid[data-treat="glow"] .dig-cell.is-possible,
+.dig-grid[data-treat="glow"] .dig-cell.is-crab,
 .dig-grid[data-treat="glow"] .dig-cell.is-guaranteed,
 .dig-grid[data-treat="glow"] .dig-cell.is-treasure {
   box-shadow:
