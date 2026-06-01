@@ -64,6 +64,8 @@ Found a vulnerability? Please report it privately. See [SECURITY.md](SECURITY.md
 
 You need **two** processes running side-by-side: the Vite dev server (SPA) and `wrangler dev` (the Cloudflare Worker, which handles `/api/farms/:id` and `/push/*`). Vite proxies those paths to `localhost:8787` ([`vite.config.ts`](vite.config.ts)).
 
+> **Just want the UI?** Set `VITE_OFFLINE_FARM=true` in `.env` and run `npm run dev` on its own — no Worker, no `wrangler`, no API key. `fetchFarm` serves a static farm snapshot ([`src/api/offlineFarm.snapshot.json`](src/api/offlineFarm.snapshot.json)) with its timers rebased to "now", and the dashboard auto-loads it. Ideal for working on panels, layout, and timers. Push notifications and live refresh are no-ops in this mode. See [`src/api/offlineFarm.ts`](src/api/offlineFarm.ts). Everything below is for the full Worker-backed setup.
+
 ### 1. Clone with the game submodule
 
 The game source ([sunflower-land](https://github.com/sunflower-land/sunflower-land)) is a git submodule at [`./sunflower-land/`](sunflower-land/), tracking `main`. The yield/timer extractors in [`src/timers/`](src/timers/) and [`src/game/`](src/game/) import its harvest functions directly so estimates match what the game would compute.

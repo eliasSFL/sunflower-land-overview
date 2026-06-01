@@ -8,6 +8,9 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    // Lets `offlineFarm.ts` import the captured snapshot JSON for the
+    // local-only dev experience (VITE_OFFLINE_FARM).
+    "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
