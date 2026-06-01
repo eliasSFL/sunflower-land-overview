@@ -7,6 +7,7 @@ import {
   AccessDeniedError,
   type FarmResponse,
 } from "../api/fetchFarm.ts";
+import { IS_OFFLINE_FARM, OFFLINE_FARM_ID } from "../api/offlineFarm.ts";
 import { pullDoSnapshot } from "../notifications/snapshot.ts";
 import * as storage from "../lib/storage.ts";
 
@@ -24,13 +25,19 @@ export type FarmData = {
 };
 
 export function useFarmData(): FarmData {
-  const [farmId, setFarmId] = useState<string>(
-    () => storage.load<string>(FARM_ID_KEY) ?? "",
+  const [farmId, setFarmId] = useState<string>(() =>
+    // Offline mode pre-fills the snapshot's id; the auto-load effect below
+    // loads it on mount with no entry needed.
+    IS_OFFLINE_FARM
+      ? OFFLINE_FARM_ID
+      : (storage.load<string>(FARM_ID_KEY) ?? ""),
   );
   // Seed from the localStorage cache so a reload paints the farm
   // immediately. The `fetchedAt` stamp keeps the "last refreshed" label
-  // truthful across sessions and respects the refresh cooldown.
+  // truthful across sessions and respects the refresh cooldown. Skipped
+  // offline so a previously-cached real farm can't shadow the snapshot.
   const initialCache = useMemo(() => {
+    if (IS_OFFLINE_FARM) return undefined;
     const id = storage.load<string>(FARM_ID_KEY);
     return id ? loadCachedFarm(id) : undefined;
     // Run once on mount — deps left empty intentionally.
@@ -96,8 +103,14 @@ export function useFarmData(): FarmData {
       try {
         const resp = await fetchFarm(id);
         setData(resp);
-        setFarmId(id);
-        storage.save(FARM_ID_KEY, id);
+        // Persist the id we actually loaded, not the one that was typed:
+        // in offline mode `fetchFarm` ignores `id` and returns the
+        // snapshot's own farm, so keying the input/cooldown/storage off
+        // `resp.id` keeps them consistent with `data`. Online, `resp.id`
+        // is just the canonical numeric form of the requested id.
+        const actualId = resp.id != null ? String(resp.id) : id;
+        setFarmId(actualId);
+        storage.save(FARM_ID_KEY, actualId);
         setLastFetchedAt(Date.now());
       } catch (e) {
         if (e instanceof AccessDeniedError) {
@@ -127,6 +140,18 @@ export function useFarmData(): FarmData {
     inFlightRef.current = p;
     return p;
   };
+
+  // Local-only mode: auto-load the static snapshot on mount so the
+  // dashboard appears with no farm-id entry and no Worker running. Flag-
+  // gated, so the production data path is byte-for-byte unchanged.
+  // Deferred to a microtask so `load`'s mount-time setState lands after
+  // commit, not synchronously in the effect body (set-state-in-effect).
+  useEffect(() => {
+    if (!IS_OFFLINE_FARM) return;
+    void Promise.resolve().then(() => load(OFFLINE_FARM_ID));
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { farmId, data, loading, error, accessDenied, lastFetchedAt, load };
 }

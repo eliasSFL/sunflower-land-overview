@@ -76,6 +76,21 @@ export function loadCachedFarm(
 }
 
 export async function fetchFarm(farmId: string): Promise<FarmResponse> {
+  // Local-only mode: serve the rebased static snapshot instead of hitting
+  // the Worker, so `npm run dev` works with no `wrangler dev`. Returns
+  // before the network call, the localStorage cache write, and the DO
+  // refresh ping — none of which make sense (or have a backend) offline.
+  // The requested `farmId` is ignored; the snapshot carries its own id.
+  //
+  // The condition is the raw `import.meta.env` literal (not the
+  // `IS_OFFLINE_FARM` flag) and the snapshot module is dynamically
+  // imported, so when the flag is unset the bundler folds this to `false`
+  // and drops the branch — keeping the ~240 KB fixture out of production.
+  if (import.meta.env.VITE_OFFLINE_FARM === "true") {
+    const { loadOfflineFarm } = await import("./offlineFarmData.ts");
+    return loadOfflineFarm(Date.now());
+  }
+
   const trimmedId = farmId.trim();
   if (!/^\d+$/.test(trimmedId)) {
     throw new ApiError(400, "Farm ID must be a number");
