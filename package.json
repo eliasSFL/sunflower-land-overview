@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tsc": "tsc -b",
-    "release": "git fetch origin && git checkout master && git merge origin/development"
+    "release": "git fetch origin && git checkout master && git pull origin master && git merge origin/development"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
