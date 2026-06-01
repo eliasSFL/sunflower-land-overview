@@ -3,7 +3,7 @@ import { formatYield } from "../lib/format.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { getCategoryIcon } from "./categoryIcon.ts";
 import { COLLECT_SECTION_ID } from "./sectionId.ts";
-import { InnerPanel, Label, OuterPanel } from "./ui/index.ts";
+import { InnerPanel, Label } from "./ui/index.ts";
 
 // The Now page's headline panel: one global "everything that's ready to
 // collect", aggregated across every category and grouped by where it
@@ -21,7 +21,7 @@ export function CollectNowPanel({
   if (total === 0) return null;
 
   return (
-    <OuterPanel id={COLLECT_SECTION_ID} className="scroll-mt-4">
+    <InnerPanel id={COLLECT_SECTION_ID} className="scroll-mt-4">
       <div className="mb-2 flex items-center gap-2">
         <img
           src={CHROME_ICONS.chest}
@@ -31,10 +31,10 @@ export function CollectNowPanel({
           style={{ imageRendering: "pixelated" }}
         />
         <div className="flex min-w-0 flex-col">
-          <span className="text-base text-white text-shadow">
+          <span className="text-base">
             {total} ready to collect
           </span>
-          <span className="text-xs text-white/90 text-shadow">
+          <span className="text-xs">
             across {groups.length} {groups.length === 1 ? "part" : "parts"} of
             your farm
           </span>
@@ -73,6 +73,6 @@ export function CollectNowPanel({
           </InnerPanel>
         ))}
       </div>
-    </OuterPanel>
+    </InnerPanel>
   );
 }
