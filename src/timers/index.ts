@@ -38,6 +38,12 @@ export {
   statusOf,
 } from "./types.ts";
 export { aggregateTimers } from "./aggregate.ts";
+export {
+  collectReady,
+  upcomingWithin,
+  type FeedItem,
+  type CollectGroup,
+} from "./nowFeed.ts";
 
 export function extractAllTimers(
   state: GameState,

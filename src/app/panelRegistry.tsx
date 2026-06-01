@@ -6,7 +6,6 @@ import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import { ChoresPanel } from "../components/ChoresPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
-import { IdlePanel } from "../components/IdlePanel.tsx";
 import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
@@ -16,7 +15,6 @@ import {
   BOUNTIES_SECTION_ID,
   BUMPKIN_SECTION_ID,
   CHORES_SECTION_ID,
-  IDLE_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
@@ -52,50 +50,52 @@ export type PanelDescriptor = {
   render: () => ReactNode;
 };
 
-export const TIMERS_PAGE_KEY = "timers";
-export const INFO_PAGE_KEY = "info";
+// Persisted-arrangement keys, one per arrangeable page. Bespoke pages
+// (Now, Digging) have no arrangeable flow and so no key.
+export const PRODUCING_PAGE_KEY = "producing";
+export const QUESTS_PAGE_KEY = "quests";
+export const FARM_PAGE_KEY = "farm";
 
 export const INSTALL_PANEL_ID = "panel-install";
 export const DELIVERIES_PANEL_ID = "panel-deliveries";
 
-type TimersCtx = {
+type ProducingCtx = {
   data: FarmResponse;
   byCategory: Map<string, AggregatedTimer[]>;
   visibleCategories: Category[];
   now: number;
 };
 
-type InfoCtx = {
+type QuestsCtx = {
   data: FarmResponse;
   now: number;
 };
 
-// Default source order for /timers: pinned Install → Idle → one section
-// per visible category (already gated upstream in App). The Ready / Next
-// up banners are NOT here — they live full-width above the column flow
-// and aren't part of the arrangeable grid.
-export function buildTimersPanels(ctx: TimersCtx): PanelDescriptor[] {
-  const panels: PanelDescriptor[] = [
-    {
-      id: INSTALL_PANEL_ID,
-      label: "Install app",
-      icon: CHROME_ICONS.scroll,
-      pinned: true,
-      render: () => <InstallPromptPanel farmId={ctx.data.id} />,
-    },
-    {
-      id: IDLE_SECTION_ID,
-      label: "Idle",
-      icon: CHROME_ICONS.sleep,
-      render: () => (
-        <IdlePanel
-          state={ctx.data.farm}
-          byCategory={ctx.byCategory}
-          now={ctx.now}
-        />
-      ),
-    },
-  ];
+type FarmCtx = {
+  data: FarmResponse;
+  now: number;
+};
+
+// The pinned PWA install nudge — first panel on every arrangeable page,
+// so it stays out of the reorder/hide set. Self-hides once dismissed or
+// installed (its `view.kind === "hidden"`), so the instances stay in
+// sync across pages.
+function installPanel(data: FarmResponse): PanelDescriptor {
+  return {
+    id: INSTALL_PANEL_ID,
+    label: "Install app",
+    icon: CHROME_ICONS.scroll,
+    pinned: true,
+    render: () => <InstallPromptPanel farmId={data.id} />,
+  };
+}
+
+// Default source order for /producing: pinned Install → one section per
+// visible category (already gated upstream in App). Ready-now aggregation
+// + the next-4h timeline live on the Now page, not here, so this page is
+// purely "what's mid-timer".
+export function buildProducingPanels(ctx: ProducingCtx): PanelDescriptor[] {
+  const panels: PanelDescriptor[] = [installPanel(ctx.data)];
   for (const cat of ctx.visibleCategories) {
     panels.push({
       id: sectionId(cat),
@@ -113,29 +113,12 @@ export function buildTimersPanels(ctx: TimersCtx): PanelDescriptor[] {
   return panels;
 }
 
-// Default source order for /info. Mirrors FarmInfoPage's historical JSX
-// order so a player who never opens the Arrange sheet sees no change.
-export function buildInfoPanels(ctx: InfoCtx): PanelDescriptor[] {
+// Default source order for /quests: everything you owe an NPC —
+// Deliveries (3 currency cards as one group), Chores, Bounties, Animal
+// Bounties.
+export function buildQuestsPanels(ctx: QuestsCtx): PanelDescriptor[] {
   return [
-    {
-      id: INSTALL_PANEL_ID,
-      label: "Install app",
-      icon: CHROME_ICONS.scroll,
-      pinned: true,
-      render: () => <InstallPromptPanel farmId={ctx.data.id} />,
-    },
-    {
-      id: BUMPKIN_SECTION_ID,
-      label: "Bumpkin",
-      icon: CHROME_ICONS.player,
-      render: () => <BumpkinSummaryPanel data={ctx.data} />,
-    },
-    {
-      id: VILLAGE_PROJECTS_SECTION_ID,
-      label: "Village Projects",
-      icon: CHROME_ICONS.cheer,
-      render: () => <VillageProjectsPanel state={ctx.data.farm} />,
-    },
+    installPanel(ctx.data),
     {
       id: DELIVERIES_PANEL_ID,
       label: "Deliveries",
@@ -159,6 +142,26 @@ export function buildInfoPanels(ctx: InfoCtx): PanelDescriptor[] {
       label: "Animal Bounties",
       icon: getItemIcon("Cow"),
       render: () => <AnimalBountiesPanel state={ctx.data.farm} now={ctx.now} />,
+    },
+  ];
+}
+
+// Default source order for /farm: your identity and standing —
+// Bumpkin, Village Projects, Love Island Shop, Pet Cravings, Pets.
+export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
+  return [
+    installPanel(ctx.data),
+    {
+      id: BUMPKIN_SECTION_ID,
+      label: "Bumpkin",
+      icon: CHROME_ICONS.player,
+      render: () => <BumpkinSummaryPanel data={ctx.data} />,
+    },
+    {
+      id: VILLAGE_PROJECTS_SECTION_ID,
+      label: "Village Projects",
+      icon: CHROME_ICONS.cheer,
+      render: () => <VillageProjectsPanel state={ctx.data.farm} />,
     },
     {
       id: LOVE_ISLAND_SHOP_SECTION_ID,
