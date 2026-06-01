@@ -285,7 +285,8 @@ export function DiggingBoardPanel({ solved, farmId }: Props) {
             <Label type="danger">{tally.empty} safe-empty</Label>
             {tally.crabPredicted > 0 ? (
               <Label type="default" icon={getItemIcon("Crab")}>
-                {tally.crabPredicted} crabs
+                {tally.crabPredicted}{" "}
+                {tally.crabPredicted === 1 ? "crab" : "crabs"}
               </Label>
             ) : null}
             <span className="opacity-70">Tap a tile to see why.</span>
