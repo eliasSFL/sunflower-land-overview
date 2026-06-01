@@ -170,4 +170,43 @@ describe("markCrabs", () => {
     const solved = markCrabs(base);
     expect(cellAt(solved, 1, 6).status).toBe("crab");
   });
+
+  it("marks a formation-excluded tile beside a treasure as a crab", () => {
+    // (4,1) borders the treasure at (4,0) but has no bordering Sand, so the
+    // sand pass leaves it "unknown". When the formation enumeration proves it
+    // can't host a treasure, it must be a crab.
+    const base = solveDiggingGrid([hole(4, 0, "Camel Bone")]);
+    expect(cellAt(base, 4, 1).status).toBe("unknown");
+    // Without the exclusion set it stays unknown — we never guess.
+    expect(cellAt(markCrabs(base), 4, 1).status).toBe("unknown");
+
+    const excluded = new Set([1 * DIG_GRID + 4]); // key(4,1)
+    const solved = markCrabs(base, excluded);
+    expect(cellAt(solved, 4, 1).status).toBe("crab");
+    expect(solved.tally.crabPredicted).toBe(1);
+  });
+
+  it("only marks excluded tiles that actually border a treasure", () => {
+    // (4,1) is excluded but borders no treasure (nothing revealed) → left as
+    // it is. Excluded alone is "not a treasure", not "is a crab".
+    const base = solveDiggingGrid([]);
+    const solved = markCrabs(base, new Set([1 * DIG_GRID + 4]));
+    expect(cellAt(solved, 4, 1).status).toBe("unknown");
+    expect(solved.tally.crabPredicted).toBe(0);
+  });
+
+  it("converts a 'possible' tile and drops it from the possible count", () => {
+    // (5,4) borders the treasure at (5,5) and a crab at (5,3) (so it's
+    // "possible"). Excluding it as a treasure makes it a definite crab.
+    const base = solveDiggingGrid([
+      hole(5, 5, "Camel Bone"),
+      hole(5, 3, "Crab"),
+    ]);
+    expect(cellAt(base, 5, 4).status).toBe("possible");
+
+    const solved = markCrabs(base, new Set([4 * DIG_GRID + 5])); // key(5,4)
+    expect(cellAt(solved, 5, 4).status).toBe("crab");
+    expect(solved.tally.crabPredicted).toBe(1);
+    expect(solved.tally.possible).toBe(base.tally.possible - 1);
+  });
 });

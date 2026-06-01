@@ -46,7 +46,7 @@ function explain(cell: DiggingCell): string {
     case "empty":
       return "No treasure here — a sand clue borders this tile.";
     case "crab":
-      return "It's a crab — no treasure (a sand borders it), but it sits next to one, so digging here turns up a crab.";
+      return "It's a crab — it can't hide a treasure, yet it borders one, so digging here turns up a crab.";
     case "possible":
       return "Possible treasure — a crab borders this tile.";
     default:

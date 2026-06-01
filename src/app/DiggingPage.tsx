@@ -41,15 +41,21 @@ export function DiggingPage({
     () => resolveFormations(state, artefact),
     [state, artefact],
   );
+  const deduction = useMemo(
+    () => solveFormations(solved.cells, formations),
+    [solved, formations],
+  );
   // Third pass: with every proven treasure (revealed + formation-forced) on
-  // the board, mark the provably-empty tiles beside one — they'll reveal a
-  // crab, never a treasure.
+  // the board, mark the treasure-free tiles beside one — they'll reveal a
+  // crab, never a treasure. Treasure-free means a bordering Sand or a tile the
+  // formation enumeration proved can't host a treasure.
   const board = useMemo(
     () =>
       markCrabs(
-        applyForcedTiles(solved, solveFormations(solved.cells, formations)),
+        applyForcedTiles(solved, deduction.forced),
+        deduction.excludedTreasure,
       ),
-    [solved, formations],
+    [solved, deduction],
   );
 
   return (

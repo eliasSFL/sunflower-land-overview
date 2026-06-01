@@ -26,7 +26,7 @@ const ROWS: LegendRow[] = [
   {
     status: "crab",
     title: "Crab here",
-    desc: "No treasure (a sand borders it) but it's next to one — so it'll dig up a crab.",
+    desc: "Can't hide a treasure but it's next to one — so it'll dig up a crab.",
     sprite: getItemIcon("Crab"),
   },
   {
