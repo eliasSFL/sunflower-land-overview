@@ -16,6 +16,7 @@ export type DiggingStatus =
   | "empty" // a Sand borders it → provably no treasure (red)
   | "possible" // a Crab borders it → might hide treasure (yellow)
   | "guaranteed" // the only tile that can satisfy a Crab → certain dig (green)
+  | "crab" // provably no treasure, yet borders one → must reveal a Crab
   // Dug tiles:
   | "treasure" // a treasure already dug up (green)
   | "clue-sand" // revealed Sand indicator
@@ -44,6 +45,8 @@ export type DiggingTally = {
   dug: number;
   crabs: number;
   sand: number;
+  // Undug tiles the crab pass proved will reveal a Crab (see markCrabs).
+  crabPredicted: number;
 };
 
 export type SolvedBoard = {
@@ -184,6 +187,7 @@ export function solveDiggingGrid(
     dug: 0,
     crabs: 0,
     sand: 0,
+    crabPredicted: 0,
   };
   for (let y = 0; y < DIG_GRID; y++) {
     for (let x = 0; x < DIG_GRID; x++) {
@@ -197,5 +201,50 @@ export function solveDiggingGrid(
     }
   }
 
+  return { cells, tally };
+}
+
+// Predict crab positions. The dig mechanic hands a Crab to every tile that
+// isn't a treasure but has at least one treasure on its 4 sides (Sand is the
+// opposite — zero adjacent treasures). So an undug tile that is *already*
+// proven treasure-free (status "empty" — a Sand borders it) yet sits next to
+// a *proven* treasure can only reveal a Crab when dug. This is the sound,
+// provable half of "next to a treasure is a crab, unless it's another
+// treasure": neighbours we can't yet rule out as treasure (status "possible"
+// / "unknown") are left untouched, since formations allow treasures to sit
+// side by side (e.g. the 2×2 Old Bottle).
+//
+// A "proven treasure" neighbour is a revealed treasure (`kind === "treasure"`)
+// or an undug tile the earlier passes already forced (`status === "guaranteed"`
+// — either crab-satisfaction or a formation-forced tile). So this must run
+// last, after `solveDiggingGrid` and `applyForcedTiles`. Pure, like the rest.
+export function markCrabs(solved: SolvedBoard): SolvedBoard {
+  const cells = solved.cells.map((row) => row.slice());
+  let changed = false;
+  for (let y = 0; y < DIG_GRID; y++) {
+    for (let x = 0; x < DIG_GRID; x++) {
+      const cell = cells[y][x];
+      if (cell.status !== "empty") continue;
+      const bordersTreasure = neighbours(x, y).some(([nx, ny]) => {
+        const n = cells[ny][nx];
+        return n.kind === "treasure" || n.status === "guaranteed";
+      });
+      if (bordersTreasure) {
+        cells[y][x] = { ...cell, status: "crab" };
+        changed = true;
+      }
+    }
+  }
+  if (!changed) return solved;
+
+  // Recompute the two counts the relabel can move; the rest are untouched.
+  const tally = { ...solved.tally, empty: 0, crabPredicted: 0 };
+  for (let y = 0; y < DIG_GRID; y++) {
+    for (let x = 0; x < DIG_GRID; x++) {
+      const s = cells[y][x].status;
+      if (s === "empty") tally.empty++;
+      else if (s === "crab") tally.crabPredicted++;
+    }
+  }
   return { cells, tally };
 }

@@ -24,6 +24,12 @@ const ROWS: LegendRow[] = [
     desc: "A crab borders it — treasure may be in one of the crab's directions.",
   },
   {
+    status: "crab",
+    title: "Crab here",
+    desc: "No treasure (a sand borders it) but it's next to one — so it'll dig up a crab.",
+    sprite: getItemIcon("Crab"),
+  },
+  {
     status: "guaranteed",
     title: "Dig here",
     desc: "The only spot left that can satisfy a crab. A certain treasure.",

@@ -11,7 +11,7 @@ import {
   solveFormations,
   applyForcedTiles,
 } from "../digging/formationSolver.ts";
-import { solveDiggingGrid } from "../digging/solver.ts";
+import { solveDiggingGrid, markCrabs } from "../digging/solver.ts";
 import "../digging/digging.css";
 
 // Page body of the /digging route — Digby's dig site. A read-only mirror
@@ -41,8 +41,14 @@ export function DiggingPage({
     () => resolveFormations(state, artefact),
     [state, artefact],
   );
+  // Third pass: with every proven treasure (revealed + formation-forced) on
+  // the board, mark the provably-empty tiles beside one — they'll reveal a
+  // crab, never a treasure.
   const board = useMemo(
-    () => applyForcedTiles(solved, solveFormations(solved.cells, formations)),
+    () =>
+      markCrabs(
+        applyForcedTiles(solved, solveFormations(solved.cells, formations)),
+      ),
     [solved, formations],
   );
 
