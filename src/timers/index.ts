@@ -41,6 +41,7 @@ export { aggregateTimers } from "./aggregate.ts";
 export {
   collectReady,
   upcomingWithin,
+  upcomingGrouped,
   type FeedItem,
   type CollectGroup,
 } from "./nowFeed.ts";

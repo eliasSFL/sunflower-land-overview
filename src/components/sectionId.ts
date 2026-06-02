@@ -13,9 +13,9 @@ export function sectionId(category: Category): string {
 // stamp it on the panel root, and include it in App's nav list.
 export const BUMPKIN_SECTION_ID = "section-bumpkin";
 // Now page anchors: the global "ready to collect" roll-up and the
-// next-4h timeline.
+// next-4h "next up" roll-up.
 export const COLLECT_SECTION_ID = "section-collect";
-export const TIMELINE_SECTION_ID = "section-timeline";
+export const NEXT_UP_SECTION_ID = "section-next-up";
 export const IDLE_SECTION_ID = "section-idle";
 export const DELIVERIES_COINS_SECTION_ID = "section-deliveries-coins";
 export const DELIVERIES_FLOWER_SECTION_ID = "section-deliveries-flower";

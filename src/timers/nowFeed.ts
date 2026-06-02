@@ -50,18 +50,14 @@ export type CollectGroup = {
   items: FeedItem[];
 };
 
-// Everything ready *right now*, grouped by category in CATEGORY_ORDER
-// (the input `timers` are already in that order, so first-seen wins).
-// `total` is the flat count across all groups — the hero headline.
-export function collectReady(
-  timers: AggregatedTimer[],
-  now: number,
-): { groups: CollectGroup[]; total: number } {
+// Bucket an already-ordered FeedItem list into per-category groups,
+// preserving order: groups appear in first-seen order, items stay in
+// the order they arrive. Shared by the Collect-now and Next-up roll-ups
+// so both produce identically-shaped output.
+function groupByCategory(items: FeedItem[]): CollectGroup[] {
   const groups: CollectGroup[] = [];
   const byCategory = new Map<string, CollectGroup>();
-  let total = 0;
-  for (const item of flatten(timers)) {
-    if (item.readyAt > now) continue;
+  for (const item of items) {
     let group = byCategory.get(item.category);
     if (!group) {
       group = { category: item.category, items: [] };
@@ -69,13 +65,23 @@ export function collectReady(
       groups.push(group);
     }
     group.items.push(item);
-    total += 1;
   }
-  return { groups, total };
+  return groups;
+}
+
+// Everything ready *right now*, grouped by category in CATEGORY_ORDER
+// (the input `timers` are already in that order, so first-seen wins).
+// `total` is the flat count across all groups — the hero headline.
+export function collectReady(
+  timers: AggregatedTimer[],
+  now: number,
+): { groups: CollectGroup[]; total: number } {
+  const items = flatten(timers).filter((i) => i.readyAt <= now);
+  return { groups: groupByCategory(items), total: items.length };
 }
 
 // Items coming ready within `windowMs` of now (exclusive of already-ready),
-// sorted soonest-first — the dots on the timeline.
+// sorted soonest-first.
 export function upcomingWithin(
   timers: AggregatedTimer[],
   now: number,
@@ -84,4 +90,18 @@ export function upcomingWithin(
   return flatten(timers)
     .filter((i) => i.readyAt > now && i.readyAt - now <= windowMs)
     .sort((a, b) => a.readyAt - b.readyAt);
+}
+
+// Same upcoming-within-window items as `upcomingWithin`, but grouped by
+// category for the Next-up roll-up (the Collect-now layout applied to
+// "what's about to land"). Items stay soonest-first within each group,
+// and groups appear in order of their soonest item (first-seen wins,
+// and the input is already sorted). `total` is the flat count.
+export function upcomingGrouped(
+  timers: AggregatedTimer[],
+  now: number,
+  windowMs: number,
+): { groups: CollectGroup[]; total: number } {
+  const items = upcomingWithin(timers, now, windowMs);
+  return { groups: groupByCategory(items), total: items.length };
 }
