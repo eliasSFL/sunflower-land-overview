@@ -1,7 +1,7 @@
 import type { AggregatedTimer } from "../timers/index.ts";
 import { CollectNowPanel } from "../components/CollectNowPanel.tsx";
 import { IdlePanel } from "../components/IdlePanel.tsx";
-import { NowTimelinePanel } from "../components/NowTimelinePanel.tsx";
+import { NextUpPanel } from "../components/NextUpPanel.tsx";
 import type { FarmResponse } from "../api/fetchFarm.ts";
 
 // Page body of the /now route — the "what should I do right now?" view.
@@ -9,8 +9,9 @@ import type { FarmResponse } from "../api/fetchFarm.ts";
 //
 // 1. Collect now — every ready item across the whole farm, grouped by
 //    where it lives. The single most-used answer: "what can I grab?"
-// 2. Next 4 hours — a horizontal timeline of what's about to land, so a
-//    wave of ripening reads as a shape, not a scroll.
+// 2. Next up — what's about to land in the next 4 hours, grouped by
+//    where it lives (same layout as Collect now), each row tagged with
+//    its time-until-ready.
 // 3. Idle — buildings/plots sitting empty (wasted capacity), the most
 //    actionable "you could be doing this" nudge.
 //
@@ -30,7 +31,7 @@ export function NowPage({
   return (
     <div className="flex flex-col gap-2">
       <CollectNowPanel timers={timers} now={now} />
-      <NowTimelinePanel timers={timers} now={now} />
+      <NextUpPanel timers={timers} now={now} />
       <IdlePanel state={data.farm} byCategory={byCategory} now={now} />
     </div>
   );
