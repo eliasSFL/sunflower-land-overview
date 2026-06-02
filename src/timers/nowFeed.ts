@@ -50,18 +50,14 @@ export type CollectGroup = {
   items: FeedItem[];
 };
 
-// Everything ready *right now*, grouped by category in CATEGORY_ORDER
-// (the input `timers` are already in that order, so first-seen wins).
-// `total` is the flat count across all groups — the hero headline.
-export function collectReady(
-  timers: AggregatedTimer[],
-  now: number,
-): { groups: CollectGroup[]; total: number } {
+// Bucket an already-ordered FeedItem list into per-category groups,
+// preserving order: groups appear in first-seen order, items stay in
+// the order they arrive. Shared by the Collect-now and Next-up roll-ups
+// so both produce identically-shaped output.
+function groupByCategory(items: FeedItem[]): CollectGroup[] {
   const groups: CollectGroup[] = [];
   const byCategory = new Map<string, CollectGroup>();
-  let total = 0;
-  for (const item of flatten(timers)) {
-    if (item.readyAt > now) continue;
+  for (const item of items) {
     let group = byCategory.get(item.category);
     if (!group) {
       group = { category: item.category, items: [] };
@@ -69,9 +65,19 @@ export function collectReady(
       groups.push(group);
     }
     group.items.push(item);
-    total += 1;
   }
-  return { groups, total };
+  return groups;
+}
+
+// Everything ready *right now*, grouped by category in CATEGORY_ORDER
+// (the input `timers` are already in that order, so first-seen wins).
+// `total` is the flat count across all groups — the hero headline.
+export function collectReady(
+  timers: AggregatedTimer[],
+  now: number,
+): { groups: CollectGroup[]; total: number } {
+  const items = flatten(timers).filter((i) => i.readyAt <= now);
+  return { groups: groupByCategory(items), total: items.length };
 }
 
 // Items coming ready within `windowMs` of now (exclusive of already-ready),
@@ -97,16 +103,5 @@ export function upcomingGrouped(
   windowMs: number,
 ): { groups: CollectGroup[]; total: number } {
   const items = upcomingWithin(timers, now, windowMs);
-  const groups: CollectGroup[] = [];
-  const byCategory = new Map<string, CollectGroup>();
-  for (const item of items) {
-    let group = byCategory.get(item.category);
-    if (!group) {
-      group = { category: item.category, items: [] };
-      byCategory.set(item.category, group);
-      groups.push(group);
-    }
-    group.items.push(item);
-  }
-  return { groups, total: items.length };
+  return { groups: groupByCategory(items), total: items.length };
 }
