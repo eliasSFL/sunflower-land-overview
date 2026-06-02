@@ -104,10 +104,12 @@
 .dig-cell.is-crab {
   --col: #83769c;
 }
-/* Predicted sand — provably no treasure and beside none. A muted taupe: the
-   same "skip, not a dig target" family as the crab, tinted toward sand. */
+/* Predicted sand — provably no treasure and beside none. Shares the red
+   "no treasure" colour with the empty tiles (it is one); the ghosted Sand
+   sprite is what sets it apart, and a taupe ring would blend into the dug
+   sand anyway. */
 .dig-cell.is-sand {
-  --col: #a08458;
+  --col: #e43b44;
 }
 .dig-cell.is-guaranteed {
   --col: #3e8948;
