@@ -47,6 +47,8 @@ function explain(cell: DiggingCell): string {
       return "No treasure here — a sand clue borders this tile.";
     case "crab":
       return "It's a crab — it can't hide a treasure, yet it borders one, so digging here turns up a crab.";
+    case "sand":
+      return "It's sand — proven treasure-free, and no treasure can border it, so digging here turns up sand.";
     case "possible":
       return "Possible treasure — a crab borders this tile.";
     default:
@@ -144,6 +146,13 @@ function DiggingTile({
           className="dig-cell-sprite dig-cell-predicted"
           src={getItemIcon("Crab")}
           alt="Crab (predicted)"
+        />
+      ) : cell.status === "sand" ? (
+        // Sand-proven tile: a ghosted sand sprite, same predicted treatment.
+        <img
+          className="dig-cell-sprite dig-cell-predicted"
+          src={getItemIcon("Sand")}
+          alt="Sand (predicted)"
         />
       ) : null}
       {/* The shovel marker is only for crab-proven digs; a predicted tile
@@ -287,6 +296,11 @@ export function DiggingBoardPanel({ solved, farmId }: Props) {
               <Label type="default" icon={getItemIcon("Crab")}>
                 {tally.crabPredicted}{" "}
                 {tally.crabPredicted === 1 ? "crab" : "crabs"}
+              </Label>
+            ) : null}
+            {tally.sandPredicted > 0 ? (
+              <Label type="default" icon={getItemIcon("Sand")}>
+                {tally.sandPredicted} sand
               </Label>
             ) : null}
             <span className="opacity-70">Tap a tile to see why.</span>

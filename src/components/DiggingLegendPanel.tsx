@@ -30,6 +30,12 @@ const ROWS: LegendRow[] = [
     sprite: getItemIcon("Crab"),
   },
   {
+    status: "sand",
+    title: "Sand here",
+    desc: "Can't hide a treasure and none borders it — so it'll dig up sand.",
+    sprite: getItemIcon("Sand"),
+  },
+  {
     status: "guaranteed",
     title: "Dig here",
     desc: "The only spot left that can satisfy a crab. A certain treasure.",

@@ -235,5 +235,6 @@ function emptyTally() {
     crabs: 0,
     sand: 0,
     crabPredicted: 0,
+    sandPredicted: 0,
   };
 }

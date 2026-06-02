@@ -4,7 +4,7 @@ import type { DugHole, InventoryItemName } from "../game/index.ts";
 import {
   DIG_GRID,
   buildHoleGrid,
-  markCrabs,
+  markPredictions,
   solveDiggingGrid,
   type DiggingCell,
 } from "./solver.ts";
@@ -115,7 +115,7 @@ describe("solveDiggingGrid", () => {
   });
 });
 
-describe("markCrabs", () => {
+describe("markPredictions", () => {
   it("marks an empty tile that borders a revealed treasure as a crab", () => {
     // (4,1) is empty (the Sand at (4,2) clears it) AND borders the treasure
     // at (4,0) — so it can only reveal a crab when dug.
@@ -125,7 +125,7 @@ describe("markCrabs", () => {
     ]);
     expect(cellAt(base, 4, 1).status).toBe("empty");
 
-    const solved = markCrabs(base);
+    const solved = markPredictions(base);
     expect(cellAt(solved, 4, 1).status).toBe("crab");
     expect(solved.tally.crabPredicted).toBe(1);
     // The relabel moves the tile out of the empty count.
@@ -135,7 +135,7 @@ describe("markCrabs", () => {
   it("leaves empty tiles with no treasure neighbour untouched", () => {
     // A lone Sand clears its 4 neighbours, but none borders a treasure.
     const base = solveDiggingGrid([hole(1, 1, "Sand")]);
-    const solved = markCrabs(base);
+    const solved = markPredictions(base);
     expect(solved.tally.crabPredicted).toBe(0);
     expect(cellAt(solved, 1, 0).status).toBe("empty");
     // Nothing changed — same board reference is returned.
@@ -151,7 +151,7 @@ describe("markCrabs", () => {
       hole(5, 3, "Crab"), // makes (5,4) "possible"
     ]);
     expect(cellAt(base, 5, 4).status).toBe("possible");
-    const solved = markCrabs(base);
+    const solved = markPredictions(base);
     expect(cellAt(solved, 5, 4).status).toBe("possible");
   });
 
@@ -167,7 +167,7 @@ describe("markCrabs", () => {
     expect(cellAt(base, 0, 6).status).toBe("guaranteed");
     expect(cellAt(base, 1, 6).status).toBe("empty");
 
-    const solved = markCrabs(base);
+    const solved = markPredictions(base);
     expect(cellAt(solved, 1, 6).status).toBe("crab");
   });
 
@@ -178,10 +178,10 @@ describe("markCrabs", () => {
     const base = solveDiggingGrid([hole(4, 0, "Camel Bone")]);
     expect(cellAt(base, 4, 1).status).toBe("unknown");
     // Without the exclusion set it stays unknown — we never guess.
-    expect(cellAt(markCrabs(base), 4, 1).status).toBe("unknown");
+    expect(cellAt(markPredictions(base), 4, 1).status).toBe("unknown");
 
     const excluded = new Set([1 * DIG_GRID + 4]); // key(4,1)
-    const solved = markCrabs(base, excluded);
+    const solved = markPredictions(base, excluded);
     expect(cellAt(solved, 4, 1).status).toBe("crab");
     expect(solved.tally.crabPredicted).toBe(1);
   });
@@ -190,7 +190,7 @@ describe("markCrabs", () => {
     // (4,1) is excluded but borders no treasure (nothing revealed) → left as
     // it is. Excluded alone is "not a treasure", not "is a crab".
     const base = solveDiggingGrid([]);
-    const solved = markCrabs(base, new Set([1 * DIG_GRID + 4]));
+    const solved = markPredictions(base, new Set([1 * DIG_GRID + 4]));
     expect(cellAt(solved, 4, 1).status).toBe("unknown");
     expect(solved.tally.crabPredicted).toBe(0);
   });
@@ -204,9 +204,47 @@ describe("markCrabs", () => {
     ]);
     expect(cellAt(base, 5, 4).status).toBe("possible");
 
-    const solved = markCrabs(base, new Set([4 * DIG_GRID + 5])); // key(5,4)
+    const solved = markPredictions(base, new Set([4 * DIG_GRID + 5])); // key(5,4)
     expect(cellAt(solved, 5, 4).status).toBe("crab");
     expect(solved.tally.crabPredicted).toBe(1);
     expect(solved.tally.possible).toBe(base.tally.possible - 1);
+  });
+
+  it("predicts sand on an excluded tile whose neighbours can't hold treasure", () => {
+    // The corner (0,0) and both its neighbours are formation-excluded, so no
+    // treasure can ever border it → it can only reveal sand.
+    const base = solveDiggingGrid([]);
+    const excluded = new Set([
+      0 * DIG_GRID + 0, // (0,0)
+      0 * DIG_GRID + 1, // (1,0)
+      1 * DIG_GRID + 0, // (0,1)
+    ]);
+    const solved = markPredictions(base, excluded);
+    expect(cellAt(solved, 0, 0).status).toBe("sand");
+    expect(solved.tally.sandPredicted).toBe(1);
+    // (1,0)/(0,1) each still border an open unknown, so they stay undetermined.
+    expect(cellAt(solved, 1, 0).status).toBe("unknown");
+  });
+
+  it("upgrades a sand-bordered empty tile to predicted sand when fully boxed in", () => {
+    // The corner (0,0) is empty (the Sands at (1,0)/(0,1) clear it) and its
+    // only two neighbours are those revealed Sands — no treasure can border it.
+    const base = solveDiggingGrid([hole(1, 0, "Sand"), hole(0, 1, "Sand")]);
+    expect(cellAt(base, 0, 0).status).toBe("empty");
+
+    const solved = markPredictions(base);
+    expect(cellAt(solved, 0, 0).status).toBe("sand");
+    expect(solved.tally.sandPredicted).toBe(1);
+    // The relabel moves the tile out of the empty count.
+    expect(solved.tally.empty).toBe(base.tally.empty - 1);
+  });
+
+  it("does not predict sand while a neighbour could still be a treasure", () => {
+    // (0,0) is excluded, but its neighbour (1,0) is an open unknown that a
+    // formation could still fill — so crab-vs-sand stays undetermined.
+    const base = solveDiggingGrid([]);
+    const solved = markPredictions(base, new Set([0 * DIG_GRID + 0])); // key(0,0)
+    expect(cellAt(solved, 0, 0).status).toBe("unknown");
+    expect(solved.tally.sandPredicted).toBe(0);
   });
 });

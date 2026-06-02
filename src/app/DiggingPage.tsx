@@ -11,7 +11,7 @@ import {
   solveFormations,
   applyForcedTiles,
 } from "../digging/formationSolver.ts";
-import { solveDiggingGrid, markCrabs } from "../digging/solver.ts";
+import { solveDiggingGrid, markPredictions } from "../digging/solver.ts";
 import "../digging/digging.css";
 
 // Page body of the /digging route — Digby's dig site. A read-only mirror
@@ -46,12 +46,13 @@ export function DiggingPage({
     [solved, formations],
   );
   // Third pass: with every proven treasure (revealed + formation-forced) on
-  // the board, mark the treasure-free tiles beside one — they'll reveal a
-  // crab, never a treasure. Treasure-free means a bordering Sand or a tile the
-  // formation enumeration proved can't host a treasure.
+  // the board, name what each treasure-free tile will dig up — a Crab beside a
+  // proven treasure, a Sand when no treasure can border it. Treasure-free means
+  // a bordering Sand or a tile the formation enumeration proved can't host a
+  // treasure.
   const board = useMemo(
     () =>
-      markCrabs(
+      markPredictions(
         applyForcedTiles(solved, deduction.forced),
         deduction.excludedTreasure,
       ),
