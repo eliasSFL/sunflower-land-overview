@@ -99,6 +99,13 @@ export function extractSaltTimers(
         : undefined,
       boosts: yieldBoosts,
       subtext: `${storedCharges}/${maxCharges} charges`,
+      // Notifications go through the worker's ready digest, not a
+      // per-node alarm: a maxed node stamps `readyAt = now`, which churns
+      // the alarm fire key every sweep (re-firing every ~10 min), and six
+      // nodes would otherwise fan out to six pushes. `ready` = has at
+      // least one charge to rake right now; the digest groups all ready
+      // nodes into one "N salt nodes ready" push and dedups until raked.
+      notifyDigest: { ready: hasCharges, group: "Salt", noun: "salt node" },
       // Each node = own card; matches the beehive pattern.
       aggregationKey: `Salt|${nodeId}`,
       nodeLabel: NODE_LABEL.Salt,

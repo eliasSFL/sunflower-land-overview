@@ -8,6 +8,7 @@ import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
 import { detectCompletedProjects } from "../src/notifications/villageProjects.ts";
 import { clusterReadyAts } from "../src/timers/cluster.ts";
+import { planReadyDigest, type DigestMember } from "./readyDigest.ts";
 import type { AggregatedTimer } from "../src/timers/types.ts";
 import type {
   Env,
@@ -226,6 +227,22 @@ type State = {
   // Guards against at-least-once alarm retries within the OS's tag
   // dedup window. GC'd inline in fireTimer.
   notified: Record<string, number>;
+  // Stable dedup for the ready digest (worker/readyDigest.ts). Keyed by a
+  // state-based collectable's `aggregationKey` (salt node / beehive) →
+  // the wall-clock time we last notified it was ready. An entry survives
+  // only while the item stays ready; it's dropped once the item leaves
+  // the ready set (collected / refilling), so the next fill re-notifies.
+  // Distinct from `notified` (which is per-fire and embeds readyAt) — a
+  // sitting-ready item must NOT get a fresh key every sweep.
+  readyDigest?: Record<string, number>;
+  // Whether the last full extraction produced any digest-eligible timers
+  // (beehives / salt nodes). Their readiness advances with wall-clock time
+  // even when the farm hasn't saved, so the `updatedAt` short-circuit
+  // below must NOT skip re-extraction for these farms — otherwise an
+  // offline player's hive that fills between saves would never notify.
+  // `undefined` on DOs from before this field: the short-circuit applies
+  // as before until the next real save triggers a full extraction.
+  hasDigestContent?: boolean;
   // Last time this DO observed any activity. Optional because DOs
   // deployed before this field existed will hot-load without it;
   // `handleOnSnapshot` falls back to `snapshot.fetchedAt` and grants
@@ -256,6 +273,7 @@ export class FarmPushDO extends Agent<Env, State> {
     subscriptions: [],
     scheduled: {},
     notified: {},
+    readyDigest: {},
   };
 
   async onRequest(request: Request): Promise<Response> {
@@ -786,11 +804,18 @@ export class FarmPushDO extends Agent<Env, State> {
     // work and just bump `fetchedAt` so `/push/state` still serves
     // the snapshot to callers who haven't seen this version yet.
     //
-    // Skip the short-circuit on the subscribe path so seeding always
-    // gets a chance to populate `notified` for currently-ready items.
+    // Two exceptions force a full re-extraction even when `updatedAt`
+    // matches:
+    //   * the subscribe path (`seedAlreadyReady`), so seeding always
+    //     gets a chance to populate `notified` for currently-ready items;
+    //   * farms with digest content (beehives / salt), whose readiness is
+    //     driven by wall-clock time rather than a save — skipping them
+    //     here would silence an offline player's hive until their next
+    //     save (see `hasDigestContent`).
     const upstreamUpdatedAt = raw.updatedAt;
     if (
       !seedAlreadyReady &&
+      !this.state.hasDigestContent &&
       upstreamUpdatedAt !== undefined &&
       upstreamUpdatedAt === this.state.snapshotUpdatedAt
     ) {
@@ -827,7 +852,26 @@ export class FarmPushDO extends Agent<Env, State> {
     const notified = { ...(this.state.notified ?? {}) };
     let seededCount = 0;
 
+    // State-based collectables (salt nodes, beehives) opt into the ready
+    // digest instead of the per-instance alarm path — collected here and
+    // planned below. Gathered before the `idle` skip so a paused hive
+    // (idle, not full) still clears any stale "was full" dedup entry.
+    const digestMembers: DigestMember[] = [];
+
     for (const t of aggregated) {
+      if (t.notifyDigest) {
+        digestMembers.push({
+          key: t.aggregationKey ?? t.id,
+          group: t.notifyDigest.group,
+          noun: t.notifyDigest.noun,
+          ready: t.notifyDigest.ready,
+          icon: t.icon,
+          category: t.category,
+          amount: t.predictedYield?.amount ?? 0,
+          item: t.predictedYield?.item,
+        });
+        continue;
+      }
       if (t.idle) continue;
       // Informational countdown cards (e.g. the Love Island live window)
       // render on the dashboard but opt out of push — the "{label}
@@ -939,6 +983,43 @@ export class FarmPushDO extends Agent<Env, State> {
       }
     }
 
+    // Plan the ready digest for state-based collectables. On the subscribe
+    // path (`seedAlreadyReady`) we only seed the dedup set so a backlog of
+    // full hives / maxed nodes doesn't blast a wall of pushes. Otherwise
+    // we fire ONE grouped push per group for members that became ready
+    // since the last snapshot. `nextSeen` carries forward only still-ready
+    // members, so a sitting-ready item is deduped until it's collected.
+    const { fires: digestFires, nextSeen } = planReadyDigest(
+      digestMembers,
+      this.state.readyDigest ?? {},
+      now,
+      { seedOnly: seedAlreadyReady },
+    );
+    for (const f of digestFires) {
+      try {
+        // Ride the same one-off `fireTimer` path as village projects
+        // (per-device targeting / mute / endpoint pruning). These aren't
+        // tracked in `scheduled` — they're transient and self-clear after
+        // firing — so they never count against MAX_SCHEDULED_PER_DO.
+        await this.schedule(1, "fireTimer", {
+          fireKey: f.fireKey,
+          readyAt: now,
+          title: f.title,
+          body: f.body,
+          icon: f.icon,
+          category: f.category,
+          count: f.count,
+        } satisfies FirePayload);
+      } catch {
+        // Schedule failure (e.g. transient storage error). Un-mark the
+        // members this fire would have announced so they aren't persisted
+        // as "seen" — otherwise they'd be treated as already-notified on
+        // every later sweep and stay silent while still ready. Dropping
+        // them from `nextSeen` lets the next sweep re-detect and retry.
+        for (const key of f.memberKeys) delete nextSeen[key];
+      }
+    }
+
     this.setState({
       ...this.state,
       farmId,
@@ -946,6 +1027,8 @@ export class FarmPushDO extends Agent<Env, State> {
       snapshotUpdatedAt: upstreamUpdatedAt,
       scheduled: nextScheduled,
       notified: seededCount > 0 ? notified : this.state.notified,
+      readyDigest: nextSeen,
+      hasDigestContent: digestMembers.length > 0,
       completedProjectsSeen: currentCompleted,
     });
   }
@@ -1005,6 +1088,7 @@ export class FarmPushDO extends Agent<Env, State> {
       subscriptions: [],
       scheduled: {},
       snapshotUpdatedAt: undefined,
+      readyDigest: {},
       completedProjectsSeen: undefined,
     });
     if (this.state.farmId !== null) {
