@@ -103,6 +103,15 @@ export function extractBeehiveTimers(
         idleText: "Paused",
         idleLabelType: "danger" as const,
       }),
+      // Notifications go through the worker's ready digest, not a per-hive
+      // alarm: a full hive stamps `readyAt = now`, which churns the alarm
+      // fire key every sweep (re-firing "Honey ready" every ~10 min), and
+      // each hive carries its own key so they'd fan out to one push each.
+      // `ready` = full (collectable now); the digest groups all full hives
+      // into one "N hives ready" push and dedups until collected. Paused /
+      // mid-production hives report `ready: false`, so they clear any
+      // prior dedup and re-notify once they fill.
+      notifyDigest: { ready: isFull, group: "Beehives", noun: "hive" },
       // Unique per hive — each beehive shows as its own card.
       aggregationKey: `Beehives|${hiveId}`,
       nodeLabel: NODE_LABEL.Honey,

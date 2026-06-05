@@ -198,6 +198,19 @@ export type Timer = {
   // changing these between code versions naturally reschedules.
   pushTitle?: string;
   pushBody?: string;
+  // Opt this timer out of the per-instance alarm push path and into the
+  // worker's "ready digest" instead (see worker/readyDigest.ts). Used by
+  // state-based collectables — salt nodes, beehives — whose "ready" is a
+  // sustained state rather than a discrete moment, and which each carry
+  // their own `aggregationKey` (one dashboard card per node) so the alarm
+  // path would fan out one push per node AND re-fire every sweep. The
+  // digest fires ONE grouped "{N} {noun}s ready" push per `group` and
+  // dedups by the stable aggregation key so a sitting-ready item notifies
+  // once until it's collected and comes back. `ready` is the extractor's
+  // "there's something to collect right now" signal (full hive / charges
+  // present); `readyAt` is still used for the dashboard countdown.
+  // Ignored by the dashboard UI.
+  notifyDigest?: { ready: boolean; group: string; noun: string };
   predictedYield?: { amount: number; item: TimerItemName };
   // When present, the card renders the slot list (one row per slot)
   // instead of a single yield headline. Used by cooking buildings where
