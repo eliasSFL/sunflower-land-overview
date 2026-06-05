@@ -235,6 +235,14 @@ type State = {
   // Distinct from `notified` (which is per-fire and embeds readyAt) — a
   // sitting-ready item must NOT get a fresh key every sweep.
   readyDigest?: Record<string, number>;
+  // Whether the last full extraction produced any digest-eligible timers
+  // (beehives / salt nodes). Their readiness advances with wall-clock time
+  // even when the farm hasn't saved, so the `updatedAt` short-circuit
+  // below must NOT skip re-extraction for these farms — otherwise an
+  // offline player's hive that fills between saves would never notify.
+  // `undefined` on DOs from before this field: the short-circuit applies
+  // as before until the next real save triggers a full extraction.
+  hasDigestContent?: boolean;
   // Last time this DO observed any activity. Optional because DOs
   // deployed before this field existed will hot-load without it;
   // `handleOnSnapshot` falls back to `snapshot.fetchedAt` and grants
@@ -796,11 +804,18 @@ export class FarmPushDO extends Agent<Env, State> {
     // work and just bump `fetchedAt` so `/push/state` still serves
     // the snapshot to callers who haven't seen this version yet.
     //
-    // Skip the short-circuit on the subscribe path so seeding always
-    // gets a chance to populate `notified` for currently-ready items.
+    // Two exceptions force a full re-extraction even when `updatedAt`
+    // matches:
+    //   * the subscribe path (`seedAlreadyReady`), so seeding always
+    //     gets a chance to populate `notified` for currently-ready items;
+    //   * farms with digest content (beehives / salt), whose readiness is
+    //     driven by wall-clock time rather than a save — skipping them
+    //     here would silence an offline player's hive until their next
+    //     save (see `hasDigestContent`).
     const upstreamUpdatedAt = raw.updatedAt;
     if (
       !seedAlreadyReady &&
+      !this.state.hasDigestContent &&
       upstreamUpdatedAt !== undefined &&
       upstreamUpdatedAt === this.state.snapshotUpdatedAt
     ) {
@@ -1013,6 +1028,7 @@ export class FarmPushDO extends Agent<Env, State> {
       scheduled: nextScheduled,
       notified: seededCount > 0 ? notified : this.state.notified,
       readyDigest: nextSeen,
+      hasDigestContent: digestMembers.length > 0,
       completedProjectsSeen: currentCompleted,
     });
   }
