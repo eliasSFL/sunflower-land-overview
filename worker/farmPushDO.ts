@@ -996,8 +996,12 @@ export class FarmPushDO extends Agent<Env, State> {
           count: f.count,
         } satisfies FirePayload);
       } catch {
-        // Schedule failure (e.g. transient storage error). The next sweep
-        // re-detects the still-ready members and retries.
+        // Schedule failure (e.g. transient storage error). Un-mark the
+        // members this fire would have announced so they aren't persisted
+        // as "seen" — otherwise they'd be treated as already-notified on
+        // every later sweep and stay silent while still ready. Dropping
+        // them from `nextSeen` lets the next sweep re-detect and retry.
+        for (const key of f.memberKeys) delete nextSeen[key];
       }
     }
 

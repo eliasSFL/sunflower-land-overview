@@ -53,6 +53,12 @@ export type DigestFire = {
   icon?: string;
   category: string;
   count: number;
+  // The stable keys of the members this fire announces (the ones newly
+  // marked in `nextSeen` this run). The worker un-marks exactly these if
+  // scheduling the fire fails, so a transient error doesn't leave them
+  // deduped-but-never-notified. Carried-over members (already notified in
+  // a prior run) are not included — they must stay seen.
+  memberKeys: string[];
 };
 
 export type PlanResult = {
@@ -94,6 +100,7 @@ function buildFire(
     icon,
     category,
     count,
+    memberKeys: members.map((m) => m.key),
   };
 }
 

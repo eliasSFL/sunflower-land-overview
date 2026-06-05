@@ -92,6 +92,20 @@ describe("planReadyDigest", () => {
     expect(Object.keys(next.nextSeen).sort()).toEqual(["Salt|a", "Salt|b"]);
   });
 
+  it("exposes the newly-ready member keys on each fire (not carried-over)", () => {
+    const seen = planReadyDigest([salt("a", true)], {}, NOW).nextSeen;
+
+    // `a` already seen, `b`/`c` newly ready → the fire announces only b & c,
+    // so only those keys are un-seeable on a schedule failure.
+    const next = planReadyDigest(
+      [salt("a", true), salt("b", true), salt("c", true)],
+      seen,
+      NOW + 1,
+    );
+    expect(next.fires).toHaveLength(1);
+    expect(next.fires[0].memberKeys.sort()).toEqual(["Salt|b", "Salt|c"]);
+  });
+
   it("groups distinct collectable types into separate pushes", () => {
     const members = [salt("a", true), hive("h1", true), salt("b", true)];
     const { fires } = planReadyDigest(members, {}, NOW);
