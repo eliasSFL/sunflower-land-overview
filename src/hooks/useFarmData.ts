@@ -12,7 +12,7 @@ import { pullDoSnapshot } from "../notifications/snapshot.ts";
 import * as storage from "../lib/storage.ts";
 
 export const FARM_ID_KEY = "sfl-overview:farm-id";
-export const REFRESH_COOLDOWN_MS = 60_000;
+export const REFRESH_COOLDOWN_MS = 30_000;
 
 export type FarmData = {
   farmId: string;
@@ -117,7 +117,7 @@ export function useFarmData(): FarmData {
           // Clear any previously-loaded farm so the denial panel surfaces
           // immediately — without this, a stale `data` from an earlier
           // successful load keeps the dashboard rendered. Also drop
-          // `lastFetchedAt` (the 60s cooldown would otherwise silently
+          // `lastFetchedAt` (the 30s cooldown would otherwise silently
           // block re-submitting the previously-successful farm) and
           // align `farmId` with the denied attempt so the re-mounted
           // form's pre-fill matches the denial copy.
