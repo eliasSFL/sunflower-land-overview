@@ -16,12 +16,19 @@ import { formatYield } from "../lib/format.ts";
 import { BUMPKIN_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label, ProgressBar } from "./ui/index.ts";
 
+// Ascension islands (swamp onward) don't have dedicated sprites yet —
+// upstream reuses the volcano visuals for all of them, so we mirror that
+// and fall back to the volcano icon until real island art ships.
 const ISLAND_ICONS: Record<IslandType, string> = {
   basic: CHROME_ICONS.island_basic,
   spring: CHROME_ICONS.island_spring,
   desert: CHROME_ICONS.island_desert,
   volcano: CHROME_ICONS.island_volcano,
   swamp: CHROME_ICONS.island_volcano,
+  spooky: CHROME_ICONS.island_volcano,
+  crystal: CHROME_ICONS.island_volcano,
+  galaxy: CHROME_ICONS.island_volcano,
+  marble: CHROME_ICONS.island_volcano,
 };
 
 const ISLAND_LABELS: Record<IslandType, string> = {
@@ -30,6 +37,10 @@ const ISLAND_LABELS: Record<IslandType, string> = {
   desert: "Desert",
   volcano: "Volcano",
   swamp: "Swamp",
+  spooky: "Spooky",
+  crystal: "Crystal",
+  galaxy: "Galaxy",
+  marble: "Marble",
 };
 
 const FACTION_EMBLEMS: Record<FactionName, string> = {
