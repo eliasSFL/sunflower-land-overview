@@ -19,6 +19,7 @@ import {
   batchWoodYields,
   getItemIcon,
   getKeys,
+  getTreeReadyAt,
   type CropName,
   type FiniteResource,
   type FlowerName,
@@ -164,7 +165,9 @@ export function extractResourceTimers(
   for (const [nodeId, tree] of Object.entries(state.trees ?? {})) {
     if (!isPlaced(tree)) continue;
     const treeName: TreeName = tree.name ?? "Tree";
-    const readyAt = tree.wood.choppedAt + RECOVERY_SECONDS.Wood * 1000;
+    // Windowed (boost-accruing) when the tree carries `baseDurationMs`,
+    // legacy `choppedAt + recovery` otherwise — derived upstream.
+    const readyAt = getTreeReadyAt(tree, state);
     const list = treesByName.get(treeName) ?? [];
     list.push({ nodeId, tree, readyAt });
     treesByName.set(treeName, list);

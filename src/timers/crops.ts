@@ -1,6 +1,7 @@
 import {
   CROPS,
   batchCropYields,
+  getCropReadyAt,
   getItemIcon,
   type CropName,
   type CropPlot,
@@ -29,12 +30,13 @@ export function extractCropTimers(
   const rows: Row[] = [];
   for (const [plotId, plot] of Object.entries(plots)) {
     if (!plot.crop) continue;
-    const grow = CROPS[plot.crop.name]?.harvestSeconds ?? 0;
+    // Live-derived ready time: windowed (boost-accruing) when the crop
+    // carries `baseDurationMs`, legacy `plantedAt + grow` otherwise.
     rows.push({
       plotId,
       plot,
       cropName: plot.crop.name,
-      readyAt: plot.crop.plantedAt + grow * 1000,
+      readyAt: getCropReadyAt(plot.crop, CROPS[plot.crop.name], state),
     });
   }
 
