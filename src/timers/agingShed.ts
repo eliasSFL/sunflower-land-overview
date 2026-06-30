@@ -1,7 +1,9 @@
 import {
+  collectAgedFish,
   getFermentationRecipe,
   getItemIcon,
   getObjectEntries,
+  getPrimeAgedChance,
   getSpiceRackRecipe,
   type AgingRackSlot,
   type FermentationJob,
@@ -11,15 +13,19 @@ import {
   type SpiceRackJob,
   type SpiceRackRecipeName,
 } from "../game/index.ts";
-import type { AgedFishName } from "../game/types.ts";
+import type { AgedFishName, PrimeAgedFishName } from "../game/types.ts";
 import type { Category, Timer, TimerContext, TimerSlot } from "./types.ts";
 
 // One Timer per Aging Shed rack — three total when the building is
 // placed. Each rack is its own top-level Category so the layout flows
 // them as independent panels (mirrors how cooking buildings are
 // split):
-//   • Aging Rack        — fish + salt → "Aged <fish>" (Prime Aged PRNG
-//                         flip rolled at collect; we don't predict it)
+//   • Aging Rack        — fish + salt → "Aged <fish>", with a per-slot
+//                         chance to flip to "Prime Aged <fish>". The
+//                         flip is a seeded-PRNG roll resolved by upstream
+//                         at collect; we PREDICT it (see
+//                         `predictPrimeFlips`) so the slot row shows the
+//                         real outcome ahead of time.
 //   • Fermentation Rack — recipe → recipe.outputs (first entry)
 //   • Spice Rack        — recipe → recipe.outputs (first entry)
 // Each card's `slots` field carries every in-flight job in that rack
@@ -28,6 +34,35 @@ import type { Category, Timer, TimerContext, TimerSlot } from "./types.ts";
 // pattern).
 
 const BUILDING_NAME = "Aging Shed";
+
+// Predict which queued aging slots will collect as "Prime Aged" by
+// dry-running the real upstream collect. We pass a `createdAt` past
+// every slot's readyAt so the simulation drains the whole queue in one
+// pass; `agingShed.lastAgingCollect` then carries one
+// `{ item, primeAged }` per collected slot, in the queue's array order,
+// so `results[i]` lines up with `racks.aging[i]`. Delegating to upstream
+// keeps the seed math (per-fish counter, itemId, chance, threading) out
+// of our codebase — when upstream changes a boost/gate the prediction
+// follows with no edits here. The simulation runs on an immer copy, so
+// the live state is untouched. Returns one boolean per slot (true =
+// prime); any throw falls back to "all normal".
+function predictPrimeFlips(state: GameState, farmId: number): boolean[] {
+  const queue = state.agingShed?.racks?.aging ?? [];
+  if (queue.length === 0) return [];
+  try {
+    const createdAt = Math.max(...queue.map((slot) => slot.readyAt)) + 1;
+    const after = collectAgedFish({
+      state,
+      action: { type: "agingRack.collected" },
+      createdAt,
+      farmId,
+    });
+    const results = after.agingShed?.lastAgingCollect ?? [];
+    return queue.map((_, i) => results[i]?.primeAged ?? false);
+  } catch {
+    return queue.map(() => false);
+  }
+}
 
 function fermentationOutput(
   recipe: FermentationRecipeName,
@@ -57,12 +92,15 @@ function spiceOutput(
   }
 }
 
-function agingSlotEntry(slot: AgingRackSlot): TimerSlot {
-  // Aged fish output is `Aged ${fish}` — Prime Aged is a PRNG flip
-  // resolved on collect; we show the conservative "Aged" name. The
-  // `Aged ${FishName}` literal is an upstream AgedFishName, which is
-  // part of InventoryItemName via the CookableName union.
-  const item: AgedFishName = `Aged ${slot.fish}`;
+function agingSlotEntry(slot: AgingRackSlot, prime: boolean): TimerSlot {
+  // Output is `Aged ${fish}`, but a seeded-PRNG roll (resolved by
+  // upstream at collect, predicted here) can flip it to `Prime Aged
+  // ${fish}`. The prime item name + icon is signal enough on its own,
+  // so we just swap the name; no extra chip. Both literals are upstream
+  // fish names within InventoryItemName (via the CookableName union).
+  const item: AgedFishName | PrimeAgedFishName = prime
+    ? `Prime Aged ${slot.fish}`
+    : `Aged ${slot.fish}`;
   return {
     item,
     icon: getItemIcon(item),
@@ -98,6 +136,9 @@ type RackCard = {
   category: Category;
   idleText: string;
   slots: TimerSlot[];
+  // Headline note for the active card (e.g. the Aging Rack's prime-aged
+  // chance). Omitted on idle cards.
+  subtext?: string;
 };
 
 function buildRackCard(rack: RackCard): Timer {
@@ -122,13 +163,14 @@ function buildRackCard(rack: RackCard): Timer {
     icon: buildingIcon,
     readyAt: sortedSlots[0].readyAt,
     slots: sortedSlots,
+    subtext: rack.subtext,
     aggregationKey: `${rack.category}|${rack.rackKey}`,
   };
 }
 
 export function extractAgingShedTimers(
   state: GameState,
-  _ctx: TimerContext,
+  ctx: TimerContext,
 ): Timer[] {
   // Skip if the building isn't placed. `state.buildings["Aging Shed"]`
   // tracks placement coordinates; `state.agingShed` holds the racks
@@ -140,7 +182,17 @@ export function extractAgingShedTimers(
 
   const racks = state.agingShed?.racks;
 
-  const agingSlots: TimerSlot[] = (racks?.aging ?? []).map(agingSlotEntry);
+  const agingQueue = racks?.aging ?? [];
+  const primeFlips = predictPrimeFlips(state, ctx.farmId);
+  const agingSlots: TimerSlot[] = agingQueue.map((slot, i) =>
+    agingSlotEntry(slot, primeFlips[i] ?? false),
+  );
+  // Headline "rate": the chance each collect flips to Prime Aged, with
+  // the player's current skills/sculptures (Fish Smoking, Salt Sculpture)
+  // folded in by upstream. Only shown when fish are actually aging.
+  const primeChance = Math.round(getPrimeAgedChance(state));
+  const agingSubtext =
+    agingQueue.length > 0 ? `Prime chance: ${primeChance}%` : undefined;
   const fermentationSlots: TimerSlot[] = [];
   for (const job of racks?.fermentation ?? []) {
     const entry = fermentationSlotEntry(job);
@@ -158,6 +210,7 @@ export function extractAgingShedTimers(
       category: "Aging Rack",
       idleText: "No fish aging",
       slots: agingSlots,
+      subtext: agingSubtext,
     }),
     buildRackCard({
       rackKey: "fermentation",

@@ -150,10 +150,19 @@ export {
 export { composterDetails } from "features/game/types/composters";
 // Aging shed — three sub-racks (aging / fermentation / spice). Recipe
 // lookups give us the output item + duration for each job. Aged-fish
-// jobs derive their output via the `Aged ${fishName}` template; we
-// don't currently predict the Prime Aged PRNG flip.
+// jobs are `Aged ${fishName}`, but each carries a chance to flip to
+// `Prime Aged ${fishName}` — a seeded-PRNG roll resolved at collect.
+// We surface that prediction by dry-running upstream `collectAgedFish`
+// (never replicating the seed math): call it with a future `createdAt`
+// and read `agingShed.lastAgingCollect` for the per-slot prime/normal
+// outcome. `getPrimeAgedChance` gives the headline % for the card.
 export { getFermentationRecipe } from "features/game/types/fermentation";
 export { getSpiceRackRecipe } from "features/game/types/spiceRack";
+export {
+  collectAgedFish,
+  type CollectAgedFishAction,
+} from "features/game/events/landExpansion/collectAgedFish";
+export { getPrimeAgedChance } from "features/game/types/agingFormulas";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server
