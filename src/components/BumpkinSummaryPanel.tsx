@@ -1,7 +1,7 @@
 import type { FarmResponse } from "../api/fetchFarm.ts";
 import {
-  getBumpkinLevel,
-  getExperienceToNextLevel,
+  getAscensionLevel,
+  getMaxBumpkinLevel,
   hasLifetimeFarmerBanner,
   hasVipAccess,
   isMaxLevel,
@@ -16,18 +16,31 @@ import { formatYield } from "../lib/format.ts";
 import { BUMPKIN_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label, ProgressBar } from "./ui/index.ts";
 
+// Ascension islands (swamp onward) don't have dedicated sprites yet —
+// upstream reuses the volcano visuals for all of them, so we mirror that
+// and fall back to the volcano icon until real island art ships.
 const ISLAND_ICONS: Record<IslandType, string> = {
   basic: CHROME_ICONS.island_basic,
   spring: CHROME_ICONS.island_spring,
   desert: CHROME_ICONS.island_desert,
   volcano: CHROME_ICONS.island_volcano,
+  swamp: CHROME_ICONS.island_volcano,
+  spooky: CHROME_ICONS.island_volcano,
+  crystal: CHROME_ICONS.island_volcano,
+  galaxy: CHROME_ICONS.island_volcano,
+  marble: CHROME_ICONS.island_volcano,
 };
 
 const ISLAND_LABELS: Record<IslandType, string> = {
   basic: "Basic",
-  spring: "Spring",
+  spring: "Petal Paradise",
   desert: "Desert",
   volcano: "Volcano",
+  swamp: "Swamp",
+  spooky: "Spooky",
+  crystal: "Crystal",
+  galaxy: "Galaxy",
+  marble: "Marble",
 };
 
 const FACTION_EMBLEMS: Record<FactionName, string> = {
@@ -46,8 +59,10 @@ const FACTION_LABELS: Record<FactionName, string> = {
 
 // Compact "who am I" summary shown above the Next Up panel. Reads
 // straight off the farm response — no derived state, no polling. The
-// XP progress bar uses `getExperienceToNextLevel` so it lines up with
-// the in-game bumpkin XP bar (max-level bumpkins display a full bar).
+// level + XP progress bar come from `getAscensionLevel`, so they line up
+// with the in-game bumpkin HUD: on swamp/ascension farms it shows the
+// within-ascension level (1..50) and "ready to ascend" once the band is
+// banked; pre-ascension it's the legacy level with a full bar at max.
 
 type Props = {
   data: FarmResponse;
@@ -79,10 +94,23 @@ export function BumpkinSummaryPanel({ data }: Props) {
   const bumpkin = farm.bumpkin;
 
   const experience = bumpkin.experience ?? 0;
-  const level = getBumpkinLevel(experience);
-  const { currentExperienceProgress, experienceToNextLevel } =
-    getExperienceToNextLevel(experience);
-  const atMax = isMaxLevel(experience);
+  const ascensionLevel = farm.island?.ascensionLevel ?? 0;
+  const maxLevel = getMaxBumpkinLevel(farm);
+  const ascension = getAscensionLevel({ experience, ascensionLevel, maxLevel });
+  const { currentExperienceProgress, experienceToNextLevel, isReadyToAscend } =
+    ascension;
+
+  // `maxLevel` drops below the legacy 200 cap once SWAMP_ASCENSION is on,
+  // which is what makes `isReadyToAscend` meaningful — otherwise a level-150
+  // legacy bumpkin would read as "ready" off the shared 150 threshold.
+  const ascending = maxLevel < MAX_BUMPKIN_LEVEL;
+  const readyToAscend = ascending && isReadyToAscend;
+  const atMax = !ascending && isMaxLevel(experience, maxLevel);
+
+  // In-game badge format: "Ascension N · Level M", including the
+  // pre-ascension band as Ascension 0.
+  const levelText = `Ascension ${ascension.ascension} · Level ${ascension.level}`;
+
   const pct =
     experienceToNextLevel > 0
       ? Math.min(
@@ -132,8 +160,8 @@ export function BumpkinSummaryPanel({ data }: Props) {
       <header className="flex items-center justify-between gap-2">
         <Label type="default">Bumpkin</Label>
         <span className="text-xs">
-          Level {level}
-          {atMax ? " · max" : ""}
+          {levelText}
+          {readyToAscend ? " · ready" : atMax ? " · max" : ""}
         </span>
       </header>
 
@@ -191,11 +219,13 @@ export function BumpkinSummaryPanel({ data }: Props) {
         <ProgressBar pct={pct} className="flex-1" />
       </div>
       <p className="text-xs opacity-70">
-        {atMax
-          ? `${formatInt(currentExperienceProgress)} XP this cycle`
-          : `${formatInt(currentExperienceProgress)} / ${formatInt(
-              experienceToNextLevel,
-            )} XP${level < MAX_BUMPKIN_LEVEL ? ` to level ${level + 1}` : ""}`}
+        {readyToAscend
+          ? `${formatInt(currentExperienceProgress)} XP — ready to ascend`
+          : atMax
+            ? `${formatInt(currentExperienceProgress)} XP this cycle`
+            : `${formatInt(currentExperienceProgress)} / ${formatInt(
+                experienceToNextLevel,
+              )} XP to level ${ascension.level + 1}`}
       </p>
 
       {/* Currency rows — coins / FLOWER / Gem / Love Charm. Order

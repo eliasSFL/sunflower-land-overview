@@ -159,14 +159,20 @@ export {
   getCurrentSpeed,
   getHoneyMultiplier,
 } from "./beehives.ts";
-// Bumpkin level helpers — wrappers around the canonical
-// LEVEL_EXPERIENCE table upstream.
+// Bumpkin level helpers. `getAscensionLevel` is the ascension-aware
+// standing (within-ascension level 1..50 + progress + isReadyToAscend);
+// `getTotalBumpkinLevel` is the monotonic lifetime total; `getMaxBumpkinLevel`
+// returns the pre-ascension cap for the current feature flags. All are
+// driven by the canonical LEVEL_EXPERIENCE table upstream.
 export {
-  getBumpkinLevel,
+  getAscensionLevel,
   getExperienceToNextLevel,
+  getMaxBumpkinLevel,
+  getTotalBumpkinLevel,
   isMaxLevel,
   MAX_BUMPKIN_LEVEL,
 } from "features/game/lib/level";
+export type { AscensionLevel } from "features/game/lib/level";
 // Power skills — `getPowerSkills` returns the `power: true` entries of
 // the revamp skill tree; `getSkillCooldown` applies the cooldown boost
 // (Luna's Crescent halves it). The power-skills timer reads
