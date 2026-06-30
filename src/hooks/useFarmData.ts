@@ -9,10 +9,43 @@ import {
 } from "../api/fetchFarm.ts";
 import { IS_OFFLINE_FARM, OFFLINE_FARM_ID } from "../api/offlineFarm.ts";
 import { pullDoSnapshot } from "../notifications/snapshot.ts";
-import * as storage from "../lib/storage.ts";
+import { savePref } from "../lib/prefs.ts";
 
 export const FARM_ID_KEY = "sfl-overview:farm-id";
 export const REFRESH_COOLDOWN_MS = 30_000;
+
+const isString = (v: unknown): v is string => typeof v === "string";
+
+// The farm id lives in the durable `prefs` store (no TTL), not `storage`
+// (7-day TTL) — a player shouldn't have to re-enter it just because they
+// didn't open the overview for a week. Reads here also migrate a value
+// left by the old TTL store (envelope `{v, at}`) by promoting the bare id
+// in place, so returning players keep their farm without re-entering even
+// once. Both stores use the same localStorage key, so the migrating write
+// simply replaces the legacy envelope.
+function loadFarmId(): string | undefined {
+  try {
+    const raw = localStorage.getItem(FARM_ID_KEY);
+    if (!raw) return undefined;
+    const parsed: unknown = JSON.parse(raw);
+    // Current durable format: a bare string.
+    if (isString(parsed)) return parsed;
+    // Legacy TTL envelope: lift `.v` out (ignoring its expiry) and promote.
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "v" in parsed &&
+      isString((parsed as { v: unknown }).v)
+    ) {
+      const id = (parsed as { v: string }).v;
+      savePref(FARM_ID_KEY, id);
+      return id;
+    }
+  } catch {
+    // Malformed entry — treat as absent.
+  }
+  return undefined;
+}
 
 export type FarmData = {
   farmId: string;
@@ -28,9 +61,7 @@ export function useFarmData(): FarmData {
   const [farmId, setFarmId] = useState<string>(() =>
     // Offline mode pre-fills the snapshot's id; the auto-load effect below
     // loads it on mount with no entry needed.
-    IS_OFFLINE_FARM
-      ? OFFLINE_FARM_ID
-      : (storage.load<string>(FARM_ID_KEY) ?? ""),
+    IS_OFFLINE_FARM ? OFFLINE_FARM_ID : (loadFarmId() ?? ""),
   );
   // Seed from the localStorage cache so a reload paints the farm
   // immediately. The `fetchedAt` stamp keeps the "last refreshed" label
@@ -38,7 +69,7 @@ export function useFarmData(): FarmData {
   // offline so a previously-cached real farm can't shadow the snapshot.
   const initialCache = useMemo(() => {
     if (IS_OFFLINE_FARM) return undefined;
-    const id = storage.load<string>(FARM_ID_KEY);
+    const id = loadFarmId();
     return id ? loadCachedFarm(id) : undefined;
     // Run once on mount — deps left empty intentionally.
   }, []);
@@ -110,7 +141,7 @@ export function useFarmData(): FarmData {
         // is just the canonical numeric form of the requested id.
         const actualId = resp.id != null ? String(resp.id) : id;
         setFarmId(actualId);
-        storage.save(FARM_ID_KEY, actualId);
+        savePref(FARM_ID_KEY, actualId);
         setLastFetchedAt(Date.now());
       } catch (e) {
         if (e instanceof AccessDeniedError) {
