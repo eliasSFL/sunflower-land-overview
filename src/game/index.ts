@@ -71,21 +71,26 @@ export {
 } from "features/game/lib/constants";
 export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/drillOilReserve";
 // Live ready-at derivation across BOTH boost models. Upstream's
-// speed-rate refactor (sunflower-land#7382 crops / #7391 trees) turned
-// temporary collectibles (Sparrow Shrine, hourglasses, totems, …) from a
-// one-shot discount baked in at plant/chop time into live SPEED windows:
-// while a boost window is open the in-progress timer accrues faster.
-// `getCropReadyAt` / `getTreeReadyAt` resolve the real ready time for a
-// node — when it carries the new `baseDurationMs` marker they derive it
-// from the active boost windows, otherwise they fall back to the legacy
-// back-dated `plantedAt` / `choppedAt` + base duration. Calling these
-// instead of recomputing `plantedAt + grow` / `choppedAt + recovery`
-// ourselves keeps us off the replication path (CLAUDE.md) and means the
-// dashboard's countdowns stay correct the moment SPEED_BOOSTS is enabled
-// upstream — no overview change needed. (Mines aren't on the pinned SHA
-// yet, so rocks still use the legacy formula until their slice lands.)
+// speed-rate refactor turned temporary collectibles (Sparrow Shrine,
+// hourglasses, totems, …) from a one-shot discount baked in at
+// plant/chop/mine time into live SPEED windows: while a boost window is
+// open the in-progress timer accrues faster. Each `get…ReadyAt` resolves
+// the real ready time for a node — when it carries the new
+// `baseDurationMs` marker they derive it from the active boost windows,
+// otherwise they fall back to the legacy back-dated
+// `plantedAt` / `choppedAt` / `minedAt` + base duration. Calling these
+// instead of recomputing the formula ourselves keeps us off the
+// replication path (CLAUDE.md) and means the dashboard's countdowns stay
+// correct the moment SPEED_BOOSTS is enabled upstream — no overview change
+// needed. Covered slices: crops (#7382), trees (#7391), mines (#7392),
+// fruit (#7394), flowers (#7395). Greenhouse isn't windowed upstream yet
+// (its `getReadyAt` is still a plain `createdAt + seconds`), so greenhouse
+// pots keep the legacy formula until that slice lands.
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
 export { getTreeReadyAt } from "features/game/events/landExpansion/chop";
+export { getMineReadyAt } from "features/game/lib/resourceNodes";
+export { getFruitReadyAt } from "features/game/events/landExpansion/fruitPatchReadiness";
+export { getFlowerReadyAt } from "features/game/lib/flowerBedReadiness";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.

@@ -2,6 +2,7 @@ import {
   PATCH_FRUIT,
   PATCH_FRUIT_SEEDS,
   batchPatchFruitYields,
+  getFruitReadyAt,
   getItemIcon,
   type FruitPatch,
   type GameState,
@@ -11,8 +12,10 @@ import type { Timer, TimerContext } from "./types.ts";
 
 // Batched yield prediction — see src/game/batch-yields.ts.
 //
-// readyAt mirrors fruitPatchReadiness.ts: subsequent harvest cycles
-// tick from `harvestedAt`, the initial grow from `plantedAt`.
+// readyAt is derived upstream by `getFruitReadyAt`: windowed
+// (boost-accruing, incl. Turbofruit Mix fertiliser) when the fruit carries
+// `baseDurationMs`, otherwise the legacy back-dated `harvestedAt` (or
+// `plantedAt` for the initial grow) + base duration.
 
 export function extractFruitTimers(
   state: GameState,
@@ -33,12 +36,11 @@ export function extractFruitTimers(
     const seedName = PATCH_FRUIT[fruit.name]?.seed;
     const grow = seedName ? PATCH_FRUIT_SEEDS[seedName]?.plantSeconds : 0;
     if (!grow) continue;
-    const baseAt = fruit.harvestedAt > 0 ? fruit.harvestedAt : fruit.plantedAt;
     rows.push({
       patchId,
       patch,
       fruitName: fruit.name,
-      readyAt: baseAt + grow * 1000,
+      readyAt: getFruitReadyAt(fruit, state, patch.fertiliser),
     });
   }
 

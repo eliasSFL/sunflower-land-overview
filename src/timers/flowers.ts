@@ -4,6 +4,7 @@ import {
   getBoostIcon,
   getBoostLabel,
   getFlowerAmount,
+  getFlowerReadyAt,
   getItemIcon,
   type BoostName,
   type CriticalHitName,
@@ -20,9 +21,9 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // displaying each plot separately would be better." Same shape as
 // beehives (`Beehives|${hiveId}`).
 //
-// readyAt mirrors harvestFlower.ts: speed boosts are baked into
-// `plantedAt` at plant time (see plantFlower.ts:getPlantedAt), so the
-// runtime check is just `now >= plantedAt + plantSeconds * 1000`.
+// readyAt is derived upstream by `getFlowerReadyAt`: windowed
+// (boost-accruing) when the flower carries `baseDurationMs`, otherwise the
+// legacy `plantedAt + plantSeconds * 1000`.
 //
 // Yield = `flower.amount` if pre-computed, otherwise call upstream
 // `getFlowerAmount` with the same criticalDrop callback the game uses at
@@ -92,7 +93,7 @@ export function extractFlowerTimers(
     } catch {
       // Retain the initial `amount = 1` on upstream throw.
     }
-    const readyAt = flower.plantedAt + growSeconds * 1000;
+    const readyAt = getFlowerReadyAt(flower, state);
 
     // Mutant flower drop — `flower.reward` is server-rolled at plant
     // time (api `getFlowerReward` in plantFlower.ts; ~0.5%/day chance

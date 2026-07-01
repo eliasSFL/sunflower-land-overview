@@ -19,6 +19,7 @@ import {
   batchWoodYields,
   getItemIcon,
   getKeys,
+  getMineReadyAt,
   getTreeReadyAt,
   type CropName,
   type FiniteResource,
@@ -223,7 +224,6 @@ export function extractResourceTimers(
     },
   ];
   for (const { kind, map, defaultName, batch } of rockConfigs) {
-    const recoveryMs = RECOVERY_SECONDS[kind] * 1000;
     const byName = new Map<
       RockName,
       Array<{ nodeId: string; rock: Rock; readyAt: number }>
@@ -231,7 +231,9 @@ export function extractResourceTimers(
     for (const [nodeId, rock] of Object.entries(map ?? {})) {
       if (!isPlaced(rock)) continue;
       const rockName: RockName = rock.name ?? defaultName;
-      const readyAt = rock.stone.minedAt + recoveryMs;
+      // Windowed (boost-accruing) when the rock carries `baseDurationMs`,
+      // legacy `minedAt + recovery` otherwise — derived upstream.
+      const readyAt = getMineReadyAt(rock, rockName, state);
       const list = byName.get(rockName) ?? [];
       list.push({ nodeId, rock, readyAt });
       byName.set(rockName, list);
@@ -263,7 +265,6 @@ export function extractResourceTimers(
   }
 
   // --- Crimstone (FiniteResource; no PRNG counter advance) ---
-  const crimstoneRecoveryMs = RECOVERY_SECONDS.Crimstone * 1000;
   const crimstones: Array<{
     nodeId: string;
     rock: FiniteResource;
@@ -275,7 +276,8 @@ export function extractResourceTimers(
     crimstones.push({
       nodeId,
       rock,
-      readyAt: rock.stone.minedAt + crimstoneRecoveryMs,
+      // Windowed when the rock carries `baseDurationMs`, legacy otherwise.
+      readyAt: getMineReadyAt(rock, rock.name ?? "Crimstone Rock", state),
     });
   }
   const crimstoneYields = batchCrimstoneYields({
@@ -295,14 +297,14 @@ export function extractResourceTimers(
   }
 
   // --- Sunstone (always 1) ---
-  const sunstoneRecoveryMs = RECOVERY_SECONDS.Sunstone * 1000;
   const sunstones: Array<{ nodeId: string; readyAt: number }> = [];
   for (const [nodeId, rock] of Object.entries(state.sunstones ?? {})) {
     if (!isPlaced(rock)) continue;
     if (rock.minesLeft <= 0) continue;
     sunstones.push({
       nodeId,
-      readyAt: rock.stone.minedAt + sunstoneRecoveryMs,
+      // Windowed when the rock carries `baseDurationMs`, legacy otherwise.
+      readyAt: getMineReadyAt(rock, rock.name ?? "Sunstone Rock", state),
     });
   }
   const sunstoneYields = batchSunstoneYields({
