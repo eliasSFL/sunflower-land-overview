@@ -11,6 +11,15 @@ export interface Env {
   sfl_overview_push: D1Database;
   // One DO instance per farmId. See worker/farmPushDO.ts.
   FARM_PUSH_DO: DurableObjectNamespace;
+  // Base URL of the Sunflower Land API the Worker proxies to. Mirrors
+  // the game client's `VITE_API_URL`. Unset ⇒ production
+  // (`https://api.sunflower-land.com`, see `DEFAULT_UPSTREAM` /
+  // `upstreamBase` in worker/communityApi.ts). Point it at a personal
+  // SST stage (e.g. the raw API Gateway URL of `api-<stage>`) to run
+  // the overview against that stage. Set locally via `.dev.vars`; the
+  // matching stage's `COMMUNITY_API_KEY_SECRET` must sign
+  // `SFL_COMMUNITY_API_KEY` below or upstream returns 401/404.
+  SFL_API_URL?: string;
   // Master HMAC secret used to mint per-farm community API keys
   // (sfl.{base64url(farmId)}.{hmac(secret, farmId)}) and as x-api-key
   // for the paginated /community/farms scan.

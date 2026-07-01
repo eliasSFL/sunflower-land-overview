@@ -1,7 +1,5 @@
-import { mintFarmKey } from "./communityApi.ts";
+import { mintFarmKey, upstreamBase } from "./communityApi.ts";
 import type { Env } from "./types.ts";
-
-const UPSTREAM = "https://api.sunflower-land.com";
 
 export type AccessFetchResult =
   | { ok: true; rawBody: string; status: number; contentType: string | null }
@@ -44,7 +42,7 @@ export async function fetchAndCheckAccess(
   let upstream: Response;
   try {
     upstream = await fetch(
-      `${UPSTREAM}/community/farms/${encodeURIComponent(String(farmId))}`,
+      `${upstreamBase(env)}/community/farms/${encodeURIComponent(String(farmId))}`,
       { headers },
     );
   } catch (err) {

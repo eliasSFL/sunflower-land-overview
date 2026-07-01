@@ -239,7 +239,6 @@ export default defineConfig(({ mode }) => {
       ],
     },
     server: {
-      port: 3000,
       // Forward Worker-served routes to a locally-running `wrangler dev`
       // on :8787. Run both in parallel:
       //   terminal 1:  npx wrangler dev

@@ -2,7 +2,7 @@
 
 import { Agent } from "agents";
 import { sendAll } from "./push.ts";
-import { getFarm, mintFarmKey } from "./communityApi.ts";
+import { getFarm, mintFarmKey, upstreamBase } from "./communityApi.ts";
 import { addOptIn, removeOptIn } from "./registry.ts";
 import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
@@ -392,6 +392,7 @@ export class FarmPushDO extends Agent<Env, State> {
         key,
         clientIp,
         this.env.SUPPORT_API_KEY,
+        upstreamBase(this.env),
       );
       if (!result.ok) {
         if (result.reason === "not_found") {
@@ -773,6 +774,7 @@ export class FarmPushDO extends Agent<Env, State> {
       key,
       undefined,
       this.env.SUPPORT_API_KEY,
+      upstreamBase(this.env),
     );
     if (!result.ok) return false;
     await this.applySnapshot(result.raw);

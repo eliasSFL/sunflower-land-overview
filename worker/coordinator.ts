@@ -1,8 +1,7 @@
 import { listOptedInIds } from "./registry.ts";
-import { mintFarmKey } from "./communityApi.ts";
+import { mintFarmKey, upstreamBase } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
-const UPSTREAM = "https://api.sunflower-land.com";
 // Upstream's legacy `POST /community/farms { ids }` form accepts max
 // 100 ids per request. We use the same cap.
 const BATCH_SIZE = 100;
@@ -39,12 +38,16 @@ type BatchResult =
   | { ok: false; retryable: true; status: number }
   | { ok: false; retryable: false; status: number };
 
-async function fetchBatch(ids: number[], apiKey: string): Promise<BatchResult> {
+async function fetchBatch(
+  ids: number[],
+  apiKey: string,
+  upstream: string,
+): Promise<BatchResult> {
   let res: Response;
   try {
     // Legacy id-form endpoint is `POST /community/getFarms`, NOT
     // `/community/farms` (which is the un-deprecated paginated GET).
-    res = await fetch(`${UPSTREAM}/community/getFarms`, {
+    res = await fetch(`${upstream}/community/getFarms`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -108,6 +111,7 @@ async function sweepImpl(env: Env): Promise<void> {
   const optedInList = await listOptedInIds(env);
   if (optedInList.length === 0) return;
 
+  const upstream = upstreamBase(env);
   const apiKey = await mintFarmKey(0, env.SFL_COMMUNITY_API_KEY);
 
   // Chunk into batches.
@@ -130,7 +134,7 @@ async function sweepImpl(env: Env): Promise<void> {
     else if (batchIdx > 0) await sleep(PER_BATCH_DELAY_MS);
 
     const ids = batches[batchIdx];
-    const res = await fetchBatch(ids, apiKey);
+    const res = await fetchBatch(ids, apiKey, upstream);
 
     if (!res.ok) {
       if (res.retryable) {

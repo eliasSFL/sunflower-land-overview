@@ -11,6 +11,14 @@
 VAPID_PUBLIC=
 VAPID_PRIVATE=
 
+# API base the Worker proxies to. Mirrors the game client's VITE_API_URL.
+# Leave blank ⇒ production (https://api.sunflower-land.com). Set it to a
+# personal SST stage's raw API Gateway URL (`api-<stage>`, found in the
+# api repo's .sst/pulumi/.../<stage>.json under resource `ApiApi`) to
+# develop against that stage. NOTE: SFL_COMMUNITY_API_KEY below must be
+# signed with that stage's COMMUNITY_API_KEY_SECRET or upstream 401s.
+SFL_API_URL=
+
 # Master HMAC secret for community API key minting. Same value as the
 # Cloudflare prod secret. Without it, /api/farms/:id can't mint a
 # per-farm key and upstream fetches will 401. For local dev only, you

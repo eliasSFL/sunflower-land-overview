@@ -2,7 +2,23 @@
 // only needs the single-farm GET (for the subscribe-time warm fetch);
 // the paginated scan used by the Coordinator lands in Phase 2.
 
-const UPSTREAM = "https://api.sunflower-land.com";
+// Default upstream when `env.SFL_API_URL` is unset (production). Any
+// caller that has the Worker `Env` should resolve the base via
+// `upstreamBase(env)` so a personal SST stage can be targeted; this
+// constant is only the fallback and the default for `getFarm`.
+export const DEFAULT_UPSTREAM = "https://api.sunflower-land.com";
+
+/**
+ * Resolve the API base URL the Worker should hit. Returns
+ * `env.SFL_API_URL` when set (a personal SST stage like `api-<stage>`),
+ * else {@link DEFAULT_UPSTREAM} (production). Mirrors the game client's
+ * `VITE_API_URL` override. A trailing slash is trimmed so callers can
+ * always append `/community/...` cleanly.
+ */
+export function upstreamBase(env: { SFL_API_URL?: string }): string {
+  const url = env.SFL_API_URL?.trim();
+  return url ? url.replace(/\/+$/, "") : DEFAULT_UPSTREAM;
+}
 
 // Per-farm community key format (services/communityApiKey.ts on the backend):
 //   payload   = base64url(farmId as string)
@@ -123,12 +139,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *                   `process.env.SUPPORT_API_KEY` to unlock per-player
  *                   throttling. When absent the BE falls back to
  *                   `cf-connecting-ip` (no behaviour change).
+ * @param upstream  API base URL to hit. Defaults to {@link DEFAULT_UPSTREAM}
+ *                  (production); callers with the Worker `Env` should pass
+ *                  `upstreamBase(env)` to honour an `SFL_API_URL` override.
  */
 export async function getFarm(
   farmId: number,
   apiKey: string,
   clientIp?: string,
   supportKey?: string,
+  upstream: string = DEFAULT_UPSTREAM,
 ): Promise<GetFarmResult> {
   const headers: Record<string, string> = { "x-api-key": apiKey };
   // The BE's `community-get-farm` throttle keys on `cf-connecting-ip`,
@@ -156,7 +176,7 @@ export async function getFarm(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let res: Response;
     try {
-      res = await fetch(`${UPSTREAM}/community/farms/${farmId}`, { headers });
+      res = await fetch(`${upstream}/community/farms/${farmId}`, { headers });
     } catch {
       lastTransient = { ok: false, reason: "network", status: 0 };
       const delay = RETRY_DELAYS_MS[attempt];
