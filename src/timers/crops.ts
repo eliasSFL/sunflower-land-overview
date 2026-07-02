@@ -30,13 +30,19 @@ export function extractCropTimers(
   const rows: Row[] = [];
   for (const [plotId, plot] of Object.entries(plots)) {
     if (!plot.crop) continue;
-    // Live-derived ready time: windowed (boost-accruing) when the crop
+    // Live-derived ready time: windowed (boost-accruing, incl. the
+    // Rapid Root / Sproutroot Surprise fertiliser window) when the crop
     // carries `baseDurationMs`, legacy `plantedAt + grow` otherwise.
     rows.push({
       plotId,
       plot,
       cropName: plot.crop.name,
-      readyAt: getCropReadyAt(plot.crop, CROPS[plot.crop.name], state),
+      readyAt: getCropReadyAt(
+        plot.crop,
+        CROPS[plot.crop.name],
+        state,
+        plot.fertiliser,
+      ),
     });
   }
 

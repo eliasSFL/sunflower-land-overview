@@ -83,7 +83,10 @@ export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/dr
 // replication path (CLAUDE.md) and means the dashboard's countdowns stay
 // correct the moment SPEED_BOOSTS is enabled upstream — no overview change
 // needed. Covered slices: crops (#7382), trees (#7391), mines (#7392),
-// fruit (#7394), flowers (#7395). Greenhouse isn't windowed upstream yet
+// fruit (#7394), flowers (#7395), crop fertilisers (#7396 — Rapid Root /
+// Sproutroot Surprise are a per-plot window, so `getCropReadyAt` takes the
+// plot's `fertiliser` as a 4th arg, mirroring `getFruitReadyAt` +
+// Turbofruit Mix). Greenhouse isn't windowed upstream yet
 // (its `getReadyAt` is still a plain `createdAt + seconds`), so greenhouse
 // pots keep the legacy formula until that slice lands.
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
