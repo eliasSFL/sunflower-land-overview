@@ -170,7 +170,18 @@ export {
   collectAgedFish,
   type CollectAgedFishAction,
 } from "features/game/events/landExpansion/collectAgedFish";
-export { getPrimeAgedChance } from "features/game/types/agingFormulas";
+// Spice Rack — the `Refiner` skill grants a seeded-PRNG chance (resolved
+// inside upstream `getAgingOutput` at collect) to add +1 to `Refined Salt`
+// outputs. `getRefinedSaltChance` gives the headline % for the card (15 if
+// the player has Refiner, else 0). Per-slot prediction rides on
+// `predictSpiceOutputs` (see spiceOutputs.ts): because the roll lives
+// inside the exported `getAgingOutput`, we thread the collect counter and
+// read the realized amount — no PRNG replication, no upstream record.
+export {
+  getPrimeAgedChance,
+  getRefinedSaltChance,
+} from "features/game/types/agingFormulas";
+export { predictSpiceOutputs, type SpiceJobOutput } from "./spiceOutputs.ts";
 // Salt farm — these are deterministic helpers; never read salt.storedCharges
 // or salt.nextChargeAt directly off the game state. Run the node through
 // `materializeSaltRegen` first so accrued charges since the last server

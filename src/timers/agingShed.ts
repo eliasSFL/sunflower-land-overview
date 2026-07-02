@@ -4,12 +4,15 @@ import {
   getItemIcon,
   getObjectEntries,
   getPrimeAgedChance,
+  getRefinedSaltChance,
   getSpiceRackRecipe,
+  predictSpiceOutputs,
   type AgingRackSlot,
   type FermentationJob,
   type FermentationRecipeName,
   type GameState,
   type InventoryItemName,
+  type SpiceJobOutput,
   type SpiceRackJob,
   type SpiceRackRecipeName,
 } from "../game/index.ts";
@@ -27,7 +30,15 @@ import type { Category, Timer, TimerContext, TimerSlot } from "./types.ts";
 //                         `predictPrimeFlips`) so the slot row shows the
 //                         real outcome ahead of time.
 //   • Fermentation Rack — recipe → recipe.outputs (first entry)
-//   • Spice Rack        — recipe → recipe.outputs (first entry)
+//   • Spice Rack        — recipe → predicted realized output. When the
+//                         player has the `Refiner` skill, each `Refined
+//                         Salt` collect carries a seeded-PRNG chance to
+//                         yield +1 (resolved by upstream at collect). We
+//                         PREDICT it per slot via `predictSpiceOutputs`
+//                         (threads the collect counter through the
+//                         exported `getAgingOutput`, reading the realized
+//                         amount — no PRNG replication), and show the
+//                         headline chance via `getRefinedSaltChance`.
 // Each card's `slots` field carries every in-flight job in that rack
 // sorted by readyAt so the next-ready job is at the top. A rack with
 // no jobs renders as an idle card (matching the cooking-building idle
@@ -120,8 +131,15 @@ function fermentationSlotEntry(job: FermentationJob): TimerSlot | undefined {
   };
 }
 
-function spiceSlotEntry(job: SpiceRackJob): TimerSlot | undefined {
-  const out = spiceOutput(job.recipe);
+function spiceSlotEntry(
+  job: SpiceRackJob,
+  predicted: SpiceJobOutput[] | undefined,
+): TimerSlot | undefined {
+  // Prefer the predicted output (its `amount` already folds in the
+  // Refiner +1 / Ager ×2 the server will grant); fall back to the static
+  // recipe output if the prediction is unavailable. Spice recipes have a
+  // single output, so the first entry is the one to show.
+  const out = predicted?.[0] ?? spiceOutput(job.recipe);
   if (!out) return undefined;
   return {
     item: out.item,
@@ -198,11 +216,30 @@ export function extractAgingShedTimers(
     const entry = fermentationSlotEntry(job);
     if (entry) fermentationSlots.push(entry);
   }
+  const spiceQueue = racks?.spice ?? [];
+  // Predict each job's realized output up front (threads the collect
+  // counter through upstream `getAgingOutput`), then look results up per
+  // job by id. A slot whose Refiner roll hits shows the +1 amount.
+  const spicePredictions = predictSpiceOutputs({
+    game: state,
+    jobs: spiceQueue,
+    farmId: ctx.farmId,
+  });
   const spiceSlots: TimerSlot[] = [];
-  for (const job of racks?.spice ?? []) {
-    const entry = spiceSlotEntry(job);
+  for (const job of spiceQueue) {
+    const entry = spiceSlotEntry(job, spicePredictions.get(job.id));
     if (entry) spiceSlots.push(entry);
   }
+  // Headline "rate" for the Spice Rack: the chance each `Refined Salt`
+  // collect yields +1 with the player's `Refiner` skill folded in by
+  // upstream (0 without it). Only shown when a Refined Salt job is
+  // actually in flight — it's the only spice output the bonus applies to.
+  const refinedSaltChance = Math.round(getRefinedSaltChance(state));
+  const hasRefinedSaltJob = spiceSlots.some((s) => s.item === "Refined Salt");
+  const spiceSubtext =
+    refinedSaltChance > 0 && hasRefinedSaltJob
+      ? `Refined Salt +1 chance: ${refinedSaltChance}%`
+      : undefined;
 
   return [
     buildRackCard({
@@ -223,6 +260,7 @@ export function extractAgingShedTimers(
       category: "Spice Rack",
       idleText: "Not spicing",
       slots: spiceSlots,
+      subtext: spiceSubtext,
     }),
   ];
 }

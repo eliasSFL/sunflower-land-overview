@@ -12,6 +12,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../game/index.ts", () => ({
   collectAgedFish: vi.fn(),
   getPrimeAgedChance: vi.fn(),
+  getRefinedSaltChance: vi.fn(),
+  predictSpiceOutputs: vi.fn(),
   getItemIcon: vi.fn((name: string) => `icon:${name}`),
   getFermentationRecipe: vi.fn(),
   getSpiceRackRecipe: vi.fn(),
@@ -21,6 +23,9 @@ vi.mock("../game/index.ts", () => ({
 import {
   collectAgedFish,
   getPrimeAgedChance,
+  getRefinedSaltChance,
+  getSpiceRackRecipe,
+  predictSpiceOutputs,
   type GameState,
 } from "../game/index.ts";
 import { extractAgingShedTimers } from "./agingShed.ts";
@@ -28,6 +33,9 @@ import type { TimerContext } from "./types.ts";
 
 const mockCollect = vi.mocked(collectAgedFish);
 const mockChance = vi.mocked(getPrimeAgedChance);
+const mockRefinedChance = vi.mocked(getRefinedSaltChance);
+const mockSpiceRecipe = vi.mocked(getSpiceRackRecipe);
+const mockPredictSpice = vi.mocked(predictSpiceOutputs);
 
 const NOW = Date.UTC(2026, 5, 30, 12, 0, 0);
 const ctx: TimerContext = {
@@ -37,8 +45,12 @@ const ctx: TimerContext = {
 };
 
 type AgingSlotInput = { id: string; fish: string; readyAt: number };
+type SpiceJobInput = { id: string; recipe: string; readyAt: number };
 
-function stateWith(aging: AgingSlotInput[]): GameState {
+function stateWith(
+  aging: AgingSlotInput[],
+  spice: SpiceJobInput[] = [],
+): GameState {
   return {
     buildings: { "Aging Shed": [{ coordinates: { x: 0, y: 0 } }] },
     agingShed: {
@@ -51,7 +63,12 @@ function stateWith(aging: AgingSlotInput[]): GameState {
           skills: { Ager: true },
         })),
         fermentation: [],
-        spice: [],
+        spice: spice.map((s) => ({
+          id: s.id,
+          recipe: s.recipe,
+          startedAt: NOW - 1_000_000,
+          readyAt: s.readyAt,
+        })),
       },
     },
   } as unknown as GameState;
@@ -85,10 +102,29 @@ function collectMarksPrime(primeIndices: number[]) {
   }) as unknown as typeof collectAgedFish);
 }
 
+function spiceCard(state: GameState) {
+  const card = extractAgingShedTimers(state, ctx).find(
+    (c) => c.category === "Spice Rack",
+  );
+  if (!card) throw new Error("no Spice Rack card");
+  return card;
+}
+
 beforeEach(() => {
   mockCollect.mockReset();
   mockChance.mockReset();
   mockChance.mockReturnValue(24);
+  mockRefinedChance.mockReset();
+  mockRefinedChance.mockReturnValue(0);
+  // Default: no per-slot predictions — spice slots fall back to the static
+  // recipe output. Individual tests override to assert the +1 amount.
+  mockPredictSpice.mockReset();
+  mockPredictSpice.mockReturnValue(new Map());
+  // Each spice recipe outputs a single item named after the recipe, amount 1.
+  mockSpiceRecipe.mockReset();
+  mockSpiceRecipe.mockImplementation(((recipe: string) => ({
+    outputs: { [recipe]: { toNumber: () => 1 } },
+  })) as unknown as typeof getSpiceRackRecipe);
 });
 
 describe("extractAgingShedTimers — Prime Aged prediction", () => {
@@ -169,5 +205,93 @@ describe("extractAgingShedTimers — Prime Aged prediction", () => {
   it("emits nothing when the Aging Shed is not placed", () => {
     const state = { buildings: {}, agingShed: { racks: {} } } as GameState;
     expect(extractAgingShedTimers(state, ctx)).toEqual([]);
+  });
+});
+
+describe("extractAgingShedTimers — Refined Salt +1 headline", () => {
+  it("renders the +1 chance from upstream when Refiner is active and a Refined Salt job is in flight", () => {
+    mockRefinedChance.mockReturnValue(15);
+    const state = stateWith(
+      [],
+      [{ id: "s1", recipe: "Refined Salt", readyAt: NOW + 1000 }],
+    );
+    expect(spiceCard(state).subtext).toBe("Refined Salt +1 chance: 15%");
+  });
+
+  it("omits the headline when the player lacks Refiner (chance 0)", () => {
+    mockRefinedChance.mockReturnValue(0);
+    const state = stateWith(
+      [],
+      [{ id: "s1", recipe: "Refined Salt", readyAt: NOW + 1000 }],
+    );
+    expect(spiceCard(state).subtext).toBeUndefined();
+  });
+
+  it("omits the headline when no Refined Salt job is in flight, even with Refiner", () => {
+    // Refiner only bonuses `Refined Salt` outputs, so a Salt Lick job
+    // alone must not surface the headline.
+    mockRefinedChance.mockReturnValue(15);
+    const state = stateWith(
+      [],
+      [{ id: "s1", recipe: "Salt Lick", readyAt: NOW + 1000 }],
+    );
+    expect(spiceCard(state).subtext).toBeUndefined();
+  });
+
+  it("has no headline on an idle spice rack", () => {
+    mockRefinedChance.mockReturnValue(15);
+    const card = spiceCard(stateWith([], []));
+    expect(card.idle).toBe(true);
+    expect(card.subtext).toBeUndefined();
+  });
+});
+
+describe("extractAgingShedTimers — Refined Salt +1 per-slot prediction", () => {
+  it("shows the predicted +1 amount on the exact slot upstream rolls a bonus", () => {
+    // Two Refined Salt jobs; predictSpiceOutputs says the second rolls the
+    // bonus (amount 2). The extractor must surface each job's own amount.
+    mockPredictSpice.mockReturnValue(
+      new Map([
+        ["s1", [{ item: "Refined Salt", amount: 1 }]],
+        ["s2", [{ item: "Refined Salt", amount: 2 }]],
+      ]),
+    );
+    const state = stateWith(
+      [],
+      [
+        { id: "s1", recipe: "Refined Salt", readyAt: NOW + 1000 },
+        { id: "s2", recipe: "Refined Salt", readyAt: NOW + 2000 },
+      ],
+    );
+    const slots = spiceCard(state).slots ?? [];
+    expect(slots.map((s) => s.amount)).toEqual([1, 2]);
+    expect(slots.map((s) => s.item)).toEqual(["Refined Salt", "Refined Salt"]);
+  });
+
+  it("passes the spice queue and farmId to predictSpiceOutputs", () => {
+    mockPredictSpice.mockReturnValue(new Map());
+    const state = stateWith(
+      [],
+      [{ id: "s1", recipe: "Refined Salt", readyAt: NOW + 1000 }],
+    );
+    spiceCard(state);
+    expect(mockPredictSpice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        farmId: ctx.farmId,
+        jobs: expect.arrayContaining([expect.objectContaining({ id: "s1" })]),
+      }),
+    );
+  });
+
+  it("falls back to the static recipe output when a job has no prediction", () => {
+    // Empty prediction map → spiceSlotEntry uses getSpiceRackRecipe (amount 1).
+    mockPredictSpice.mockReturnValue(new Map());
+    const state = stateWith(
+      [],
+      [{ id: "s1", recipe: "Refined Salt", readyAt: NOW + 1000 }],
+    );
+    const slots = spiceCard(state).slots ?? [];
+    expect(slots).toHaveLength(1);
+    expect(slots[0]).toMatchObject({ item: "Refined Salt", amount: 1 });
   });
 });
