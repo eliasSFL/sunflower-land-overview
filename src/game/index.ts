@@ -89,7 +89,10 @@ export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/dr
 // windows — totems / Tortoise Shrine / Harvest Hourglass — plus the pot's
 // Greenhouse Glow fertiliser window, so `getGreenhouseReadyAt` takes the
 // pot's `fertiliser` as a 3rd arg; `getGreenhousePotReadyAt` is the
-// pot-level convenience that reads `pot.plant` / `pot.fertiliser` for us).
+// pot-level convenience that reads `pot.plant` / `pot.fertiliser` for us),
+// oil reserves (#7404 — permanent boosts Dev Wrench / Oil Be Back are baked
+// into the reserve's `baseDurationMs`, and the temporary Stag Shrine half is
+// a live 1.35x speed window; `getOilReserveReadyAt` resolves both).
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
 export { getTreeReadyAt } from "features/game/events/landExpansion/chop";
 export { getMineReadyAt } from "features/game/lib/resourceNodes";
@@ -99,6 +102,7 @@ export {
   getGreenhouseReadyAt,
   getGreenhousePotReadyAt,
 } from "features/game/events/landExpansion/greenhouseReadiness";
+export { getOilReserveReadyAt } from "features/game/events/landExpansion/drillOilReserve";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.

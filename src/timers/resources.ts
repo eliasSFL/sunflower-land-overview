@@ -1,15 +1,8 @@
 import {
-  CRIMSTONE_RECOVERY_TIME,
   CROPS,
   FLOWERS,
-  GOLD_RECOVERY_TIME,
   GREENHOUSE_CROPS,
-  IRON_RECOVERY_TIME,
-  OIL_RESERVE_RECOVERY_TIME,
   PATCH_FRUIT,
-  STONE_RECOVERY_TIME,
-  SUNSTONE_RECOVERY_TIME,
-  TREE_RECOVERY_TIME,
   batchCrimstoneYields,
   batchGoldYields,
   batchIronYields,
@@ -20,6 +13,7 @@ import {
   getItemIcon,
   getKeys,
   getMineReadyAt,
+  getOilReserveReadyAt,
   getTreeReadyAt,
   type CropName,
   type FiniteResource,
@@ -66,16 +60,6 @@ type ResourceKind =
   | "Salt"
   | "Salt Charged"
   | AnimalResource;
-
-const RECOVERY_SECONDS: Record<ResourceName, number> = {
-  Wood: TREE_RECOVERY_TIME,
-  Stone: STONE_RECOVERY_TIME,
-  Iron: IRON_RECOVERY_TIME,
-  Gold: GOLD_RECOVERY_TIME,
-  Crimstone: CRIMSTONE_RECOVERY_TIME,
-  Sunstone: SUNSTONE_RECOVERY_TIME,
-  Oil: OIL_RESERVE_RECOVERY_TIME,
-};
 
 // Canonical node name per produced item. Used by the notification
 // scheduler to render "4.2 Wood from 3× Tree" so the count clearly
@@ -323,7 +307,6 @@ export function extractResourceTimers(
   }
 
   // --- Oil ---
-  const oilRecoveryMs = RECOVERY_SECONDS.Oil * 1000;
   const oilEntries: Array<{
     nodeId: string;
     reserve: OilReserve;
@@ -334,7 +317,9 @@ export function extractResourceTimers(
     oilEntries.push({
       nodeId,
       reserve,
-      readyAt: reserve.oil.drilledAt + oilRecoveryMs,
+      // Windowed when the reserve carries `baseDurationMs` (permanent boosts
+      // baked in + live Stag Shrine speed window), legacy otherwise.
+      readyAt: getOilReserveReadyAt(reserve, state),
     });
   }
   const oilYields = batchOilYields({
