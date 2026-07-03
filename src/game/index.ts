@@ -60,7 +60,6 @@ export {
   PATCH_FRUIT_SEEDS,
   GREENHOUSE_FRUIT,
 } from "features/game/types/fruits";
-export { GREENHOUSE_CROP_TIME_SECONDS } from "features/game/events/landExpansion/harvestGreenHouse";
 export {
   TREE_RECOVERY_TIME,
   STONE_RECOVERY_TIME,
@@ -86,14 +85,20 @@ export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/dr
 // fruit (#7394), flowers (#7395), crop fertilisers (#7396 — Rapid Root /
 // Sproutroot Surprise are a per-plot window, so `getCropReadyAt` takes the
 // plot's `fertiliser` as a 4th arg, mirroring `getFruitReadyAt` +
-// Turbofruit Mix). Greenhouse isn't windowed upstream yet
-// (its `getReadyAt` is still a plain `createdAt + seconds`), so greenhouse
-// pots keep the legacy formula until that slice lands.
+// Turbofruit Mix), greenhouse (greenhouse crops/fruit get their own boost
+// windows — totems / Tortoise Shrine / Harvest Hourglass — plus the pot's
+// Greenhouse Glow fertiliser window, so `getGreenhouseReadyAt` takes the
+// pot's `fertiliser` as a 3rd arg; `getGreenhousePotReadyAt` is the
+// pot-level convenience that reads `pot.plant` / `pot.fertiliser` for us).
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
 export { getTreeReadyAt } from "features/game/events/landExpansion/chop";
 export { getMineReadyAt } from "features/game/lib/resourceNodes";
 export { getFruitReadyAt } from "features/game/events/landExpansion/fruitPatchReadiness";
 export { getFlowerReadyAt } from "features/game/lib/flowerBedReadiness";
+export {
+  getGreenhouseReadyAt,
+  getGreenhousePotReadyAt,
+} from "features/game/events/landExpansion/greenhouseReadiness";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.

@@ -1,6 +1,6 @@
 import {
-  GREENHOUSE_CROP_TIME_SECONDS,
   batchGreenhouseYields,
+  getGreenhouseReadyAt,
   getItemIcon,
   type GameState,
   type GreenhousePlantName,
@@ -25,12 +25,11 @@ export function extractGreenhouseTimers(
   const rows: Row[] = [];
   for (const [potId, pot] of Object.entries(pots)) {
     if (!pot.plant) continue;
-    const grow = GREENHOUSE_CROP_TIME_SECONDS[pot.plant.name] ?? 0;
     rows.push({
       potId,
       pot,
       plantName: pot.plant.name,
-      readyAt: pot.plant.plantedAt + grow * 1000,
+      readyAt: getGreenhouseReadyAt(pot.plant, state, pot.fertiliser),
     });
   }
 
