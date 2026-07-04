@@ -1,0 +1,80 @@
+name: Deploy to dev.sfl-overview.link
+
+# Self-hosted deploy of the `development` branch to the Tailscale-only dev
+# instance on elias-ubuntu-server. Runs on the `deploy` runner in host mode,
+# so it drives the host Docker daemon (mounted socket) and updates the
+# git clone at $REPO that the wrangler-dev container serves from.
+#
+# Lives in .gitea/workflows/ so GitHub Actions ignores it and only Gitea runs it.
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: deploy
+    env:
+      REPO: /home/eliascse/apps/sunflower-land-overview
+      SVC: sfl-overview-dev
+      IMAGE: node:22-bookworm
+      # 127.0.0.1 inside the runner container is not the host; reach the app by
+      # container name over the shared `web` docker network.
+      HEALTH_URL: http://sfl-overview-dev:8787/
+    steps:
+      - name: Fetch, build, restart, migrate, health-check
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd "$REPO"
+
+          PREV=$(git rev-parse HEAD 2>/dev/null || echo none)
+          git fetch --quiet origin development
+          TARGET=$(git rev-parse origin/development)
+          echo "deploying ${PREV:0:8} -> ${TARGET:0:8}"
+
+          # Only reinstall deps when package-lock changed (else build-only = no downtime).
+          NEED_INSTALL=1
+          if [ "$PREV" != "none" ] && git cat-file -e "${PREV}^{commit}" 2>/dev/null; then
+            git diff --quiet "$PREV" "$TARGET" -- package-lock.json && NEED_INSTALL=0
+          fi
+
+          git reset --hard "$TARGET"
+          git submodule update --init --recursive --depth 1
+
+          # Build runs as root in a throwaway container against the git clone;
+          # safe.directory avoids "dubious ownership" so vite bakes the SHA in.
+          if [ "$NEED_INSTALL" = "1" ]; then
+            echo "deps changed -> npm ci + build (brief downtime)"
+            docker compose stop "$SVC"
+            if docker run --rm -v "$REPO":/app -w /app "$IMAGE" \
+                 bash -lc 'git config --global --add safe.directory "*" && npm ci --no-audit --no-fund && npm run build'; then
+              docker compose up -d "$SVC"
+            else
+              echo "BUILD FAILED (ci path) — restarting previous container"
+              docker compose up -d "$SVC"
+              exit 1
+            fi
+          else
+            echo "deps unchanged -> build only, then restart"
+            if docker run --rm -v "$REPO":/app -w /app "$IMAGE" \
+                 bash -lc 'git config --global --add safe.directory "*" && npm run build'; then
+              docker compose restart "$SVC"
+            else
+              echo "BUILD FAILED (build-only path) — leaving current container up"
+              exit 1
+            fi
+          fi
+
+          # Wait for wrangler to come up, then apply any new D1 migrations.
+          for i in $(seq 1 30); do
+            docker compose logs "$SVC" 2>/dev/null | grep -q "Ready on" && break
+            sleep 1
+          done
+          docker compose exec -T "$SVC" \
+            npx wrangler d1 migrations apply sfl_overview_push --env development --local
+
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$HEALTH_URL" || echo 000)
+          echo "DEPLOYED ${TARGET:0:8} (health http=$CODE)"
+          [ "$CODE" = "200" ] || { echo "health check did not return 200"; exit 1; }
