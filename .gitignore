@@ -39,3 +39,4 @@ dist-worker
 # from outside its rootDir (e.g. src/game/stubs/* redirected via paths).
 src/**/*.d.ts
 .github/rulesets/master.json
+*.sql
