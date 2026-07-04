@@ -21,6 +21,21 @@ const gitCommit = (() => {
 })();
 const GITHUB_REPO = "eliasSFL/sunflower-land-overview";
 
+// Repo base URL for the header "Version" link, assigned per-deploy via the
+// VITE_REPO_URL build env: the self-hosted Gitea Actions dev deploy points it
+// at the Gitea repo, while Cloudflare prod (and local builds) fall back to
+// GitHub.
+const REPO_URL =
+  process.env.VITE_REPO_URL?.trim() || `https://github.com/${GITHUB_REPO}`;
+
+// Base path for browsing the source tree at a ref — the header chip appends
+// the version label (git tag on prod, short SHA on dev). The path differs by
+// forge — GitHub uses `/tree/<ref>`, Gitea uses `/src/commit/<ref>` — so pick
+// the forge-appropriate prefix here (build time) and keep the UI forge-agnostic.
+const commitTreeBase = REPO_URL.includes("github.com")
+  ? `${REPO_URL}/tree`
+  : `${REPO_URL}/src/commit`;
+
 // Header chip shows the latest git tag on prod (Workers Builds for the
 // master branch), short commit SHA everywhere else — dev branch
 // deploys and local builds. WORKERS_CI_BRANCH is set by Cloudflare
@@ -85,6 +100,8 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(gitCommit),
       "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
       "import.meta.env.VITE_GITHUB_REPO": JSON.stringify(GITHUB_REPO),
+      "import.meta.env.VITE_REPO_URL": JSON.stringify(REPO_URL),
+      "import.meta.env.VITE_COMMIT_URL": JSON.stringify(commitTreeBase),
       "import.meta.env.VITE_APP_NAME": JSON.stringify(APP_NAME),
       "import.meta.env.VITE_APP_SHORT_NAME": JSON.stringify(APP_SHORT_NAME),
     },

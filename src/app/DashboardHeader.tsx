@@ -35,11 +35,15 @@ export function DashboardHeader({
   const versionLabel =
     (import.meta.env.VITE_APP_VERSION as string | undefined) ||
     bundleSha.slice(0, 7);
-  // `/tree/<ref>` accepts tags, branches, and SHAs interchangeably, so
-  // the link follows whatever the chip is showing.
-  const versionUrl = versionLabel
-    ? `https://github.com/${GITHUB_REPO}/tree/${versionLabel}`
-    : `https://github.com/${GITHUB_REPO}`;
+  // Links to the source tree at this build's commit. The full URL is
+  // resolved at build time (see vite.config.ts `VITE_COMMIT_URL`) from the
+  // per-deploy VITE_REPO_URL — Gitea for the self-hosted dev deploy, GitHub
+  // for prod — so the forge/path logic stays out of the component.
+  const commitBaseUrl = import.meta.env.VITE_COMMIT_URL as string | undefined;
+  const versionUrl = commitBaseUrl
+    ? `${commitBaseUrl}/${versionLabel}`
+    : (import.meta.env.VITE_REPO_URL as string | undefined) ||
+      `https://github.com/${GITHUB_REPO}`;
 
   // "Saved" reflects FarmModel.updatedAt from the BE — bumps only on
   // real saves (mongoDiff-non-empty). Distinguishes "we polled X ago"
@@ -90,7 +94,7 @@ export function DashboardHeader({
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-                title="View this release on GitHub"
+                title="View this build's source at this commit"
               >
                 {versionLabel}
               </a>

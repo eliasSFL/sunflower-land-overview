@@ -22,6 +22,10 @@ jobs:
       # 127.0.0.1 inside the runner container is not the host; reach the app by
       # container name over the shared `web` docker network.
       HEALTH_URL: http://sfl-overview-dev:8787/
+      # Points the header "Version" chip at this (Gitea) forge; vite bakes it
+      # into VITE_COMMIT_URL at build. Managed as a repo Actions variable
+      # (Settings -> Actions -> Variables); prod/local default to GitHub.
+      VITE_REPO_URL: ${{ vars.VITE_REPO_URL }}
     steps:
       - name: Fetch, build, restart, migrate, health-check
         shell: bash
@@ -48,7 +52,7 @@ jobs:
           if [ "$NEED_INSTALL" = "1" ]; then
             echo "deps changed -> npm ci + build (brief downtime)"
             docker compose stop "$SVC"
-            if docker run --rm -v "$REPO":/app -w /app "$IMAGE" \
+            if docker run --rm -v "$REPO":/app -w /app -e VITE_REPO_URL "$IMAGE" \
                  bash -lc 'git config --global --add safe.directory "*" && npm ci --no-audit --no-fund && npm run build'; then
               docker compose up -d "$SVC"
             else
@@ -58,7 +62,7 @@ jobs:
             fi
           else
             echo "deps unchanged -> build only, then restart"
-            if docker run --rm -v "$REPO":/app -w /app "$IMAGE" \
+            if docker run --rm -v "$REPO":/app -w /app -e VITE_REPO_URL "$IMAGE" \
                  bash -lc 'git config --global --add safe.directory "*" && npm run build'; then
               docker compose restart "$SVC"
             else
