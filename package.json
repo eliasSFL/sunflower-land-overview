@@ -62,7 +62,7 @@
   "allowScripts": {
     "core-js-pure@3.49.0": true,
     "esbuild@0.28.1": true,
-    "sharp@0.34.5": true,
-    "workerd@1.20260617.1": true
+    "sharp@0.35.2": true,
+    "workerd@1.20260722.1": true
   }
 }
