@@ -25,15 +25,19 @@ import {
 } from "features/game/types/spiceRack";
 import { KNOWN_IDS } from "features/game/types";
 import { getObjectEntries } from "lib/object";
-import type { SpiceRackJob } from "features/game/lib/agingShed";
+import {
+  getStampedAgerLevel,
+  type SpiceRackJob,
+} from "features/game/lib/agingShed";
 import type { GameState, InventoryItemName } from "./types.ts";
 
 export type SpiceJobOutput = { item: InventoryItemName; amount: number };
 
 // Realized outputs for every queued spice-rack job, keyed by job id. Each
 // job's outputs carry the amount the server will actually grant — so a
-// `Refined Salt` job whose seeded roll hits shows `amount: 2` (or `3` with
-// Ager), and everything else its base amount.
+// `Refined Salt` job whose seeded roll hits shows its base +1, everything
+// scaled by the job's stamped Ager rank (the rank whose inputs were paid
+// at start, not the player's live rank).
 export function predictSpiceOutputs(args: {
   game: GameState;
   jobs: SpiceRackJob[];
@@ -58,7 +62,7 @@ export function predictSpiceOutputs(args: {
       counters[job.recipe] = counter + 1;
 
       const recipeDef = getSpiceRackRecipe(job.recipe);
-      const agerApplied = !!job.skills?.Ager;
+      const agerLevel = getStampedAgerLevel(job.skills);
 
       const outputs: SpiceJobOutput[] = [];
       for (const [item, amount] of getObjectEntries(recipeDef.outputs)) {
@@ -66,7 +70,7 @@ export function predictSpiceOutputs(args: {
           game,
           amount ?? new Decimal(0),
           item,
-          agerApplied,
+          agerLevel,
           { farmId, itemId: KNOWN_IDS[item], counter },
         );
         outputs.push({ item, amount: add.toNumber() });
