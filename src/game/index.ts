@@ -214,16 +214,15 @@ export {
 } from "./beehives.ts";
 // Bumpkin level helpers. `getAscensionLevel` is the ascension-aware
 // standing (within-ascension level 1..50 + progress + isReadyToAscend);
-// `getTotalBumpkinLevel` is the monotonic lifetime total; `getMaxBumpkinLevel`
-// returns the pre-ascension cap for the current feature flags. All are
-// driven by the canonical LEVEL_EXPERIENCE table upstream.
+// `getTotalBumpkinLevel` is the monotonic lifetime total. Ascension is
+// live for everyone now, so the cap is the fixed `PRE_ASCENSION_MAX_LEVEL`
+// (150) rather than a flag-dependent one. All are driven by the canonical
+// LEVEL_EXPERIENCE table upstream.
 export {
   getAscensionLevel,
   getExperienceToNextLevel,
-  getMaxBumpkinLevel,
   getTotalBumpkinLevel,
   isMaxLevel,
-  MAX_BUMPKIN_LEVEL,
 } from "features/game/lib/level";
 export type { AscensionLevel } from "features/game/lib/level";
 // Power skills — `getPowerSkills` returns the `power: true` entries of

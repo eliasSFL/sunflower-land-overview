@@ -73,7 +73,7 @@ export function predictSpiceOutputs(args: {
           agerLevel,
           { farmId, itemId: KNOWN_IDS[item], counter },
         );
-        outputs.push({ item, amount: add.toNumber() });
+        outputs.push({ item, amount: add.output.toNumber() });
       }
       perJob.set(job.id, outputs);
     } catch {

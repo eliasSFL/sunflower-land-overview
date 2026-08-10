@@ -208,7 +208,7 @@ export function extractAgingShedTimers(
   // Headline "rate": the chance each collect flips to Prime Aged, with
   // the player's current skills/sculptures (Fish Smoking, Salt Sculpture)
   // folded in by upstream. Only shown when fish are actually aging.
-  const primeChance = Math.round(getPrimeAgedChance(state));
+  const primeChance = Math.round(getPrimeAgedChance(state).chance);
   const agingSubtext =
     agingQueue.length > 0 ? `Prime chance: ${primeChance}%` : undefined;
   const fermentationSlots: TimerSlot[] = [];

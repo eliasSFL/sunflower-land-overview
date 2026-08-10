@@ -1,11 +1,8 @@
 import type { FarmResponse } from "../api/fetchFarm.ts";
 import {
   getAscensionLevel,
-  getMaxBumpkinLevel,
   hasLifetimeFarmerBanner,
   hasVipAccess,
-  isMaxLevel,
-  MAX_BUMPKIN_LEVEL,
   type FactionName,
   type InventoryItemName,
   type IslandType,
@@ -60,9 +57,10 @@ const FACTION_LABELS: Record<FactionName, string> = {
 // Compact "who am I" summary shown above the Next Up panel. Reads
 // straight off the farm response — no derived state, no polling. The
 // level + XP progress bar come from `getAscensionLevel`, so they line up
-// with the in-game bumpkin HUD: on swamp/ascension farms it shows the
-// within-ascension level (1..50) and "ready to ascend" once the band is
-// banked; pre-ascension it's the legacy level with a full bar at max.
+// with the in-game bumpkin HUD: past the first ascension it shows the
+// within-ascension level (1..50), and at ascension 0 the legacy
+// table-based level. Either way "ready to ascend" shows once the band
+// (or the pre-ascension level-150 cap) is banked.
 
 type Props = {
   data: FarmResponse;
@@ -95,17 +93,12 @@ export function BumpkinSummaryPanel({ data }: Props) {
 
   const experience = bumpkin.experience ?? 0;
   const ascensionLevel = farm.island?.ascensionLevel ?? 0;
-  const maxLevel = getMaxBumpkinLevel(farm);
-  const ascension = getAscensionLevel({ experience, ascensionLevel, maxLevel });
-  const { currentExperienceProgress, experienceToNextLevel, isReadyToAscend } =
-    ascension;
-
-  // `maxLevel` drops below the legacy 200 cap once SWAMP_ASCENSION is on,
-  // which is what makes `isReadyToAscend` meaningful — otherwise a level-150
-  // legacy bumpkin would read as "ready" off the shared 150 threshold.
-  const ascending = maxLevel < MAX_BUMPKIN_LEVEL;
-  const readyToAscend = ascending && isReadyToAscend;
-  const atMax = !ascending && isMaxLevel(experience, maxLevel);
+  const ascension = getAscensionLevel({ experience, ascensionLevel });
+  const {
+    currentExperienceProgress,
+    experienceToNextLevel,
+    isReadyToAscend: readyToAscend,
+  } = ascension;
 
   // In-game badge format: "Ascension N · Level M", including the
   // pre-ascension band as Ascension 0.
@@ -161,7 +154,7 @@ export function BumpkinSummaryPanel({ data }: Props) {
         <Label type="default">Bumpkin</Label>
         <span className="text-xs">
           {levelText}
-          {readyToAscend ? " · ready" : atMax ? " · max" : ""}
+          {readyToAscend ? " · ready" : ""}
         </span>
       </header>
 
@@ -221,11 +214,9 @@ export function BumpkinSummaryPanel({ data }: Props) {
       <p className="text-xs opacity-70">
         {readyToAscend
           ? `${formatInt(currentExperienceProgress)} XP — ready to ascend`
-          : atMax
-            ? `${formatInt(currentExperienceProgress)} XP this cycle`
-            : `${formatInt(currentExperienceProgress)} / ${formatInt(
-                experienceToNextLevel,
-              )} XP to level ${ascension.level + 1}`}
+          : `${formatInt(currentExperienceProgress)} / ${formatInt(
+              experienceToNextLevel,
+            )} XP to level ${ascension.level + 1}`}
       </p>
 
       {/* Currency rows — coins / FLOWER / Gem / Love Charm. Order

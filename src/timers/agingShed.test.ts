@@ -113,7 +113,7 @@ function spiceCard(state: GameState) {
 beforeEach(() => {
   mockCollect.mockReset();
   mockChance.mockReset();
-  mockChance.mockReturnValue(24);
+  mockChance.mockReturnValue({ chance: 24, boostsUsed: [] });
   mockRefinedChance.mockReset();
   mockRefinedChance.mockReturnValue(0);
   // Default: no per-slot predictions — spice slots fall back to the static
@@ -174,11 +174,11 @@ describe("extractAgingShedTimers — Prime Aged prediction", () => {
 
   it("renders the prime-chance headline from upstream getPrimeAgedChance", () => {
     collectMarksPrime([]);
-    mockChance.mockReturnValue(24);
+    mockChance.mockReturnValue({ chance: 24, boostsUsed: [] });
     const state = stateWith([{ id: "a", fish: "Ray", readyAt: NOW + 1000 }]);
     expect(agingCard(state).subtext).toBe("Prime chance: 24%");
 
-    mockChance.mockReturnValue(10);
+    mockChance.mockReturnValue({ chance: 10, boostsUsed: [] });
     expect(agingCard(state).subtext).toBe("Prime chance: 10%");
   });
 
