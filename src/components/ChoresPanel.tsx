@@ -252,11 +252,15 @@ function ChoreReward({
   now: number;
 }) {
   // `generateChoreRewards` returns the reward items with the chapter
-  // ticket already boosted; coins (when present) sit on the raw chore
-  // and aren't boosted, so we read them straight off.
-  const items = getObjectEntries(
-    generateChoreRewards({ game: state, chore, now: new Date(now) }),
-  );
+  // ticket already boosted (alongside the boosts it applied); coins (when
+  // present) sit on the raw chore and aren't boosted, so we read them
+  // straight off.
+  const { items: rewardItems } = generateChoreRewards({
+    game: state,
+    chore,
+    now: new Date(now),
+  });
+  const items = getObjectEntries(rewardItems);
   const coins = chore.reward.coins;
 
   return (
