@@ -97,7 +97,12 @@ export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/dr
 // pot-level convenience that reads `pot.plant` / `pot.fertiliser` for us),
 // oil reserves (#7404 — permanent boosts Dev Wrench / Oil Be Back are baked
 // into the reserve's `baseDurationMs`, and the temporary Stag Shrine half is
-// a live 1.35x speed window; `getOilReserveReadyAt` resolves both).
+// a live 1.35x speed window; `getOilReserveReadyAt` resolves both), and
+// animal sleep (#7578 — Collie Shrine (Cow/Sheep) and Bantam Shrine
+// (Chicken) became 1.35x rate windows over the nap, so a shrine placed
+// mid-sleep speeds up the remainder; `getAnimalReadyAt` resolves the live
+// wake time and `animal.awakeAt` is now only the legacy fallback it returns
+// when the animal carries no `baseDurationMs` marker).
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
 export { getTreeReadyAt } from "features/game/events/landExpansion/chop";
 export { getMineReadyAt } from "features/game/lib/resourceNodes";
@@ -108,6 +113,7 @@ export {
   getGreenhousePotReadyAt,
 } from "features/game/events/landExpansion/greenhouseReadiness";
 export { getOilReserveReadyAt } from "features/game/events/landExpansion/drillOilReserve";
+export { getAnimalReadyAt } from "features/game/lib/animals";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.
@@ -298,7 +304,9 @@ export type { Bounties, BountyRequest } from "features/game/types/game";
 // these are fulfilled by exchanging a *placed* animal at or above the
 // requested level — `isValidDeal` is upstream's eligibility check (type
 // match, the level gate with its "ready"-state off-by-one, and the awake
-// gate against the live clock). Reward computation is shared with item
+// gate, which since #7578 resolves the wake time through
+// `getAnimalReadyAt` and so needs the `game` to read boost windows from).
+// Reward computation is shared with item
 // bounties (`generateBountyCoins`/`generateBountyTicket` above; the +50%
 // Bountiful Bounties skill only fires for these). `ANIMALS` keys the three
 // animal types, so `name in ANIMALS` positively identifies an animal

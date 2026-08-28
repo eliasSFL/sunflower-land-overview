@@ -1,6 +1,7 @@
 import {
   ANIMAL_RESOURCE_DROP,
   getAnimalLevel,
+  getAnimalReadyAt,
   getBoostIcon,
   getItemIcon,
   getKeys,
@@ -47,13 +48,18 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // State handling — keep it lenient. We surface a timer whenever the
 // animal has a level >= 1 (skipping level-0 / fresh animals with no
 // drop table). Sick animals are skipped (they need medicine, not time).
-// `readyAt` is always `animal.awakeAt`:
-//   - state "ready" → awakeAt is in the past → "Ready" status.
-//   - state "idle"/"happy"/"sad" + awakeAt past → also reads as
+// `readyAt` is always the animal's live wake time, from upstream's
+// `getAnimalReadyAt(animal, state)`. Since #7578 that is NOT the same as
+// the stored `animal.awakeAt`: Collie/Bantam Shrine became 1.35x rate
+// windows over the nap, so a shrine open mid-sleep pulls the real wake
+// time earlier and `awakeAt` survives only as the legacy fallback the
+// helper returns for animals with no `baseDurationMs` marker.
+//   - state "ready" → wake time is in the past → "Ready" status.
+//   - state "idle"/"happy"/"sad" + wake time past → also reads as
 //     "Ready" even though the player still needs to feed; we accept
 //     the imprecision because the alternative (suppressing the card)
 //     hides actionable animals from the overview.
-//   - state "idle" + awakeAt future → countdown until they wake up
+//   - state "idle" + wake time future → countdown until they wake up
 //     (post-claim sleep cycle).
 // Predicted yield reflects each animal's *next claim* drop at its
 // current level + boosts.
@@ -128,7 +134,7 @@ export function extractAnimalTimers(
         category: "Animals",
         label: resource,
         icon: getItemIcon(resource),
-        readyAt: animal.awakeAt,
+        readyAt: getAnimalReadyAt(animal, state),
         predictedYield: { amount, item: resource },
         boosts: toBoosts(boostsUsed, state),
         // Every animal stacked into this card shares the same type

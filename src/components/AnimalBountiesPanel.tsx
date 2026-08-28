@@ -52,8 +52,9 @@ function collectAnimalBounties(state: GameState): AnimalRow[] {
     bounty,
     // Count animals that could satisfy this bounty right now — upstream's
     // eligibility check (type, level, awake) is the single source of truth.
-    eligible: animals.filter((animal) => isValidDeal({ animal, deal: bounty }))
-      .length,
+    eligible: animals.filter((animal) =>
+      isValidDeal({ animal, deal: bounty, game: state }),
+    ).length,
     completed: completedIds.has(bounty.id),
   }));
 
