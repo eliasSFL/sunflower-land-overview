@@ -2,6 +2,7 @@ import {
   COOKABLES,
   getBoostIcon,
   getCookingAmount,
+  getCookingQueueReadyAts,
   getItemIcon,
   getProcessedResourceAmount,
   PROCESSED_RESOURCES,
@@ -41,12 +42,22 @@ const isCookingTimerCategory = (
 // aggregationKey so identical recipes at different positions stay
 // separate cards.
 //
+// Ready times come from upstream's `getCookingQueueReadyAts`, NOT from
+// each recipe's stored `readyAt`. Cooking moved onto the windowed
+// speed-rate model in #7582 and is the only SEQUENTIAL activity to do
+// so: boosts (Gourmet Hourglass, Super/Time Warp Totem, Legendary and
+// Boar Shrine) are live speeds over the queue rather than discounts
+// baked in at cook time, so one placed mid-cook pulls every recipe
+// behind it forward too. That makes the stored value a cache that goes
+// stale between queue writes.
+//
 // Predictive PRNG: `getCookingAmount` / `getProcessedResourceAmount`
 // thread `farmId + counter + KNOWN_IDS[recipe]` through `prngChance`,
 // matching what the game does on claim. Slots across ALL cooking
-// buildings are sorted by readyAt before yield prediction so the
-// per-recipe counter advances in claim order. A Kitchen and a Fire Pit
-// both queueing the same recipe will see correctly-shifted PRNG rolls.
+// buildings are sorted by their RESOLVED readyAt before yield
+// prediction so the per-recipe counter advances in claim order. A
+// Kitchen and a Fire Pit both queueing the same recipe will see
+// correctly-shifted PRNG rolls.
 //
 // Boost surfacing: both upstream helpers now return a `boostsUsed`
 // array — `getCookingAmount` lists Double Nom / Fiery Jackpot /
@@ -74,6 +85,11 @@ type RawSlot = {
   slotIdx: number;
   recipe: BuildingProduct;
   kind: "cooking" | "processing";
+  // Resolved ready time. For cooking queues this is the DERIVED value
+  // from upstream's chain, which can sit earlier than the stored
+  // `recipe.readyAt` when a boost was placed mid-cook. Processing keeps
+  // the stored one — see `collectRawSlots`.
+  readyAt: number;
 };
 
 type Predicted = {
@@ -114,6 +130,22 @@ function collectRawSlots(state: GameState): {
         pushIdle(name, inst, idx);
         return;
       }
+      // Resolve the whole queue at once: cooking is sequential, so a
+      // recipe's ready time depends on the one ahead of it and cannot
+      // be derived per slot. Chains are per building INSTANCE — two
+      // Fire Pits cook independently — so this runs inside the
+      // instance loop, not across all of them.
+      //
+      // The stored `recipe.readyAt` is only a cache upstream refreshes
+      // when an event rewrites the queue; between those writes this is
+      // the source of truth, so a Gourmet Hourglass placed mid-cook
+      // shows up in our countdown immediately. Legacy recipes (no
+      // `baseDurationMs`) fall back to their stored value inside the
+      // helper, so a part-migrated queue resolves correctly too.
+      const readyAts = getCookingQueueReadyAts({
+        crafting: queue,
+        game: state,
+      });
       queue.forEach((recipe, slotIdx) => {
         slots.push({
           building: name,
@@ -121,6 +153,7 @@ function collectRawSlots(state: GameState): {
           slotIdx,
           recipe,
           kind: "cooking",
+          readyAt: readyAts[slotIdx] ?? recipe.readyAt,
         });
       });
     });
@@ -141,6 +174,12 @@ function collectRawSlots(state: GameState): {
         slotIdx,
         recipe,
         kind: "processing",
+        // Deliberately the stored value: `processResource` still does a
+        // plain `startAt + reducedMs` with no `baseDurationMs` marker,
+        // so processing has no boost windows to resolve against.
+        // Running it through the cooking chain would imply a windowing
+        // that upstream hasn't shipped for this queue.
+        readyAt: recipe.readyAt,
       });
     });
   });
@@ -167,12 +206,14 @@ export function extractCookingTimers(
   const { slots: rawSlots, idle: idleBuildings } = collectRawSlots(state);
   if (rawSlots.length === 0 && idleBuildings.length === 0) return [];
 
-  // Sort by readyAt so per-recipe PRNG counters advance in claim order
-  // before we group by building. Within a single building's queue this
-  // is also the natural display order.
-  const sorted = [...rawSlots].sort(
-    (a, b) => a.recipe.readyAt - b.recipe.readyAt,
-  );
+  // Sort by the RESOLVED readyAt so per-recipe PRNG counters advance in
+  // claim order before we group by building. Sorting on the stored
+  // `recipe.readyAt` would misorder claims whenever a boost has pulled
+  // one building's queue ahead of another's since the last queue write,
+  // handing the wrong counter to the wrong recipe and predicting the
+  // wrong yields. Within a single building's queue this is also the
+  // natural display order.
+  const sorted = [...rawSlots].sort((a, b) => a.readyAt - b.readyAt);
 
   const farmActivity = state.farmActivity ?? {};
   const cookCounter: Record<string, number> = {};
@@ -242,7 +283,7 @@ export function extractCookingTimers(
       category: slot.building,
       label: slot.recipe.name,
       icon: getItemIcon(slot.recipe.name),
-      readyAt: slot.recipe.readyAt,
+      readyAt: slot.readyAt,
       predictedYield: { amount, item: slot.recipe.name },
       boosts: p?.boosts,
       aggregationKey: `Cooking|${slot.building}|${slot.instanceKey}|${slot.slotIdx}`,

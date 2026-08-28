@@ -102,7 +102,10 @@ export { OIL_RESERVE_RECOVERY_TIME } from "features/game/events/landExpansion/dr
 // (Chicken) became 1.35x rate windows over the nap, so a shrine placed
 // mid-sleep speeds up the remainder; `getAnimalReadyAt` resolves the live
 // wake time and `animal.awakeAt` is now only the legacy fallback it returns
-// when the animal carries no `baseDurationMs` marker).
+// when the animal carries no `baseDurationMs` marker), and cooking (#7582 —
+// Gourmet Hourglass / Super + Time Warp Totem / Legendary Shrine at 2x and
+// Boar Shrine at 1.25x; see `getCookingQueueReadyAts` below, which is
+// queue-shaped rather than per-node).
 export { getCropReadyAt } from "features/game/events/landExpansion/harvest";
 export { getTreeReadyAt } from "features/game/events/landExpansion/chop";
 export { getMineReadyAt } from "features/game/lib/resourceNodes";
@@ -114,6 +117,16 @@ export {
 } from "features/game/events/landExpansion/greenhouseReadiness";
 export { getOilReserveReadyAt } from "features/game/events/landExpansion/drillOilReserve";
 export { getAnimalReadyAt } from "features/game/lib/animals";
+// Cooking is the one SEQUENTIAL windowed activity: a queued recipe cannot
+// start until the one ahead finishes, so ready times resolve as a chain
+// over the whole queue rather than per node — a recipe with no `startedAt`
+// begins at the DERIVED ready time of its predecessor, which is what lets a
+// boost placed mid-cook pull the rest of the queue forward. Hence a
+// queue-shaped helper instead of a `getXReadyAt(node)` one. Only cooking
+// buildings' `crafting` queues are windowed; the Fish Market's `processing`
+// queue is still plain `startAt + duration` upstream (processResource.ts),
+// so it keeps its stored readyAt.
+export { getCookingQueueReadyAts } from "features/game/lib/cookingReadiness";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.
