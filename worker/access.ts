@@ -1,4 +1,4 @@
-import { mintFarmKey, upstreamBase } from "./communityApi.ts";
+import { serviceKey, upstreamBase } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
 export type AccessFetchResult =
@@ -25,10 +25,12 @@ export async function fetchAndCheckAccess(
   farmId: number,
   clientIp?: string,
 ): Promise<AccessFetchResult> {
-  if (!env.SFL_COMMUNITY_API_KEY) {
+  // One service key for every farm we read — see `serviceKey`. The
+  // `farmId` argument no longer influences the credential at all.
+  const key = serviceKey(env);
+  if (!key) {
     return { ok: false, status: 503, error: "Server not configured" };
   }
-  const key = await mintFarmKey(farmId, env.SFL_COMMUNITY_API_KEY);
   const headers: Record<string, string> = { "x-api-key": key };
   // Forward the eyeball's IP so the BE's `community-get-farm` throttle
   // can scope per-player instead of treating every subscribe as coming
@@ -59,8 +61,8 @@ export async function fetchAndCheckAccess(
   //      (`hasSupportKey: false` → secret missing, BE will throttle on
   //      cf-connecting-ip instead of player IP)
   //   2. What status did upstream return?
-  //      (a sudden 401 here would mean the headers got corrupted; a
-  //      surge of 429 confirms the BE throttle is biting.)
+  //      (a sudden 401 here would mean our service key stopped
+  //      qualifying; a surge of 429 confirms the BE throttle is biting.)
   // Body / key values are deliberately omitted.
   console.log("community/farms upstream", {
     farmId,
@@ -68,6 +70,23 @@ export async function fetchAndCheckAccess(
     hasClientIp: !!clientIp,
     status: upstream.status,
   });
+
+  // A 401 is never about the farm being asked for — upstream only ever
+  // sees our one service key, so this means the key is revoked or its
+  // owning farm dropped below VIP + level 50. Surfacing upstream's 401
+  // verbatim would read to the SPA as "you aren't allowed to view this
+  // farm"; it's our outage, so report it as one and shout in the logs.
+  if (upstream.status === 401) {
+    console.error(
+      "community key rejected by upstream (401) — every farm fetch will fail " +
+        "until it is renewed at https://sunflower-land.com/community-docs",
+    );
+    return {
+      ok: false,
+      status: 503,
+      error: "Overview API key is not currently valid",
+    };
+  }
 
   if (!upstream.ok) {
     return {

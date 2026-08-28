@@ -37,7 +37,12 @@ export {
   batchSunstoneYields,
   batchOilYields,
 } from "./batch-yields.ts";
-export { getItemIcon, getBoostIcon, getBoostLabel } from "./icons.ts";
+export {
+  getItemIcon,
+  getBoostIcon,
+  getBoostLabel,
+  getBudImage,
+} from "./icons.ts";
 // Typed Object.entries / Object.keys — upstream's thin wrappers that
 // preserve the `keyof T` and value types, so iterating
 // `producing.items` / `recipe.outputs` (both
@@ -501,3 +506,21 @@ export {
   REWARD_ITEMS,
   getProjectReward,
 } from "features/game/types/monuments";
+
+// Community-API data shapes and lookups. `Auction` is upstream's own
+// auction record — `/community/data?type=auctions` returns exactly
+// this shape (the BE spreads `auctionId` into each entry, matching the
+// client type's `AuctionBase`). Type-only, so nothing from
+// auctionMachine (xstate, bid actions) reaches the bundle.
+export type {
+  Auction,
+  AuctionBase,
+  CollectibleAuction,
+  WearableAuction,
+  NFTAuction,
+} from "features/game/lib/auctionMachine";
+// id → name lookups, the inverse of KNOWN_IDS / ITEM_IDS. Marketplace
+// activity keys items as `{collection}-{id}`, so rendering a name and
+// icon means resolving the id upstream's way rather than ours.
+export { KNOWN_ITEMS } from "features/game/types";
+export { ITEM_NAMES } from "features/game/types/bumpkin";

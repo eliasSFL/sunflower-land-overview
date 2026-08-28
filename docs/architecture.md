@@ -190,6 +190,7 @@ handler maps URL paths to handlers. The handler list:
 | Path                | Method | What it does                                                |
 | ------------------- | ------ | ----------------------------------------------------------- |
 | `/api/farms/{id}`   | GET    | Proxy a farm load through the access gate (Part 3).         |
+| `/api/data`         | GET    | Cached read of upstream `/community/data` (Part 3a).        |
 | `/push/vapid`       | GET    | Return the VAPID public key so the SPA can subscribe.       |
 | `/push/subscribe`   | POST   | Register a new push subscription on a farm's DO.            |
 | `/push/unsubscribe` | POST   | Drop a subscription from a farm's DO.                       |
@@ -214,12 +215,24 @@ Two reasons:
 
 1. **API key never reaches the browser.** The upstream community API
    requires an `x-api-key` header. If the SPA held one, anyone with
-   devtools could read it. Instead, the Worker holds a single **master
-   HMAC secret** and _mints a per-farm key_ for each request. See
-   [worker/communityApi.ts](../worker/communityApi.ts):
-   `mintFarmKey(farmId, secret)` returns
-   `sfl.{base64url(farmId)}.{HMAC-SHA256(secret, payload)}`. The upstream
-   accepts the key only for the encoded farm.
+   devtools could read it. Instead the Worker holds the overview's
+   single **service key** (`SFL_COMMUNITY_API_KEY`) and attaches it to
+   every upstream read — see `serviceKey` in
+   [worker/communityApi.ts](../worker/communityApi.ts).
+
+   This used to work differently: the Worker held the master HMAC
+   secret and _minted a per-farm key_ for each request, so a key only
+   ever authorised the farm encoded in it. That stopped being viable
+   when upstream gated community keys on **VIP + total Bumpkin level
+   50**, re-checked on every request against the farm the key encodes
+   (`verifyCommunityKey` / `isEligibleForCommunityApiKey` in the API
+   repo). A key minted for an ordinary player's farm is now rejected,
+   so minting per viewed farm would 401 for nearly everyone.
+
+   The consequence to keep in mind: the key is a bearer credential
+   tied to one real farm, and it dies if that farm's VIP lapses. When
+   upstream 401s, the Worker reports a 503 and logs loudly rather than
+   passing the 401 down — see the note on `unauthorized` below.
 
 2. **Trust boundary for cohort gating.** Both the SPA _and_ the Worker
    re-run `hasOverviewAccess(state)`. Even if a player tampered with
@@ -252,7 +265,7 @@ the scheduled tick.
 When the SPA hits `/api/farms/{id}`, the Worker runs
 [`fetchAndCheckAccess`](../worker/access.ts):
 
-1. Mint a per-farm key from `SFL_COMMUNITY_API_KEY`.
+1. Read the service key from `SFL_COMMUNITY_API_KEY`.
 2. Forward the player's IP on `x-forwarded-client-ip` (paired with
    `x-support-key`) so the BE's per-IP throttle scopes per-player
    instead of treating every overview load as coming from one egress IP.
@@ -269,13 +282,70 @@ its current snapshot. Stops a malicious subscriber (or an
 out-of-order delivery from a second device) from rolling DO state
 backwards and un-scheduling alarms held by other devices.
 
-### Local-dev shortcut
+### Getting a key
 
-If `SFL_COMMUNITY_API_KEY` already _looks like_ a pre-minted per-farm
-key (`sfl.X.Y` shape), `mintFarmKey` returns it unchanged. So you can
-paste your in-game **Settings → Developer Options → API Key** as the
-local secret without needing the master HMAC. It'll work for that one
-farm only.
+Community keys are issued at
+**<https://sunflower-land.com/community-docs>**, from a game session
+whose farm holds VIP and total Bumpkin level 50+. The game client no
+longer displays one — Settings → Developer Options just links out to
+the docs. Paste the `sfl.X.Y` value into `SFL_COMMUNITY_API_KEY`, both
+locally and as the Cloudflare secret.
+
+The Worker sanity-checks the shape at use time and refuses to call
+upstream with anything else, which is what stops the old master HMAC
+secret from being pasted in by mistake and silently 401ing every farm.
+
+### Why 401 is not "farm not found"
+
+`getFarm` reports upstream's 401 as `reason: "unauthorized"`, kept
+separate from `not_found`. Under the old per-farm minting scheme those
+two really were the same thing — a rejected key meant the encoded farm
+id was bad. With one shared key they are opposites: a 401 says nothing
+about the farm and everything about _us_. Folding them together would
+have told every player their farm no longer exists the moment the key
+lapsed, and would have made `/push/subscribe` refuse to persist opt-ins
+for farms that were perfectly real.
+
+---
+
+## Part 3a — Community data (`/api/data`)
+
+Upstream's `GET /community/data?type=…` serves farm-independent data
+sets — the auction calendar, marketplace activity, raffles, ticket
+leaderboards, the nightly dump manifest. The overview fronts it at
+`/api/data`, reading through
+[worker/communityData.ts](../worker/communityData.ts).
+
+Two things make this route different from the farm proxy:
+
+**It must be cached.** `community/farms/{id}` runs upstream's
+`resolveThrottleIp` dance, so our `x-support-key` + forwarded client IP
+gets each player their own throttle bucket. `community/data` does no
+such thing — it throttles on `cf-connecting-ip` directly, which from a
+Worker is one shared egress IP. That is a single
+`community-data-{type}` bucket, ~5 s between accepted calls, for the
+entire overview. So every `(type, params)` tuple is cached in the
+colo's Cache API and revalidated at most once per soft TTL (10 min for
+`auctions`, 5 min for `marketplaceActivity`). None of it is
+per-player, so a shared cache is correct as well as necessary.
+
+**A stale copy beats an error.** When upstream is throttling or down
+and we hold a previous copy, the Worker serves it and flags
+`x-data-stale: 1`. The panels render an "as of" timestamp from
+`x-data-fetched-at`, so old numbers are visibly old rather than
+silently wrong.
+
+Types are allowlisted in `DATA_TYPES`, and each declares which query
+params are forwarded — anything else the caller sends is dropped, and
+declared params are format-checked before we spend the shared upstream
+slot. Adding a type upstream already supports is one entry there plus a
+reader in [src/api/communityData.ts](../src/api/communityData.ts).
+
+On the SPA side, `useAuctions` / `useMarketplaceActivity`
+([src/hooks/useCommunityData.ts](../src/hooks/useCommunityData.ts))
+poll on the same 5-minute cadence and keep the last good value across a
+failed refresh. `AuctionsPanel` and `MarketplacePanel` render on
+`/farm` and self-hide until their data arrives.
 
 ---
 
@@ -663,7 +733,7 @@ If you're trying to trace a specific feature, here's the suggested path:
 | "How does the farm get loaded?"     | `src/hooks/useFarmData.ts` → `src/api/fetchFarm.ts` → `worker/index.ts` `handleProxyFarm`                                                    |
 | "How does Z get pushed?"            | `src/notifications/...` (client) → `worker/index.ts` (route) → `worker/farmPushDO.ts` (DO) → `worker/push.ts` (send) → `src/sw.ts` (browser) |
 | "How does the sweep work?"          | `worker/index.ts` `scheduled()` → `worker/coordinator.ts` → `worker/farmPushDO.ts` `handleOnSnapshot`                                        |
-| "Where does the API key come from?" | `worker/index.ts` `handleProxyFarm` → `worker/access.ts` → `worker/communityApi.ts` `mintFarmKey`                                            |
+| "Where does the API key come from?" | `worker/index.ts` `handleProxyFarm` → `worker/access.ts` → `worker/communityApi.ts` `serviceKey`                                             |
 
 A useful first exercise: pick one category (say, beehives) and trace
 it end to end — from `src/timers/beehives.ts`, through aggregation,
@@ -689,7 +759,7 @@ into the DO's `instancesFor`, into a push payload, into `sw.ts`.
   Public key goes to the browser at subscribe time; private key signs
   every push.
 - **Community API** — The official Sunflower Land BE endpoint set under
-  `/community/*`. Read-only, authenticated with an HMAC-signed per-farm
+  `/community/*`. Read-only, authenticated with the overview's single
   key.
 - **Snapshot** — A `{ raw: FarmResponse, fetchedAt: number }` envelope.
   Whatever upstream returned, plus when we observed it.

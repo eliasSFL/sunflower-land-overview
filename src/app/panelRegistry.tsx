@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AnimalBountiesPanel } from "../components/AnimalBountiesPanel.tsx";
+import { AuctionsPanel } from "../components/AuctionsPanel.tsx";
 import { BountiesPanel } from "../components/BountiesPanel.tsx";
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
@@ -8,14 +9,17 @@ import { ChoresPanel } from "../components/ChoresPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
+import { MarketplacePanel } from "../components/MarketplacePanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
 import { PetsPanel } from "../components/PetsPanel.tsx";
 import {
   ANIMAL_BOUNTIES_SECTION_ID,
+  AUCTIONS_SECTION_ID,
   BOUNTIES_SECTION_ID,
   BUMPKIN_SECTION_ID,
   CHORES_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
+  MARKETPLACE_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
   sectionId,
@@ -147,7 +151,14 @@ export function buildQuestsPanels(ctx: QuestsCtx): PanelDescriptor[] {
 }
 
 // Default source order for /farm: your identity and standing —
-// Bumpkin, Village Projects, Love Island Shop, Pet Cravings, Pets.
+// Bumpkin, Village Projects, Love Island Shop, Pet Cravings, Pets, plus
+// the two community-API panels (Auctions, Marketplace).
+//
+// Those last two describe the world rather than this farm, so they sit
+// here rather than on /producing: that page is explicitly "what's
+// mid-timer on YOUR farm", and an auction window is no more your
+// production than the Love Island shop above it is. Both self-hide when
+// their data is empty or hasn't loaded.
 export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
   return [
     installPanel(ctx.data),
@@ -180,6 +191,18 @@ export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
       label: "Pets",
       icon: getItemIcon("Pet House"),
       render: () => <PetsPanel state={ctx.data.farm} />,
+    },
+    {
+      id: AUCTIONS_SECTION_ID,
+      label: "Auctions",
+      icon: CHROME_ICONS.auctioneer,
+      render: () => <AuctionsPanel now={ctx.now} />,
+    },
+    {
+      id: MARKETPLACE_SECTION_ID,
+      label: "Marketplace",
+      icon: CHROME_ICONS.trade,
+      render: () => <MarketplacePanel now={ctx.now} />,
     },
   ];
 }

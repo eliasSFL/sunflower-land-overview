@@ -3,8 +3,10 @@ import { useMemo } from "react";
 import { getItemIcon } from "../game/index.ts";
 import type { NavSection } from "../components/NavMenu.tsx";
 import {
+  AUCTIONS_SECTION_ID,
   BUMPKIN_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
+  MARKETPLACE_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
   VILLAGE_PROJECTS_SECTION_ID,
@@ -41,6 +43,16 @@ export function useFarmNavSections(): NavSection[] {
         id: PETS_SECTION_ID,
         label: "Pets",
         icon: getItemIcon("Pet House"),
+      },
+      {
+        id: AUCTIONS_SECTION_ID,
+        label: "Auctions",
+        icon: CHROME_ICONS.auctioneer,
+      },
+      {
+        id: MARKETPLACE_SECTION_ID,
+        label: "Marketplace",
+        icon: CHROME_ICONS.trade,
       },
     ],
     [],

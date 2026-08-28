@@ -1,5 +1,5 @@
 import { listOptedInIds } from "./registry.ts";
-import { mintFarmKey, upstreamBase } from "./communityApi.ts";
+import { serviceKey, upstreamBase } from "./communityApi.ts";
 import type { Env } from "./types.ts";
 
 // Upstream's legacy `POST /community/farms { ids }` form accepts max
@@ -61,6 +61,16 @@ async function fetchBatch(
   if (!res.ok) {
     // 429 + 5xx = backend overload, retry. Other 4xx = bug/auth, abort.
     const retryable = res.status === 429 || res.status >= 500;
+    // 401 means our one service key stopped qualifying (VIP lapsed, or
+    // its farm fell below level 50). Every batch this sweep will fail
+    // the same way, and pushes go quiet — call it out explicitly rather
+    // than leaving it as an anonymous 4xx in the log.
+    if (res.status === 401) {
+      console.error(
+        "coordinator: community key rejected by upstream (401) — pushes will " +
+          "stop until it is renewed at https://sunflower-land.com/community-docs",
+      );
+    }
     const text = await res.text().catch(() => "");
     console.warn(
       `coordinator: upstream ${res.status} for POST /community/getFarms (${ids.length} ids) :: ${text.slice(0, 300)}`,
@@ -103,8 +113,13 @@ export async function sweep(env: Env): Promise<void> {
 async function sweepImpl(env: Env): Promise<void> {
   const startedAt = Date.now();
 
-  if (!env.SFL_COMMUNITY_API_KEY) {
-    console.warn("coordinator: SFL_COMMUNITY_API_KEY missing; skipping sweep");
+  // The one service key, same as every other upstream read. The sweep
+  // is server-initiated so there is no eyeball IP to forward.
+  const apiKey = serviceKey(env);
+  if (!apiKey) {
+    console.warn(
+      "coordinator: SFL_COMMUNITY_API_KEY missing or malformed; skipping sweep",
+    );
     return;
   }
 
@@ -112,7 +127,6 @@ async function sweepImpl(env: Env): Promise<void> {
   if (optedInList.length === 0) return;
 
   const upstream = upstreamBase(env);
-  const apiKey = await mintFarmKey(0, env.SFL_COMMUNITY_API_KEY);
 
   // Chunk into batches.
   const batches: number[][] = [];

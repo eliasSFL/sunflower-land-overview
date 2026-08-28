@@ -2,7 +2,7 @@
 
 import { Agent } from "agents";
 import { sendAll } from "./push.ts";
-import { getFarm, mintFarmKey, upstreamBase } from "./communityApi.ts";
+import { getFarm, serviceKey, upstreamBase } from "./communityApi.ts";
 import { addOptIn, removeOptIn } from "./registry.ts";
 import { makeGame } from "../src/game/index.ts";
 import { extractAndAggregate } from "../src/timers/index.ts";
@@ -374,16 +374,13 @@ export class FarmPushDO extends Agent<Env, State> {
     const haveFreshSnapshot = snapAgeMs < WARM_FETCH_TTL_MS;
 
     if (!haveFreshSnapshot) {
-      if (!this.env.SFL_COMMUNITY_API_KEY) {
+      const key = serviceKey(this.env);
+      if (!key) {
         return Response.json(
           { error: "Server not configured" },
           { status: 503 },
         );
       }
-      const key = await mintFarmKey(
-        body.farmId,
-        this.env.SFL_COMMUNITY_API_KEY,
-      );
       // Forwarded from the worker entrypoint so the BE's per-IP
       // throttle scopes per-player instead of per-Worker-egress-IP.
       const clientIp = request.headers.get("x-client-ip") ?? undefined;
@@ -398,9 +395,12 @@ export class FarmPushDO extends Agent<Env, State> {
         if (result.reason === "not_found") {
           return Response.json({ error: "Unknown farm" }, { status: 404 });
         }
-        // upstream_error / network / parse — fail closed so callers
-        // retry rather than us tentatively persisting and hoping the
-        // sweep cleans up.
+        // unauthorized / upstream_error / network / parse — fail closed
+        // so callers retry rather than us tentatively persisting and
+        // hoping the sweep cleans up. `unauthorized` lands here rather
+        // than in the 404 above on purpose: our service key lapsing
+        // must not be recorded as "this farm does not exist", which
+        // would refuse the opt-in for a farm that is perfectly real.
         return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
           status: 503,
           headers: {
@@ -758,17 +758,13 @@ export class FarmPushDO extends Agent<Env, State> {
   // REFRESH_TTL_MS, returning true without an upstream call. Caller
   // already has effectively the data it would get back.
   private async refreshFromUpstream(): Promise<boolean> {
-    if (this.state.farmId === null || !this.env.SFL_COMMUNITY_API_KEY) {
-      return false;
-    }
+    if (this.state.farmId === null) return false;
+    const key = serviceKey(this.env);
+    if (!key) return false;
     const snap = this.state.snapshot;
     if (snap && Date.now() - snap.fetchedAt < REFRESH_TTL_MS) {
       return true;
     }
-    const key = await mintFarmKey(
-      this.state.farmId,
-      this.env.SFL_COMMUNITY_API_KEY,
-    );
     const result = await getFarm(
       this.state.farmId,
       key,

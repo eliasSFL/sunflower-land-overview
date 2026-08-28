@@ -20,9 +20,18 @@ export interface Env {
   // matching stage's `COMMUNITY_API_KEY_SECRET` must sign
   // `SFL_COMMUNITY_API_KEY` below or upstream returns 401/404.
   SFL_API_URL?: string;
-  // Master HMAC secret used to mint per-farm community API keys
-  // (sfl.{base64url(farmId)}.{hmac(secret, farmId)}) and as x-api-key
-  // for the paginated /community/farms scan.
+  // The overview's single community API key, in upstream's
+  // `sfl.{payload}.{sig}` form, sent as `x-api-key` on every
+  // `/community/*` read (single-farm GET, the coordinator's batch
+  // scan, and `/community/data`).
+  //
+  // Issue it at https://sunflower-land.com/community-docs from a farm
+  // that holds VIP and total Bumpkin level 50+ — upstream re-checks
+  // both on every request, so the key dies the moment its farm stops
+  // qualifying. This is NOT the master HMAC secret: minting a key per
+  // viewed farm stopped working when that requirement landed, because
+  // ordinary players' farms don't meet it. See `serviceKey` in
+  // worker/communityApi.ts.
   SFL_COMMUNITY_API_KEY: string;
   // Opaque admin secret shared with the upstream BE. Sent on the
   // `x-support-key` header alongside the per-farm key; when it matches

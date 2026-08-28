@@ -26,7 +26,7 @@ import { isCollectible as isItemCollectible } from "features/game/events/landExp
 
 const BUD_DOMAIN =
   import.meta.env.VITE_NETWORK === "mainnet" ? "buds" : "testnet-buds";
-const getBudImage = (budId: number): string =>
+export const getBudImage = (budId: number): string =>
   `https://${BUD_DOMAIN}.sunflower-land.com/images/${budId}.webp`;
 
 // Upstream `getWearableImage` uses

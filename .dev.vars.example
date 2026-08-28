@@ -19,12 +19,17 @@ VAPID_PRIVATE=
 # signed with that stage's COMMUNITY_API_KEY_SECRET or upstream 401s.
 SFL_API_URL=
 
-# Master HMAC secret for community API key minting. Same value as the
-# Cloudflare prod secret. Without it, /api/farms/:id can't mint a
-# per-farm key and upstream fetches will 401. For local dev only, you
-# can paste a per-farm community key here (Settings → Developer
-# Options → API Key in the game) — mintFarmKey detects that shape and
-# uses it as-is, restricted to that one farm.
+# The overview's community API key, in `sfl.{payload}.{sig}` form.
+# Sent as x-api-key on every upstream /community/* read; without it
+# /api/farms/:id returns 503.
+#
+# Issue one at https://sunflower-land.com/community-docs from a game
+# session whose farm has VIP and total Bumpkin level 50+. Upstream
+# re-checks both on every request, so a key whose farm stops qualifying
+# starts 401ing for every farm.
+#
+# NOT the master HMAC secret — per-farm key minting no longer works,
+# because a key minted for an ordinary player's farm fails that gate.
 SFL_COMMUNITY_API_KEY=
 
 # Shared secret required in the `x-admin-secret` header for the

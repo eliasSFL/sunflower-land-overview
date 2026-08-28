@@ -4,10 +4,11 @@
 // (vite.worker.config.ts) and deployed by wrangler.
 //
 // Responsibilities:
-//   1. Proxy GET /api/farms/{id} to api.sunflower-land.com using a
-//      per-farm community key minted from the master HMAC secret
-//      (SFL_COMMUNITY_API_KEY). The browser never sees or sends an
-//      API key.
+//   1. Proxy GET /api/farms/{id} to api.sunflower-land.com using the
+//      overview's community key (SFL_COMMUNITY_API_KEY). The browser
+//      never sees or sends an API key.
+//   1b. Serve GET /api/data?type=… from upstream /community/data,
+//      cached per type (see worker/communityData.ts).
 //   2. Expose /push/* routes that fan out to per-farm FarmPushDO
 //      instances for Web Push subscription + test sends.
 //
@@ -15,6 +16,7 @@
 // sweep, GET /push/state for snapshot pulls, POST /push/refresh.
 
 import { fetchAndCheckAccess } from "./access.ts";
+import { fetchCommunityData, isCommunityDataType } from "./communityData.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
 
@@ -338,6 +340,35 @@ export default {
           },
         });
       }
+    }
+
+    // Community data proxy. Public, farm-independent data sets
+    // (auctions, marketplace activity). Cached in the Worker because
+    // upstream throttles this route on our single egress IP — see
+    // worker/communityData.ts.
+    if (url.pathname === "/api/data" && method === "GET") {
+      const type = url.searchParams.get("type") ?? "";
+      if (!isCommunityDataType(type)) {
+        return json({ error: "Unknown data type" }, { status: 400 });
+      }
+      const result = await fetchCommunityData(env, type, url.searchParams);
+      if (!result.ok) {
+        return json({ error: result.error }, { status: result.status });
+      }
+      // The upstream body is `{ data: … }`; pass it through untouched
+      // and hang our freshness metadata off headers so the client can
+      // show an "as of" without us reshaping the payload.
+      return new Response(result.body, {
+        headers: {
+          "content-type": "application/json",
+          // Short browser-side cache: the Worker cache is already
+          // absorbing the upstream throttle, this just stops a
+          // remount storm from re-hitting the Worker.
+          "cache-control": "public, max-age=60",
+          "x-data-fetched-at": String(result.fetchedAt),
+          "x-data-stale": result.stale ? "1" : "0",
+        },
+      });
     }
 
     // Farm proxy.

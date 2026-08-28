@@ -34,7 +34,7 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 
 - Your Farm ID is stored in `localStorage` on **your device only**.
 - If you opt into push notifications, the subscription endpoint is stored server-side so the Worker can deliver them; it's removed when you unsubscribe.
-- The browser **never sends an API key**. The Cloudflare Worker mints a per-farm community key from a server-side HMAC secret on every request.
+- The browser **never sends an API key**. The Cloudflare Worker holds the overview's community API key server-side and attaches it to every upstream request.
 - For security reports see [SECURITY.md](SECURITY.md).
 
 ## How it works
@@ -42,7 +42,7 @@ A community tool that shows **live timers** for your Sunflower Land farm — cro
 A quick map for the curious:
 
 1. **SPA** — Vite + React 19 + TypeScript + Tailwind v4. A service worker via `vite-plugin-pwa` handles push delivery and notification clicks ([`src/sw.ts`](src/sw.ts)).
-2. **Cloudflare Worker** sits between the SPA and the Sunflower Land Community API. It signs API requests with a server-side HMAC secret, holds per-farm state in a Durable Object, and tracks push opt-ins in a D1 table.
+2. **Cloudflare Worker** sits between the SPA and the Sunflower Land Community API. It authenticates upstream reads with a server-side community API key, caches the shared `/community/data` sets, holds per-farm state in a Durable Object, and tracks push opt-ins in a D1 table.
 3. **Cron sweep** — a 10-minute cron in the Worker checks for timers coming due and sends Web Push notifications to opted-in devices.
 4. **Game logic bridge** — the [`sunflower-land/`](https://github.com/sunflower-land/sunflower-land) repo is included as a git submodule and bumped daily by [an automated workflow](.github/workflows/bump-sunflower-land-submodule.yml). The dashboard's yield and timer math is computed by calling upstream functions directly, so estimates stay correct as the game changes — see [the contributor rule](CONTRIBUTING.md#never-replicate-functions-from-the-submodule).
 
@@ -99,7 +99,12 @@ cp .dev.vars.example .dev.vars   # Wrangler (worker) — secrets
 
 - `.env` — only needed if you want to override the asset CDN or talk to testnet.
 - `.dev.vars` — the Worker reads this automatically. The two things that matter for local dev:
-  - `SFL_COMMUNITY_API_KEY` — master HMAC secret used to mint per-farm community keys for `/api/farms/:id`. Without it, farm fetches return 503. For local-only experimentation you can paste a single-farm community key (in-game **Settings → Developer Options → API Key**); the Worker auto-detects that shape and uses it as-is, scoped to that one farm.
+  - `SFL_COMMUNITY_API_KEY` — the overview's community API key (`sfl.X.Y`), sent as `x-api-key` on every upstream `/community/*` read. Without it, farm fetches return 503.
+
+    Get one at **<https://sunflower-land.com/community-docs>** from a game session whose farm has **VIP and total Bumpkin level 50+** — upstream re-checks both on every request, so the key stops working if its farm stops qualifying (the Worker then returns 503 and logs it, rather than reporting farms as missing). The game no longer shows keys in-game; Settings → Developer Options just links to the docs.
+
+    This is _not_ the master HMAC secret. The Worker used to mint a key per viewed farm from that secret; upstream's VIP + level gate made that impossible, since ordinary players' farms don't qualify.
+
   - `VAPID_PUBLIC` / `VAPID_PRIVATE` — only needed if you want to test push notifications. Generate a _local_ keypair with `npx web-push generate-vapid-keys --json` (don't reuse the prod keys — the public key is baked into each device's subscription, so mixing dev/prod will break pushes).
   - `ADMIN_SECRET` — gates `POST /push/sweep` (manual Coordinator trigger). Only needed if you want to fire a sweep on demand locally; the cron path doesn't go through this check. Generate with `openssl rand -hex 32`. In production set it with `wrangler secret put ADMIN_SECRET`. Without it on the env, the endpoint fails closed (403).
 

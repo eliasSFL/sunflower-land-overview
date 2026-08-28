@@ -104,6 +104,12 @@ export const CHROME_ICONS = {
   // Mirrors the submodule's `SUNNYSIDE.icons.telegram`; bundled from the
   // submodule so it doesn't depend on the CDN copy being present.
   telegram: submoduleAsset("icons/telegram.webp"),
+  // Hammerin' Harry, the in-game auctioneer — header glyph on the
+  // Auctions panel, so the panel reads as "the auction house" at a
+  // glance rather than as another generic timer list.
+  auctioneer: submoduleAsset("npcs/hammerin_harry.webp"),
+  // Trade sprite — header glyph on the Marketplace activity panel.
+  trade: submoduleAsset("icons/trade.png"),
 } as const;
 
 export const BANNER_URLS = {

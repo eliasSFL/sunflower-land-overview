@@ -1,6 +1,7 @@
-// Wrappers around `api.sunflower-land.com` community endpoints. Phase 1
-// only needs the single-farm GET (for the subscribe-time warm fetch);
-// the paginated scan used by the Coordinator lands in Phase 2.
+// Wrappers around `api.sunflower-land.com` community endpoints: the
+// service key every call is made with, and the single-farm GET used by
+// the access gate and the DO's warm fetch. The `/community/data` reader
+// lives next door in worker/communityData.ts.
 
 // Default upstream when `env.SFL_API_URL` is unset (production). Any
 // caller that has the Worker `Env` should resolve the base via
@@ -20,61 +21,57 @@ export function upstreamBase(env: { SFL_API_URL?: string }): string {
   return url ? url.replace(/\/+$/, "") : DEFAULT_UPSTREAM;
 }
 
-// Per-farm community key format (services/communityApiKey.ts on the backend):
+// Community key format (services/communityApiKey.ts on the backend):
 //   payload   = base64url(farmId as string)
 //   signature = base64url(HMAC-SHA256(masterSecret, payload))
 //   key       = `sfl.${payload}.${signature}`
-// `looksLikePerFarmKey` lets local dev work with a single farm's pre-minted
-// key (no master secret on the laptop) while production uses the master.
-const PER_FARM_KEY_RE = /^sfl\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const COMMUNITY_KEY_RE = /^sfl\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 /**
- * True when `value` matches the `sfl.{payload}.{sig}` per-farm key
- * shape. Used by {@link mintFarmKey} to decide whether the configured
- * secret is already a pre-minted per-farm key (local-dev mode) or a
- * master HMAC secret it should sign with.
+ * True when `value` has the `sfl.{payload}.{sig}` community-key shape.
+ * A cheap local sanity check only — it proves nothing about the
+ * signature or the owning farm's standing, both of which only upstream
+ * can judge.
  */
-export function looksLikePerFarmKey(value: string): boolean {
-  return PER_FARM_KEY_RE.test(value);
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+export function isCommunityKey(value: string): boolean {
+  return COMMUNITY_KEY_RE.test(value);
 }
 
 /**
- * Mint a per-farm community API key from the master HMAC secret.
+ * The single community API key every upstream call is made with.
  *
- * If `masterSecret` is itself already a per-farm key (local-dev mode,
- * detected via {@link looksLikePerFarmKey}), it is returned unchanged
- * — upstream will accept it for the encoded farm and reject it for
- * any other. Otherwise, a fresh key is signed with HMAC-SHA256 and
- * the result follows the BE's `sfl.{base64url(farmId)}.{sig}` format.
+ * The overview used to mint a fresh key per *viewed* farm from the
+ * master HMAC secret. That is no longer viable: upstream's
+ * `verifyCommunityKey` now decodes the key to a farm id, loads that
+ * farm, and rejects the key unless that farm holds VIP **and** total
+ * Bumpkin level 50+ — re-checked on every request. Minting per viewed
+ * farm would therefore 401 for essentially every ordinary player.
+ *
+ * So the key is now a service credential: one key, issued at
+ * https://sunflower-land.com/community-docs to a farm that meets the
+ * requirement, used for every farm we read. It is a bearer token, so
+ * it stays server-side — the browser never sees it.
+ *
+ * Returns null (and logs) when unset or malformed, which callers turn
+ * into a 503. Note the operational consequence: if the owning farm's
+ * VIP lapses or it otherwise stops qualifying, upstream starts
+ * returning 401 for *every* farm and the overview goes dark until the
+ * key is renewed. `getFarm` reports that as `unauthorized` rather than
+ * `not_found` so it can't be mistaken for "this farm doesn't exist".
  */
-export async function mintFarmKey(
-  farmId: number,
-  masterSecret: string,
-): Promise<string> {
-  if (looksLikePerFarmKey(masterSecret)) {
-    return masterSecret;
+export function serviceKey(env: {
+  SFL_COMMUNITY_API_KEY?: string;
+}): string | null {
+  const key = env.SFL_COMMUNITY_API_KEY?.trim();
+  if (!key) return null;
+  if (!isCommunityKey(key)) {
+    console.error(
+      "SFL_COMMUNITY_API_KEY is not a community key (expected `sfl.{payload}.{sig}`) — " +
+        "issue one at https://sunflower-land.com/community-docs",
+    );
+    return null;
   }
-  const payload = toBase64Url(new TextEncoder().encode(String(farmId)));
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(masterSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    new TextEncoder().encode(payload),
-  );
-  const sigB64 = toBase64Url(new Uint8Array(sig));
-  return `sfl.${payload}.${sigB64}`;
+  return key;
 }
 
 export type FarmResponseRaw = {
@@ -92,18 +89,26 @@ export type FarmResponseRaw = {
 // BE behaviour ([api/community/getFarm.ts](../sunflower-land/sunflower-land-api/src/api/community/getFarm.ts)):
 //   200 → exists (blacklisted included, flagged in payload)
 //   404 → invalid format or farm not found
-//   401 → API key rejected. The BE's [verifyCommunityKey](../sunflower-land/sunflower-land-api/src/services/communityApiKey.ts)
-//         decodes the key payload to a farmId and loadFarm()'s it;
-//         null farm ⇒ 401. Since we mint with a signature the BE will
-//         accept, any 401 here is the encoded-farmId check failing —
-//         treat as not_found.
+//   401 → our service key was rejected. Since the key is a single
+//         credential shared by every request, this is never about the
+//         farm being asked for — it means the key is missing, revoked,
+//         or its owning farm no longer meets upstream's VIP + level 50
+//         requirement. Reported as `unauthorized`, deliberately NOT
+//         `not_found`: conflating the two would tell every player
+//         "farm not found" the moment our key lapsed, and would make
+//         the subscribe path silently drop opt-ins.
 //   429   → BE per-IP throttle on our egress IPs. Transient.
 //   ≥500  → upstream error. Transient.
 export type GetFarmResult =
   | { ok: true; raw: FarmResponseRaw }
   | {
       ok: false;
-      reason: "not_found" | "upstream_error" | "network" | "parse";
+      reason:
+        | "not_found"
+        | "unauthorized"
+        | "upstream_error"
+        | "network"
+        | "parse";
       status: number;
     };
 
@@ -121,14 +126,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /**
  * Fetch a single farm from upstream `community/farms/{id}`.
  *
- * Distinguishes "definitely not found" (404/401 — both deterministic
- * given a valid signed key) from "transient upstream issue" (429/5xx/
- * network) so the subscribe path only persists opt-in for farms that
+ * Distinguishes "definitely not found" (404) from "our key was
+ * rejected" (401) and from "transient upstream issue" (429/5xx/
+ * network), so the subscribe path only persists opt-in for farms that
  * really exist. Transient failures are retried with jittered backoff
- * per {@link RETRY_DELAYS_MS}.
+ * per {@link RETRY_DELAYS_MS}; 404 and 401 are not retried — both are
+ * deterministic given the inputs.
  *
  * @param farmId    Numeric farm id to fetch.
- * @param apiKey    Per-farm community key, minted via {@link mintFarmKey}.
+ * @param apiKey    The service community key, from {@link serviceKey}.
  *                  Sent on `x-api-key` for `verifyCommunityKey` upstream.
  * @param clientIp  Eyeball's IP. Forwarded on `x-forwarded-client-ip` so
  *                  the BE's `community-get-farm` throttle scopes per
@@ -164,9 +170,7 @@ export async function getFarm(
   // absent the BE silently falls back to `cf-connecting-ip`.
   if (supportKey) headers["x-support-key"] = supportKey;
 
-  // 1 try + RETRY_DELAYS_MS.length retries on 429/5xx/network. 404/401
-  // and parse failures are not retried — they're deterministic given
-  // the inputs.
+  // 1 try + RETRY_DELAYS_MS.length retries on 429/5xx/network.
   const maxAttempts = RETRY_DELAYS_MS.length + 1;
   let lastTransient: GetFarmResult = {
     ok: false,
@@ -183,8 +187,15 @@ export async function getFarm(
       if (delay) await sleep(jitter(delay[0], delay[1]));
       continue;
     }
-    if (res.status === 404 || res.status === 401) {
+    if (res.status === 404) {
       return { ok: false, reason: "not_found", status: res.status };
+    }
+    if (res.status === 401) {
+      console.error(
+        `community key rejected by upstream (401) — the key's farm likely no longer ` +
+          `has VIP + level 50. Renew at https://sunflower-land.com/community-docs`,
+      );
+      return { ok: false, reason: "unauthorized", status: res.status };
     }
     if (res.status === 429 || res.status >= 500) {
       lastTransient = {
