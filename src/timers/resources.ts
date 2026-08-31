@@ -162,7 +162,11 @@ export function extractResourceTimers(
     const yields = batchWoodYields({
       game: state,
       treeName,
-      trees: group.map(({ nodeId, tree }) => ({ nodeId, tree })),
+      trees: group.map(({ nodeId, tree, readyAt }) => ({
+        nodeId,
+        tree,
+        now: Math.max(ctx.now, readyAt),
+      })),
       farmId,
     });
     for (const { nodeId, readyAt } of group) {
@@ -324,7 +328,11 @@ export function extractResourceTimers(
   }
   const oilYields = batchOilYields({
     game: state,
-    reserves: oilEntries.map(({ nodeId, reserve }) => ({ nodeId, reserve })),
+    reserves: oilEntries.map(({ nodeId, reserve, readyAt }) => ({
+      nodeId,
+      reserve,
+      now: Math.max(ctx.now, readyAt),
+    })),
   });
   for (const { nodeId, readyAt } of oilEntries) {
     const entry = oilYields.get(nodeId);

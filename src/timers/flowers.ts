@@ -33,12 +33,14 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 function predictAmount(
   game: GameState,
   flower: PlantedFlower,
+  now: number,
 ): { amount: number; boosts: Boost[] } {
   if (flower.amount !== undefined) return { amount: flower.amount, boosts: [] };
   const criticalHit = flower.criticalHit ?? {};
   const result = getFlowerAmount({
     game,
     criticalDrop: (name: CriticalHitName) => Boolean(criticalHit[name] ?? 0),
+    now,
   }) as {
     amount?: number;
     boostsUsed?: Array<{ name: BoostName; value: string }>;
@@ -84,16 +86,17 @@ export function extractFlowerTimers(
     // when flower beds are added or removed.
     ctx.counter.next();
 
+    const readyAt = getFlowerReadyAt(flower, state);
+
     let amount = 1;
     let boosts: Boost[] = [];
     try {
-      const result = predictAmount(state, flower);
+      const result = predictAmount(state, flower, Math.max(ctx.now, readyAt));
       amount = result.amount;
       boosts = result.boosts;
     } catch {
       // Retain the initial `amount = 1` on upstream throw.
     }
-    const readyAt = getFlowerReadyAt(flower, state);
 
     // Mutant flower drop — `flower.reward` is server-rolled at plant
     // time (api `getFlowerReward` in plantFlower.ts; ~0.5%/day chance

@@ -173,7 +173,7 @@ export function batchCropYields(args: {
 export function batchPatchFruitYields(args: {
   game: GameState;
   fruitName: PatchFruitName;
-  patches: Array<{ patchId: string; patch: FruitPatch }>;
+  patches: Array<{ patchId: string; patch: FruitPatch; now: number }>;
   farmId: number;
 }): YieldMap {
   const { game, fruitName, patches, farmId } = args;
@@ -182,7 +182,7 @@ export function batchPatchFruitYields(args: {
   const initialCounter = farmActivity(game)[`${fruitName} Harvested`] ?? 0;
   let counter = initialCounter;
 
-  for (const { patchId, patch } of patches) {
+  for (const { patchId, patch, now } of patches) {
     const fruit = patch.fruit;
     if (!fruit) continue;
     const preset = fruit.amount;
@@ -196,6 +196,7 @@ export function batchPatchFruitYields(args: {
         game,
         fertiliser: patch.fertiliser?.name,
         prngArgs: { farmId, counter },
+        now,
       });
       result.set(patchId, {
         amount: Number(upstream?.amount ?? 0),
@@ -258,7 +259,7 @@ export function batchGreenhouseYields(args: {
 export function batchWoodYields(args: {
   game: GameState;
   treeName: TreeName;
-  trees: Array<{ nodeId: string; tree: Tree }>;
+  trees: Array<{ nodeId: string; tree: Tree; now: number }>;
   farmId: number;
 }): YieldMap {
   const { game, treeName, trees, farmId } = args;
@@ -269,7 +270,7 @@ export function batchWoodYields(args: {
   let counter = initialCounter;
   const itemId = lookupId(treeName);
 
-  for (const { nodeId, tree } of trees) {
+  for (const { nodeId, tree, now } of trees) {
     const preset = tree.wood.amount;
     if (preset !== undefined) {
       result.set(nodeId, { amount: Number(preset), boosts: [] });
@@ -282,6 +283,7 @@ export function batchWoodYields(args: {
         itemId,
         counter,
         tree,
+        now,
       });
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
@@ -435,13 +437,13 @@ export function batchSunstoneYields(args: {
 
 export function batchOilYields(args: {
   game: GameState;
-  reserves: Array<{ nodeId: string; reserve: OilReserve }>;
+  reserves: Array<{ nodeId: string; reserve: OilReserve; now: number }>;
 }): YieldMap {
   const { game, reserves } = args;
   const result: YieldMap = new Map();
-  for (const { nodeId, reserve } of reserves) {
+  for (const { nodeId, reserve, now } of reserves) {
     try {
-      const upstream = upstreamGetOilDropAmount(game, reserve);
+      const upstream = upstreamGetOilDropAmount(game, reserve, now);
       result.set(nodeId, {
         amount: Number(upstream?.amount ?? 0),
         boosts: normBoosts(upstream?.boostsUsed, game),

@@ -59,7 +59,11 @@ export function extractFruitTimers(
     const yields = batchPatchFruitYields({
       game: state,
       fruitName,
-      patches: group.map(({ patchId, patch }) => ({ patchId, patch })),
+      patches: group.map(({ patchId, patch, readyAt }) => ({
+        patchId,
+        patch,
+        now: Math.max(ctx.now, readyAt),
+      })),
       farmId: ctx.farmId,
     });
     // Sum remaining harvests across every patch growing this fruit

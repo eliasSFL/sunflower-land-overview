@@ -82,6 +82,7 @@ export type PatchFruitYieldArgs = {
   game: GameState;
   fertiliser?: FruitCompostName;
   prngArgs?: { farmId: number; counter: number };
+  now: number;
 };
 
 export function getPatchFruitYield(args: PatchFruitYieldArgs): CropYieldResult {
@@ -148,6 +149,7 @@ export type WoodYieldArgs = {
   treeName: TreeName;
   farmId: number;
   counter: number;
+  now: number;
 };
 
 export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
@@ -157,6 +159,7 @@ export function getWoodYield(args: WoodYieldArgs): CropYieldResult {
     itemId: lookupId(args.treeName),
     counter: args.counter,
     tree: args.tree,
+    now: args.now,
   });
   return {
     amount: Number(result?.amount ?? 0),
@@ -257,10 +260,11 @@ export function getCrimstoneYield(args: CrimstoneYieldArgs): CropYieldResult {
 export type OilYieldArgs = {
   game: GameState;
   reserve: OilReserve;
+  now: number;
 };
 
 export function getOilYield(args: OilYieldArgs): CropYieldResult {
-  const result = upstreamGetOilDropAmount(args.game, args.reserve);
+  const result = upstreamGetOilDropAmount(args.game, args.reserve, args.now);
   return {
     amount: Number(result?.amount ?? 0),
     boosts: normBoosts(result?.boostsUsed, args.game),
