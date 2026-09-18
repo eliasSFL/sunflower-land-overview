@@ -375,11 +375,42 @@ export {
 } from "features/game/types/desert";
 // Floating Island ("Love Island") event. `getActiveFloatingIsland`
 // returns the schedule window covering `now` (or undefined when the
-// island isn't currently reachable); `hasClaimedPetalPrize` reports
-// whether today's daily Bronze Love Box has already been claimed
-// (UTC-day keyed, same comparison the in-game claim uses).
+// island isn't currently reachable).
 export { getActiveFloatingIsland } from "features/game/types/floatingIsland";
-export { hasClaimedPetalPrize } from "features/game/events/landExpansion/claimPetalPrize";
+// The island's daily puzzles. Two slots, each holding one puzzle that
+// rotates by UTC day, exactly as `LoveIslandScene.create` builds them:
+//
+//   - the CENTRE puzzle — `getLoveIslandCentrePuzzle` alternates Lover's
+//     Push and Love Buttons day by day (the Lover's Dilemma only runs if
+//     `LOVE_ISLAND_CENTRE_PUZZLE_OVERRIDE` pins it back on);
+//   - the CROWD game — `getLoveIslandDailyGame` alternates the Love
+//     Boulder and the lake's Love Marvel by UTC weekday.
+//
+// Push and Buttons each pay one Bronze Love Box a day; the Boulder and
+// the Marvel pay a box or coins rolled SERVER-side (the client can't
+// know which). Every one of them is once-a-day, keyed on the UTC-day
+// claim ledger in `floatingIsland.prizeClaims` — hence a
+// `hasClaimedXToday` per puzzle rather than one shared helper.
+//
+// The petal puzzle these replaced (#7612) is gone: nothing opens its
+// modal any more, so `hasClaimedPetalPrize` is deliberately NOT
+// re-exported.
+export {
+  getLoveIslandCentrePuzzle,
+  getLoveIslandDailyGame,
+  hasClaimedLovePushToday,
+  hasClaimedLoveButtonsToday,
+  hasClaimedLoveBoulderToday,
+  getLoveDilemmaAttemptsLeft,
+  LOVE_DILEMMA_MAX_ATTEMPTS,
+  LOVE_PUSH_PRIZE,
+  LOVE_BUTTONS_PRIZE,
+} from "features/world/lib/loveIsland";
+export type {
+  LoveIslandCentrePuzzle,
+  LoveIslandDailyGame,
+} from "features/world/lib/loveIsland";
+export { hasClaimedLoveKrakenToday } from "features/world/lib/loveKraken";
 // The Plaza's Bud Box (#7588) — a chest that opens once a UTC day, but
 // only for a player holding a Bud of the day's type. `BUD_ORDER` is the
 // ten-type cycle and `getDailyBudBoxType` picks today's from it; both
@@ -387,6 +418,15 @@ export { hasClaimedPetalPrize } from "features/game/events/landExpansion/claimPe
 // the dashboard names the same type the player will see on the chest.
 export { BUD_ORDER, getDailyBudBoxType } from "features/game/lib/budBox";
 export type { TypeTrait as BudTypeTrait } from "features/game/types/buds";
+// The island-wide daily Love Charm cap. Puzzles that pay an ITEM (Push,
+// Buttons) or whose prize is rolled server-side (Boulder, Marvel) don't
+// count against it — it bounds the Charm-paying puzzles only — but it is
+// the number a player actually plans their day around, and it is
+// VIP-gated (100/day vs 5/day), so we surface both halves.
+export {
+  getFloatingIslandLoveCharmsRemainingToday,
+  getFloatingIslandDailyLoveCharmLimit,
+} from "features/game/events/landExpansion/claimFloatingIslandPrize";
 // Pets. The overview reads live pet state from `state.pets.common`
 // (common breeds) and `state.pets.nfts` (NFT pets). `getPetLevel` maps
 // total experience → level/progress (the same quadratic the in-game pet

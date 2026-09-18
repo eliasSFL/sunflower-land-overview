@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the upstream re-export module so the extractor's three value
-// dependencies (`getActiveFloatingIsland`, `hasClaimedPetalPrize`,
-// `getItemIcon`) are controlled per test. The boundary rule in
-// CLAUDE.md says we never replicate upstream — that holds at runtime,
-// and at test time the easiest way to honour it is to NOT exercise the
-// real implementations here. We're testing the extractor's branching
-// logic and emitted timer shape, not upstream's schedule lookup.
+// Mock the upstream re-export module so the extractor's value
+// dependencies are controlled per test. The boundary rule in CLAUDE.md
+// says we never replicate upstream — that holds at runtime, and at test
+// time the easiest way to honour it is to NOT exercise the real
+// implementations here. We're testing the extractor's branching logic
+// and emitted timer shape, not upstream's schedule lookup, its puzzle
+// rotation, or its UTC-day claim ledger.
 //
 // `vi.mock` is hoisted above the imports below by Vitest's transform,
 // so the mock factory runs before `loveIsland.ts` resolves its import
@@ -14,7 +14,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // vi.fn instances.
 vi.mock("../game/index.ts", () => ({
   getActiveFloatingIsland: vi.fn(),
-  hasClaimedPetalPrize: vi.fn(),
+  getLoveIslandCentrePuzzle: vi.fn(),
+  getLoveIslandDailyGame: vi.fn(),
+  hasClaimedLovePushToday: vi.fn(),
+  hasClaimedLoveButtonsToday: vi.fn(),
+  hasClaimedLoveBoulderToday: vi.fn(),
+  hasClaimedLoveKrakenToday: vi.fn(),
+  getLoveDilemmaAttemptsLeft: vi.fn(),
+  getFloatingIslandLoveCharmsRemainingToday: vi.fn(),
+  getFloatingIslandDailyLoveCharmLimit: vi.fn(),
+  // Both item-paying puzzles carry the same prize upstream.
+  LOVE_PUSH_PRIZE: { item: "Bronze Love Box", amount: 1 },
+  LOVE_BUTTONS_PRIZE: { item: "Bronze Love Box", amount: 1 },
+  LOVE_DILEMMA_MAX_ATTEMPTS: 3,
   // Deterministic prefix so assertions can match exact strings instead
   // of mirroring upstream's CDN URL format.
   getItemIcon: vi.fn((name: string) => `icon:${name}`),
@@ -22,14 +34,32 @@ vi.mock("../game/index.ts", () => ({
 
 import {
   getActiveFloatingIsland,
-  hasClaimedPetalPrize,
+  getFloatingIslandDailyLoveCharmLimit,
+  getFloatingIslandLoveCharmsRemainingToday,
+  getLoveDilemmaAttemptsLeft,
+  getLoveIslandCentrePuzzle,
+  getLoveIslandDailyGame,
+  hasClaimedLoveBoulderToday,
+  hasClaimedLoveButtonsToday,
+  hasClaimedLoveKrakenToday,
+  hasClaimedLovePushToday,
   type GameState,
 } from "../game/index.ts";
 import { extractLoveIslandTimers } from "./loveIsland.ts";
 import type { TimerContext } from "./types.ts";
 
 const mockGetActive = vi.mocked(getActiveFloatingIsland);
-const mockHasClaimed = vi.mocked(hasClaimedPetalPrize);
+const mockCentrePuzzle = vi.mocked(getLoveIslandCentrePuzzle);
+const mockDailyGame = vi.mocked(getLoveIslandDailyGame);
+const mockClaimedPush = vi.mocked(hasClaimedLovePushToday);
+const mockClaimedButtons = vi.mocked(hasClaimedLoveButtonsToday);
+const mockClaimedBoulder = vi.mocked(hasClaimedLoveBoulderToday);
+const mockClaimedKraken = vi.mocked(hasClaimedLoveKrakenToday);
+const mockAttemptsLeft = vi.mocked(getLoveDilemmaAttemptsLeft);
+const mockCharmsRemaining = vi.mocked(
+  getFloatingIslandLoveCharmsRemainingToday,
+);
+const mockCharmLimit = vi.mocked(getFloatingIslandDailyLoveCharmLimit);
 
 // Fixed wall-clock for every test. Noon UTC keeps the next-UTC-midnight
 // calculation 12h away, away from any boundary that could mask off-by-
@@ -55,8 +85,26 @@ function stateWithSchedule(
 }
 
 beforeEach(() => {
-  mockGetActive.mockReset();
-  mockHasClaimed.mockReset();
+  vi.mocked(getActiveFloatingIsland).mockReset();
+  mockCentrePuzzle.mockReset();
+  mockDailyGame.mockReset();
+  mockClaimedPush.mockReset();
+  mockClaimedButtons.mockReset();
+  mockClaimedBoulder.mockReset();
+  mockClaimedKraken.mockReset();
+  mockAttemptsLeft.mockReset();
+  mockCharmsRemaining.mockReset();
+  mockCharmLimit.mockReset();
+
+  // Sensible island-day defaults: the rotation upstream actually ships
+  // (Push / Buttons in the centre, Boulder / Marvel as the crowd game),
+  // nothing claimed yet.
+  mockCentrePuzzle.mockReturnValue("push");
+  mockDailyGame.mockReturnValue("boulder");
+  mockClaimedPush.mockReturnValue(false);
+  mockClaimedButtons.mockReturnValue(false);
+  mockClaimedBoulder.mockReturnValue(false);
+  mockClaimedKraken.mockReturnValue(false);
 });
 
 describe("extractLoveIslandTimers", () => {
@@ -81,7 +129,6 @@ describe("extractLoveIslandTimers", () => {
     });
 
     it("emits the close-countdown card with notify disabled", () => {
-      mockHasClaimed.mockReturnValue(false);
       const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const window = result.find((t) => t.id === "love-island:window");
@@ -97,7 +144,6 @@ describe("extractLoveIslandTimers", () => {
     });
 
     it("emits a pushOnly closing-soon headsup 5 minutes before endAt", () => {
-      mockHasClaimed.mockReturnValue(false);
       const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
 
       const closingSoon = result.find(
@@ -121,36 +167,214 @@ describe("extractLoveIslandTimers", () => {
       expect(closingSoon?.notify).toBeUndefined();
     });
 
-    it("emits the petal puzzle as readyAt=now when unclaimed", () => {
-      mockHasClaimed.mockReturnValue(false);
-      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
+    describe("the centre puzzle", () => {
+      it("names Lover's Push and predicts its box when it is today's puzzle", () => {
+        mockCentrePuzzle.mockReturnValue("push");
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
 
-      const puzzle = result.find((t) => t.id === "love-island:petal-puzzle");
-      // notify: false — user explicitly removed the daily puzzle push.
-      // Dashboard card still surfaces the predicted yield so they know
-      // there's a Bronze Love Box waiting.
-      expect(puzzle).toMatchObject({
-        category: "Love Island",
-        label: "Petal Puzzle",
-        icon: "icon:Bronze Love Box",
-        readyAt: NOW,
-        notify: false,
-        predictedYield: { amount: 1, item: "Bronze Love Box" },
+        const puzzle = result.find((t) => t.id === "love-island:centre-puzzle");
+        // notify: false — the daily puzzles are dashboard signals, not
+        // pushes (same call the old petal puzzle card made).
+        expect(puzzle).toMatchObject({
+          category: "Love Island",
+          label: "Lover's Push",
+          icon: "icon:Bronze Love Box",
+          readyAt: NOW,
+          notify: false,
+          predictedYield: { amount: 1, item: "Bronze Love Box" },
+        });
+        // The rotation decides which ledger is consulted — reading the
+        // wrong one would report another puzzle's claim.
+        expect(mockClaimedPush).toHaveBeenCalledWith({
+          state: expect.anything(),
+          now: NOW,
+        });
+        expect(mockClaimedButtons).not.toHaveBeenCalled();
+      });
+
+      it("names Love Buttons and reads its own ledger on a buttons day", () => {
+        mockCentrePuzzle.mockReturnValue("buttons");
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const puzzle = result.find((t) => t.id === "love-island:centre-puzzle");
+        expect(puzzle).toMatchObject({
+          label: "Love Buttons",
+          readyAt: NOW,
+          predictedYield: { amount: 1, item: "Bronze Love Box" },
+        });
+        expect(mockClaimedButtons).toHaveBeenCalled();
+        expect(mockClaimedPush).not.toHaveBeenCalled();
+      });
+
+      it("delays the centre puzzle to the next UTC midnight once claimed today", () => {
+        mockClaimedPush.mockReturnValue(true);
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const puzzle = result.find((t) => t.id === "love-island:centre-puzzle");
+        expect(puzzle?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
+        // Other fields don't change between claimed/unclaimed.
+        expect(puzzle?.notify).toBe(false);
+      });
+
+      it("reports attempts left instead of a yield on a Dilemma day", () => {
+        // The Dilemma only runs if upstream pins it back on via
+        // LOVE_ISLAND_CENTRE_PUZZLE_OVERRIDE, but it pays Love Charms
+        // up to three times a day rather than one fixed box, so the
+        // card has a different shape.
+        mockCentrePuzzle.mockReturnValue("dilemma");
+        mockAttemptsLeft.mockReturnValue(2);
+        mockCharmsRemaining.mockReturnValue(4);
+        mockCharmLimit.mockReturnValue(5);
+
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const puzzle = result.find((t) => t.id === "love-island:centre-puzzle");
+        expect(puzzle).toMatchObject({
+          label: "Lover's Dilemma",
+          icon: "icon:Love Charm",
+          readyAt: NOW,
+          subtext: "2/3 attempts left",
+          notify: false,
+        });
+        // Charms are capped island-wide, not per-claim, so no yield.
+        expect(puzzle?.predictedYield).toBeUndefined();
+      });
+
+      it("waits for the UTC reset when the Dilemma's attempts are spent", () => {
+        mockCentrePuzzle.mockReturnValue("dilemma");
+        mockAttemptsLeft.mockReturnValue(0);
+        mockCharmsRemaining.mockReturnValue(0);
+        mockCharmLimit.mockReturnValue(5);
+
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const puzzle = result.find((t) => t.id === "love-island:centre-puzzle");
+        expect(puzzle?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
+        expect(puzzle?.subtext).toBe("0/3 attempts left");
       });
     });
 
-    it("delays the petal puzzle until the next UTC midnight when claimed today", () => {
-      mockHasClaimed.mockReturnValue(true);
-      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
+    describe("the crowd game", () => {
+      it("names the Love Boulder and carries no predicted yield", () => {
+        mockDailyGame.mockReturnValue("boulder");
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
 
-      const puzzle = result.find((t) => t.id === "love-island:petal-puzzle");
-      expect(puzzle?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
-      // Other fields don't change between claimed/unclaimed.
-      expect(puzzle?.notify).toBe(false);
+        const game = result.find((t) => t.id === "love-island:daily-game");
+        expect(game).toMatchObject({
+          category: "Love Island",
+          label: "Love Boulder",
+          readyAt: NOW,
+          subtext: "Box or coins",
+          notify: false,
+        });
+        // The prize is rolled server-side — the client never holds the
+        // seed, so predicting one would be a guess.
+        expect(game?.predictedYield).toBeUndefined();
+        expect(mockClaimedBoulder).toHaveBeenCalled();
+        expect(mockClaimedKraken).not.toHaveBeenCalled();
+      });
+
+      it("names the Love Marvel and reads its own ledger on a kraken day", () => {
+        mockDailyGame.mockReturnValue("kraken");
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const game = result.find((t) => t.id === "love-island:daily-game");
+        expect(game?.label).toBe("Love Marvel");
+        expect(mockClaimedKraken).toHaveBeenCalled();
+        expect(mockClaimedBoulder).not.toHaveBeenCalled();
+      });
+
+      it("delays the crowd game to the next UTC midnight once claimed today", () => {
+        mockClaimedBoulder.mockReturnValue(true);
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const game = result.find((t) => t.id === "love-island:daily-game");
+        expect(game?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
+        expect(game?.subtext).toBe("Claimed today");
+      });
+    });
+
+    describe("the daily Love Charm cap", () => {
+      it("is omitted when no Charm-paying puzzle is on", () => {
+        // Push / Buttons pay an item and the Boulder / Marvel are paid
+        // server-side; upstream exempts all of them from the cap, so
+        // nothing on a normal island day can move the number.
+        mockCentrePuzzle.mockReturnValue("push");
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        expect(
+          result.find((t) => t.id === "love-island:love-charm-cap"),
+        ).toBeUndefined();
+        expect(mockCharmsRemaining).not.toHaveBeenCalled();
+      });
+
+      it("surfaces the remaining charms and the VIP-gated limit on a Dilemma day", () => {
+        mockCentrePuzzle.mockReturnValue("dilemma");
+        mockAttemptsLeft.mockReturnValue(3);
+        mockCharmsRemaining.mockReturnValue(40);
+        mockCharmLimit.mockReturnValue(100);
+
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        expect(
+          result.find((t) => t.id === "love-island:love-charm-cap"),
+        ).toMatchObject({
+          label: "Love Charms",
+          icon: "icon:Love Charm",
+          readyAt: NOW,
+          subtext: "40/100 left today",
+          notify: false,
+        });
+      });
+
+      it("counts down to the UTC reset when the cap is spent", () => {
+        mockCentrePuzzle.mockReturnValue("dilemma");
+        mockAttemptsLeft.mockReturnValue(1);
+        mockCharmsRemaining.mockReturnValue(0);
+        mockCharmLimit.mockReturnValue(5);
+
+        const result = extractLoveIslandTimers(
+          stateWithSchedule([active]),
+          ctx,
+        );
+
+        const cap = result.find((t) => t.id === "love-island:love-charm-cap");
+        expect(cap?.readyAt).toBe(NEXT_UTC_MIDNIGHT);
+        expect(cap?.subtext).toBe("0/5 left today");
+      });
     });
 
     it("does not emit an 'Island opens' timer while live", () => {
-      mockHasClaimed.mockReturnValue(false);
       const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
       // The live branch returns early — the off-season "opens" timer
       // belongs to a different code path entirely. Belt-and-braces in
@@ -158,15 +382,31 @@ describe("extractLoveIslandTimers", () => {
       expect(result.find((t) => t.label === "Island opens")).toBeUndefined();
     });
 
-    it("emits exactly three timers (window, closing-soon, petal-puzzle)", () => {
-      mockHasClaimed.mockReturnValue(false);
+    it("emits exactly four timers on a normal island day", () => {
+      // Pins the cardinality so an accidental extra card gets flagged.
+      // Order matches the extractor's `out.push` sequence.
       const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
-      // Pins the cardinality so an accidental fourth-timer addition
-      // gets flagged. Order matches the extractor's `out.push` sequence.
       expect(result.map((t) => t.id)).toEqual([
         "love-island:window",
         "love-island:closing-soon",
-        "love-island:petal-puzzle",
+        "love-island:centre-puzzle",
+        "love-island:daily-game",
+      ]);
+    });
+
+    it("adds the charm cap as a fifth timer on a Dilemma day", () => {
+      mockCentrePuzzle.mockReturnValue("dilemma");
+      mockAttemptsLeft.mockReturnValue(3);
+      mockCharmsRemaining.mockReturnValue(5);
+      mockCharmLimit.mockReturnValue(5);
+
+      const result = extractLoveIslandTimers(stateWithSchedule([active]), ctx);
+      expect(result.map((t) => t.id)).toEqual([
+        "love-island:window",
+        "love-island:closing-soon",
+        "love-island:centre-puzzle",
+        "love-island:daily-game",
+        "love-island:love-charm-cap",
       ]);
     });
   });
@@ -190,6 +430,22 @@ describe("extractLoveIslandTimers", () => {
       // `startAt > now` filter — a window that already ended should
       // not resurrect itself as a future "opens" countdown.
       expect(result).toEqual([]);
+    });
+
+    it("emits no puzzle cards while the island is unreachable", () => {
+      // The puzzles only exist on the island, so counting down to one
+      // the player cannot walk to would be noise.
+      const next = { startAt: NOW + HOUR_MS, endAt: NOW + 4 * HOUR_MS };
+      const result = extractLoveIslandTimers(stateWithSchedule([next]), ctx);
+      expect(
+        result.find(
+          (t) =>
+            t.id === "love-island:centre-puzzle" ||
+            t.id === "love-island:daily-game",
+        ),
+      ).toBeUndefined();
+      expect(mockCentrePuzzle).not.toHaveBeenCalled();
+      expect(mockDailyGame).not.toHaveBeenCalled();
     });
 
     it("emits an opens-countdown with push-wording overrides at startAt", () => {

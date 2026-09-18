@@ -1,24 +1,47 @@
 import {
   getActiveFloatingIsland,
-  hasClaimedPetalPrize,
+  getFloatingIslandDailyLoveCharmLimit,
+  getFloatingIslandLoveCharmsRemainingToday,
   getItemIcon,
+  getLoveDilemmaAttemptsLeft,
+  getLoveIslandCentrePuzzle,
+  getLoveIslandDailyGame,
+  hasClaimedLoveBoulderToday,
+  hasClaimedLoveButtonsToday,
+  hasClaimedLoveKrakenToday,
+  hasClaimedLovePushToday,
+  LOVE_BUTTONS_PRIZE,
+  LOVE_DILEMMA_MAX_ATTEMPTS,
+  LOVE_PUSH_PRIZE,
   type GameState,
+  type LoveIslandCentrePuzzle,
+  type LoveIslandDailyGame,
 } from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 // "Love Island" is the in-game Floating Island event: a hot-air balloon
-// ferries players to a temporary island that opens on a schedule. Two
+// ferries players to a temporary island that opens on a schedule. Three
 // time-gated mechanics surface here:
-//   1. the live window itself (when the island opens / closes), and
-//   2. the daily Petal Puzzle, which grants one Bronze Love Box per UTC
-//      day while the island is live.
-// Both decisions are delegated to upstream helpers (boundary rule) — we
-// never re-derive the schedule lookup or the UTC-day comparison ourselves.
+//   1. the live window itself (when the island opens / closes),
+//   2. the CENTRE puzzle, and
+//   3. the CROWD game,
+// each of the last two paying out once per UTC day while the island is
+// live. Every decision is delegated to upstream helpers (boundary rule)
+// — we never re-derive the schedule lookup, the rotation, or the
+// UTC-day claim comparison ourselves.
+//
+// The daily puzzles replaced the old Petal Puzzle in #7612: the centre
+// of the island now hosts one of Lover's Push / Love Buttons (alternating
+// by UTC day) and the island hosts one of the Love Boulder / the lake's
+// Love Marvel (alternating by UTC weekday). The petal puzzle's modal is
+// no longer opened by anything, so the card that used to count down to
+// it was promising a Bronze Love Box the player could not claim.
 
 // Next UTC midnight. Generic calendar math, NOT game logic: the
-// "claimed today?" decision is delegated to upstream hasClaimedPetalPrize
-// (which keys on UTC day strings); we only need the reset instant so the
-// card can count down to when the puzzle is claimable again.
+// "claimed today?" decisions are delegated to the upstream
+// `hasClaimedXToday` helpers (which key on UTC day strings); we only
+// need the reset instant so a claimed card can count down to when the
+// puzzle is claimable again.
 function nextUtcMidnight(now: number): number {
   const d = new Date(now);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
@@ -28,6 +51,20 @@ function nextUtcMidnight(now: number): number {
 // island actually leaves so a player parked in another tab gets a
 // last-call nudge with enough time to hop on the balloon.
 const CLOSING_SOON_LEAD_MS = 5 * 60 * 1000;
+
+// Player-facing name per puzzle. Upstream's identifiers are the room's
+// wire keys ("push", "buttons", "boulder", "kraken"); these are what the
+// in-game guide calls them.
+const CENTRE_PUZZLE_LABEL: Record<LoveIslandCentrePuzzle, string> = {
+  push: "Lover's Push",
+  buttons: "Love Buttons",
+  dilemma: "Lover's Dilemma",
+};
+
+const DAILY_GAME_LABEL: Record<LoveIslandDailyGame, string> = {
+  boulder: "Love Boulder",
+  kraken: "Love Marvel",
+};
 
 export function extractLoveIslandTimers(
   state: GameState,
@@ -78,21 +115,93 @@ export function extractLoveIslandTimers(
       pushBody: "5 minutes left before the island leaves.",
     });
 
-    // 3) Petal Puzzle — one Bronze Love Box per UTC day, claimable only
-    //    while the island is live. readyAt = now when it's available to
-    //    claim; otherwise the next UTC midnight when the daily resets.
-    //    Dashboard-only (notify: false) — players asked for the window
-    //    pushes to carry the event signal, not a daily puzzle reminder.
-    const claimed = hasClaimedPetalPrize({ state, createdAt: now });
+    // 3) The centre puzzle. Lover's Push and Love Buttons each pay one
+    //    Bronze Love Box a day, so the card can name its yield. The
+    //    Lover's Dilemma pays Love Charms capped by the island-wide
+    //    daily limit and is played up to three times a day, so it
+    //    reports attempts left instead of a fixed yield — see (5).
+    const centre = getLoveIslandCentrePuzzle(now);
+    if (centre === "dilemma") {
+      const attemptsLeft = getLoveDilemmaAttemptsLeft({ state, now });
+      out.push({
+        id: "love-island:centre-puzzle",
+        category: "Love Island",
+        label: CENTRE_PUZZLE_LABEL.dilemma,
+        icon: getItemIcon("Love Charm"),
+        readyAt: attemptsLeft > 0 ? now : nextUtcMidnight(now),
+        subtext: `${attemptsLeft}/${LOVE_DILEMMA_MAX_ATTEMPTS} attempts left`,
+        notify: false,
+      });
+    } else {
+      // Both item-paying puzzles carry the same prize shape, and both
+      // read their "already claimed" answer off the same UTC-day ledger
+      // — only the ledger key and the label differ.
+      const claimed =
+        centre === "push"
+          ? hasClaimedLovePushToday({ state, now })
+          : hasClaimedLoveButtonsToday({ state, now });
+      const prize = centre === "push" ? LOVE_PUSH_PRIZE : LOVE_BUTTONS_PRIZE;
+
+      out.push({
+        id: "love-island:centre-puzzle",
+        category: "Love Island",
+        label: CENTRE_PUZZLE_LABEL[centre],
+        icon: getItemIcon(prize.item),
+        readyAt: claimed ? nextUtcMidnight(now) : now,
+        predictedYield: { amount: prize.amount, item: prize.item },
+        notify: false,
+      });
+    }
+
+    // 4) The crowd game. Both the Boulder and the Marvel pay a prize
+    //    rolled SERVER-side per UTC day (a Bronze Love Box, a Bronze
+    //    Food Box, or coins) — the client is shown a preview in the
+    //    room but never holds the seed, so there is no yield to
+    //    predict and the card carries none.
+    const daily = getLoveIslandDailyGame(now);
+    const dailyClaimed =
+      daily === "boulder"
+        ? hasClaimedLoveBoulderToday({ state, now })
+        : hasClaimedLoveKrakenToday({ state, now });
+
     out.push({
-      id: "love-island:petal-puzzle",
+      id: "love-island:daily-game",
       category: "Love Island",
-      label: "Petal Puzzle",
-      icon: getItemIcon("Bronze Love Box"),
-      readyAt: claimed ? nextUtcMidnight(now) : now,
-      predictedYield: { amount: 1, item: "Bronze Love Box" },
+      label: DAILY_GAME_LABEL[daily],
+      icon: getItemIcon("Love Charm"),
+      readyAt: dailyClaimed ? nextUtcMidnight(now) : now,
+      subtext: dailyClaimed ? "Claimed today" : "Box or coins",
       notify: false,
     });
+
+    // 5) The island-wide daily Love Charm cap, but ONLY while a
+    //    Charm-paying puzzle is actually on. Item prizes (Push,
+    //    Buttons) and server-rolled ones (Boulder, Marvel) are
+    //    explicitly exempt from the cap upstream, so on a normal day
+    //    nothing can move this number and a card showing "5/5 left"
+    //    every day would be noise. The Lover's Dilemma is the one
+    //    puzzle that spends it — it clamps each payout to what's left
+    //    — so the cap is surfaced alongside it and nowhere else.
+    if (centre === "dilemma") {
+      const remaining = getFloatingIslandLoveCharmsRemainingToday({
+        state,
+        createdAt: now,
+      });
+      const limit = getFloatingIslandDailyLoveCharmLimit({
+        state,
+        createdAt: now,
+      });
+
+      out.push({
+        id: "love-island:love-charm-cap",
+        category: "Love Island",
+        label: "Love Charms",
+        icon: getItemIcon("Love Charm"),
+        readyAt: remaining > 0 ? now : nextUtcMidnight(now),
+        subtext: `${remaining}/${limit} left today`,
+        notify: false,
+      });
+    }
 
     return out;
   }
