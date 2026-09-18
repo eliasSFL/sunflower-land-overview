@@ -1,4 +1,5 @@
 import {
+  ANIMAL_RESOURCE_DROP,
   CROPS,
   FLOWERS,
   GREENHOUSE_CROPS,
@@ -13,6 +14,7 @@ import {
   getItemIcon,
   getKeys,
   getMineReadyAt,
+  getObjectEntries,
   getOilReserveReadyAt,
   getTreeReadyAt,
   type CropName,
@@ -61,15 +63,40 @@ type ResourceKind =
   | "Salt Charged"
   | AnimalResource;
 
+// Every animal resource upstream actually drops, mapped back to the
+// species that drops it (Egg/Feather → Chicken, Milk/Leather → Cow,
+// Wool/Merino Wool → Sheep). Derived from `ANIMAL_RESOURCE_DROP` rather
+// than listed by hand: `AnimalResource` is where new chapters register
+// their animal produce (Chapter 16 added Rawhide and Truffle as
+// definitions with no drop table yet), and a hand-written map would
+// either go stale or force us to guess a species upstream hasn't
+// decided on. A resource with no drop table has no entry — and no
+// timer either, since `extractAnimalTimers` iterates the same table.
+const ANIMAL_NODE_LABEL: Partial<Record<AnimalResource, string>> =
+  getObjectEntries(ANIMAL_RESOURCE_DROP).reduce(
+    (acc, [type, byLevel]) => {
+      for (const drops of Object.values(byLevel)) {
+        for (const resource of getKeys(drops)) acc[resource] ??= type;
+      }
+      return acc;
+    },
+    {} as Partial<Record<AnimalResource, string>>,
+  );
+
 // Canonical node name per produced item. Used by the notification
 // scheduler to render "4.2 Wood from 3× Tree" so the count clearly
 // modifies the source, not the yield. Per-extractor lookup, keyed on
 // the item the player actually receives (Wood, Sunflower, Egg, …).
 // Names mostly come from upstream `ResourceName` in
 // sunflower-land/.../game/types/resources.ts; animal node names come
-// from `AnimalType` and the salt node label is overview-coined since
-// upstream has no collectible for it.
-export const NODE_LABEL: Record<ResourceKind, string> = {
+// from `AnimalType` via `ANIMAL_NODE_LABEL` above, and the salt node
+// label is overview-coined since upstream has no collectible for it.
+//
+// Animal resources are `Partial` — see `ANIMAL_NODE_LABEL`. `nodeLabel`
+// is optional on `Timer`, so a missing entry degrades to the "(×N)"
+// push wording rather than breaking.
+export const NODE_LABEL: Record<Exclude<ResourceKind, AnimalResource>, string> &
+  Partial<Record<AnimalResource, string>> = {
   Wood: "Tree",
   Stone: "Stone Rock",
   Iron: "Iron Rock",
@@ -97,16 +124,8 @@ export const NODE_LABEL: Record<ResourceKind, string> = {
   Honey: "Beehive",
   Salt: "Salt Node",
   "Salt Charged": "Salt Node",
-  // Animal resources → source species. Two resources per species: Egg /
-  // Feather from Chicken, Milk / Leather from Cow, Wool / Merino Wool
-  // from Sheep.
-  Egg: "Chicken",
-  Feather: "Chicken",
-  Milk: "Cow",
-  Leather: "Cow",
-  Wool: "Sheep",
-  "Merino Wool": "Sheep",
-} satisfies Record<ResourceKind, string>;
+  ...ANIMAL_NODE_LABEL,
+};
 
 function pushResourceTimer(
   out: Timer[],
