@@ -267,6 +267,14 @@ export default defineConfig(({ mode }) => {
           target: "http://localhost:8787",
           changeOrigin: true,
         },
+        // The community-data reader (auctions, marketplace). Without
+        // this the whole Marketplace page and the Auctions panel render
+        // empty in `npm run dev` — they self-hide when their fetch
+        // fails, so the failure is silent rather than loud.
+        "/api/data": {
+          target: "http://localhost:8787",
+          changeOrigin: true,
+        },
         "/push": {
           target: "http://localhost:8787",
           changeOrigin: true,
