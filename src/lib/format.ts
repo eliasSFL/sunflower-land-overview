@@ -51,3 +51,28 @@ export function formatReadyAt(readyAt: number, now: number): string {
   const weekday = ready.toLocaleDateString(undefined, { weekday: "short" });
   return `${weekday} ${time}`;
 }
+
+/**
+ * Short form for a number that has to fit a fixed slot — a chart's axis
+ * gutter or an endpoint label — where `formatYield` would overflow.
+ *
+ * Market volumes run to seven figures, and "1250000" at 8px is wider
+ * than the 34px axis gutter the charts allow, so it would collide with
+ * the plot. This caps any magnitude at four visible characters plus a
+ * suffix: 1250000 → "1.3M", 12500 → "12.5k", 125 → "125".
+ *
+ * Deliberately NOT used in tables. There the full figure fits and
+ * rounding a price to "1.3M" would hide the difference between two
+ * listings, which is the whole reason someone is reading the column.
+ */
+export function formatCompact(amount: number): string {
+  if (!Number.isFinite(amount)) return "0";
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) return `${trimZeros((amount / 1_000_000).toFixed(1))}M`;
+  if (abs >= 1_000) return `${trimZeros((amount / 1_000).toFixed(1))}k`;
+  return formatYield(amount);
+}
+
+function trimZeros(fixed: string): string {
+  return fixed.replace(/\.0$/, "");
+}

@@ -6,8 +6,8 @@ import { CHROME_ICONS } from "../lib/assets.ts";
 //
 // The dashboard is organised by what you're *doing* (the "action"
 // scheme): grab what's ready (Now), watch what's cooking (Producing),
-// clear what you owe (Quests), read the dig site (Digging), and check
-// your identity / pets / shop (Farm).
+// clear what you owe (Quests), read the dig site (Digging), trade
+// (Marketplace), and check your identity / pets / shop (Farm).
 //
 // `/now` is the default route; `/` and any unknown path redirect here
 // in App.tsx's <Routes> tree.
@@ -15,6 +15,7 @@ export const NOW_PATH = "/now";
 export const PRODUCING_PATH = "/producing";
 export const QUESTS_PATH = "/quests";
 export const DIGGING_PATH = "/digging";
+export const MARKETPLACE_PATH = "/marketplace";
 export const FARM_PATH = "/farm";
 
 // Legacy paths from the old two-page split (Live Timers / Farm Info).
@@ -37,5 +38,6 @@ export const TABS: PageTab[] = [
   { to: PRODUCING_PATH, label: "Producing", icon: CHROME_ICONS.timer },
   { to: QUESTS_PATH, label: "Quests", icon: CHROME_ICONS.scroll },
   { to: DIGGING_PATH, label: "Digging", icon: CHROME_ICONS.sand },
+  { to: MARKETPLACE_PATH, label: "Market", icon: CHROME_ICONS.trade },
   { to: FARM_PATH, label: "Farm", icon: CHROME_ICONS.player },
 ];

@@ -30,4 +30,9 @@ export const VILLAGE_PROJECTS_SECTION_ID = "section-village-projects";
 // Community-API panels — not farm state, but standing context that
 // lives alongside it on the Farm page.
 export const AUCTIONS_SECTION_ID = "section-auctions";
+// The Marketplace page's three sections. `MARKETPLACE_SECTION_ID` kept
+// its name through the move off /farm so existing deep links still land
+// on the market table.
 export const MARKETPLACE_SECTION_ID = "section-marketplace";
+export const MY_MARKET_SECTION_ID = "section-my-market";
+export const TRADEABLE_SECTION_ID = "section-tradeable";

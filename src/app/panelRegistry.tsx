@@ -9,7 +9,6 @@ import { ChoresPanel } from "../components/ChoresPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
 import { InstallPromptPanel } from "../components/InstallPromptPanel.tsx";
 import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
-import { MarketplacePanel } from "../components/MarketplacePanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
 import { PetsPanel } from "../components/PetsPanel.tsx";
 import {
@@ -19,7 +18,6 @@ import {
   BUMPKIN_SECTION_ID,
   CHORES_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
-  MARKETPLACE_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
   sectionId,
@@ -197,12 +195,6 @@ export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
       label: "Auctions",
       icon: CHROME_ICONS.auctioneer,
       render: () => <AuctionsPanel now={ctx.now} />,
-    },
-    {
-      id: MARKETPLACE_SECTION_ID,
-      label: "Marketplace",
-      icon: CHROME_ICONS.trade,
-      render: () => <MarketplacePanel now={ctx.now} />,
     },
   ];
 }

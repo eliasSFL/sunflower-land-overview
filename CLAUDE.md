@@ -104,9 +104,9 @@ explicitly approved/coordinated it for that feature — otherwise let the
 bot carry the new SHA, and hold the dependent overview change until it
 has.
 
-## Dashboard is five routed pages (the "action" scheme)
+## Dashboard is six routed pages (the "action" scheme)
 
-After a farm loads, the dashboard splits into five top-level routes
+After a farm loads, the dashboard splits into six top-level routes
 served by `react-router-dom` (see [src/app/App.tsx](src/app/App.tsx)
 and [src/app/routes.ts](src/app/routes.ts)), organised by **what you're
 doing** rather than timers-vs-info:
@@ -124,16 +124,39 @@ doing** rather than timers-vs-info:
   Bounties, Animal Bounties (plus pinned Install). "What you owe."
 - **`/digging` — Digging**. The bespoke Digby's dig-site board (see
   [DiggingPage](src/app/DiggingPage.tsx)). No arrangeable flow.
+- **`/marketplace` — Market**. The bespoke trading board (see
+  [MarketplacePage](src/app/MarketplacePage.tsx)): your own profile
+  (`MyMarketplacePanel`), the day's market with a 7-day volume trend
+  (`MarketSnapshotPanel`), and a per-item drill-down that opens under it
+  (`TradeableDetailPanel`). No arrangeable flow — the drill-down only
+  exists as a consequence of a click in the panel above it. "What's it
+  worth."
 - **`/farm` — Farm**. Arrangeable flow: Bumpkin, Village Projects, Love
-  Island Shop, Pet Cravings, Pets (plus pinned Install). "Your standing."
+  Island Shop, Pet Cravings, Pets, Auctions (plus pinned Install). "Your
+  standing."
 
 The three arrangeable pages (Producing, Quests, Farm) render through the
-generic [PanelGridPage](src/app/PanelGridPage.tsx); Now and Digging are
-bespoke. Desktop switches pages via the **`TopTabBar`** pill bar under
+generic [PanelGridPage](src/app/PanelGridPage.tsx); Now, Digging and
+Marketplace are bespoke. Desktop switches pages via the **`TopTabBar`** pill bar under
 the header; mobile uses the **`PageNavMenu`** FAB (bottom-right HUD,
 `sm:hidden`). Pages only mount once `data` exists — the pre-load
 shell is the `FarmIdPanel` rendered in place of the route tree. The old
 `/timers` and `/info` paths redirect to `/producing` and `/farm`.
+
+### Per-farm community data is access-gated in the Worker
+
+`/api/data` is an unauthenticated public GET, and most of what it fronts
+describes the world (auctions, marketplace activity). A data type scoped
+to ONE farm is different: mark its spec `perFarm: true` in
+[worker/communityData.ts](worker/communityData.ts) and the router runs
+the same `fetchAndCheckAccess` gate `/api/farms/{id}` uses before serving
+it. Upstream publishes `marketplaceProfile` to any caller, but without
+the gate our route would be a way around the overview's access cohort.
+
+Caching stays correct because `farmId` is a declared param, so it is part
+of the cache key — one farm's copy can never be served for another. If a
+per-farm type is ever added WITHOUT declaring `farmId` in `params`, that
+invariant breaks silently; `worker/communityData.test.ts` pins it.
 
 ### Panels are arrangeable (drag-to-reorder + hide)
 
@@ -150,8 +173,8 @@ opened from Settings), persisted with the **no-TTL**
 [prefs.ts](src/lib/prefs.ts) store — do NOT use `storage.ts` for prefs,
 its 7-day TTL would reset layouts. Pure reconcile logic lives in
 [panelOrder.ts](src/app/panelOrder.ts) (tested in `panelOrder.test.ts`).
-Bespoke pages (Now, Digging) have no arrangement and hand the Settings →
-Layout screen a neutral, no-op sheet.
+Bespoke pages (Now, Digging, Marketplace) have no arrangement and hand
+the Settings → Layout screen a neutral, no-op sheet.
 
 ### Adding a new panel
 

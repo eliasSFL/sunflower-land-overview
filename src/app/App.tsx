@@ -34,6 +34,7 @@ import {
 import { DashboardHeader } from "./DashboardHeader.tsx";
 import { DiggingPage } from "./DiggingPage.tsx";
 import { FarmIdPanel } from "./FarmIdPanel.tsx";
+import { MarketplacePage } from "./MarketplacePage.tsx";
 import { NowPage } from "./NowPage.tsx";
 import { PanelGridPage } from "./PanelGridPage.tsx";
 import { sortByArrangement } from "./panelOrder.ts";
@@ -50,6 +51,7 @@ import {
   FARM_PATH,
   LEGACY_INFO_PATH,
   LEGACY_TIMERS_PATH,
+  MARKETPLACE_PATH,
   NOW_PATH,
   PRODUCING_PATH,
   QUESTS_PATH,
@@ -209,6 +211,7 @@ function AppShell() {
   const onQuestsRoute = pathname === QUESTS_PATH;
   const onFarmRoute = pathname === FARM_PATH;
   const onDiggingRoute = pathname === DIGGING_PATH;
+  const onMarketplaceRoute = pathname === MARKETPLACE_PATH;
 
   // Subtitle is route-aware once a farm has loaded. Pre-load it's a
   // tab-agnostic default while the FarmIdPanel is the whole screen.
@@ -222,7 +225,9 @@ function AppShell() {
           ? "Deliveries, chores & bounties"
           : onDiggingRoute
             ? "Read the sand & crabs — dig the sure things"
-            : "Your farm at a glance";
+            : onMarketplaceRoute
+              ? "Your trades, the floor & what's moving"
+              : "Your farm at a glance";
 
   // The NavMenu (mobile section-jump) mounts only on the arrangeable
   // pages — the bespoke Now and Digging pages have no jump sections.
@@ -300,6 +305,10 @@ function AppShell() {
               <Route
                 path={DIGGING_PATH}
                 element={<DiggingPage data={data} now={now} />}
+              />
+              <Route
+                path={MARKETPLACE_PATH}
+                element={<MarketplacePage data={data} now={now} />}
               />
               {/* Legacy two-page paths redirect to their action-scheme
                   home so old bookmarks / shared links still land. */}
