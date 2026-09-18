@@ -127,6 +127,28 @@ export { getAnimalReadyAt } from "features/game/lib/animals";
 // queue is still plain `startAt + duration` upstream (processResource.ts),
 // so it keeps its stored readyAt.
 export { getCookingQueueReadyAts } from "features/game/lib/cookingReadiness";
+// Crafting Box (#7654) — the second SEQUENTIAL windowed activity, same shape
+// as cooking: one box, one queue, a craft with no `startedAt` chains off the
+// derived time the box next frees up. Two crafting-only wrinkles the helper
+// already handles for us: a Fox Shrine instant proc (`baseDurationMs === 0`)
+// sits in the queue ready at its own anchor and never OCCUPIES the box, so
+// crafts behind it chain off the last real craft; and legacy crafts (no
+// `baseDurationMs`) keep their stored `readyAt` while still advancing the
+// cursor, so a part-migrated queue resolves correctly.
+export { getCraftingQueueReadyAts } from "features/game/lib/craftingReadiness";
+// Crop Machine (#7608, #7674) — windowed too, but the odd one out: packs grow
+// sequentially AND the tank drains 1:1 with the wall clock while a pack is
+// growing, so a boost both finishes a pack sooner and burns less fuel. Ready
+// times and fuel therefore have to be resolved in one forward pass over the
+// whole queue, which is what `resolveCropMachine` does — it returns a timing
+// per pack (`readyAt` when the pack completes, `growsUntil` when the tank runs
+// dry mid-pack, neither when the pack never starts). `getCropMachineBoostWindows`
+// builds the windows (Tortoise Shrine is the machine's only temporary boost).
+// A legacy machine (no `oilSettledAt`) passes its stored `readyAt`s straight
+// through, so this is safe to call unconditionally.
+export { resolveCropMachine } from "features/game/lib/cropMachineReadiness";
+export type { CropMachinePackTiming } from "features/game/lib/cropMachineReadiness";
+export { getCropMachineBoostWindows } from "features/game/lib/boostWindows";
 // Lava pits — `getLavaPitTime` returns the boost-scaled production time
 // (Obsidian Necklace, Magma Stone); `getObsidianYield` returns the per-
 // collection obsidian amount plus the boosts that contributed to it.

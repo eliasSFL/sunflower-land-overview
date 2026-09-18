@@ -1,6 +1,8 @@
 import {
+  getCropMachineBoostWindows,
   getCropMachinePackYield,
   getItemIcon,
+  resolveCropMachine,
   type CropMachineBuilding,
   type CropName,
   type GameState,
@@ -11,6 +13,18 @@ import type { Boost, Timer, TimerContext } from "./types.ts";
 // counter across packs so two consecutive Sunflower packs predict in the
 // same PRNG sequence the game would use if you harvested them one after
 // the other — see harvestCropMachine.ts:initialCounter.
+//
+// Ready times come from upstream's `resolveCropMachine`, NOT from each
+// pack's stored `readyAt`. The machine moved onto the windowed
+// speed-rate model in #7608: the Tortoise Shrine is a live 10/9x speed
+// over the queue rather than a discount baked in at supply time, packs
+// grow sequentially, and the tank drains with the wall clock while a
+// pack grows — so a shrine placed mid-pack both pulls every pack behind
+// it forward and stretches the fuel, and neither effect can be read off
+// a stored timestamp. Upstream refreshes those stamps only when an event
+// rewrites the queue; between writes this resolution is the source of
+// truth. A legacy machine (no `oilSettledAt`) passes its stored values
+// straight through the same call, so there is nothing to branch on.
 
 export function extractCropMachineTimers(
   state: GameState,
@@ -28,19 +42,27 @@ export function extractCropMachineTimers(
     readyAt: number;
   };
 
+  const windows = getCropMachineBoostWindows(state);
+
   const entries: PackEntry[] = [];
   for (const [mIndex, machine] of machines.entries()) {
     const machineId = machine.id ?? `m${mIndex}`;
     const queue = machine.queue ?? [];
+    // Per machine, not across all of them: each Crop Machine has its own
+    // queue and its own tank, so the forward pass is machine-scoped.
+    const { packs } = resolveCropMachine({ machine, windows });
     for (const [packIndex, pack] of queue.entries()) {
-      // Skip packs not yet started (waiting for oil): readyAt is unset
-      // until the pack is actually being processed.
-      if (!pack.readyAt) continue;
+      // Skip packs that never finish on the fuel in the tank: a pack the
+      // oil doesn't reach at all, and one that stalls part-way through
+      // (`growsUntil` instead of `readyAt`), have no meaningful ready
+      // time to count down to until the player tops the machine up.
+      const readyAt = packs[packIndex]?.readyAt;
+      if (!readyAt) continue;
       entries.push({
         machineId,
         packIndex,
         pack,
-        readyAt: pack.readyAt,
+        readyAt,
       });
     }
   }
