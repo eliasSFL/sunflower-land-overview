@@ -73,6 +73,12 @@ export type {
   CompostBuilding,
   // Crafting box
   CraftingQueueItem,
+  // Marketplace trade records. `TradeListing` / `TradeOffer` are the
+  // player's own open trades on `state.trades`, and are also what
+  // upstream's marketplaceProfile returns (minus the on-chain
+  // `signature`, which it strips before publishing).
+  TradeListing,
+  TradeOffer,
   // Root
   GameState,
   // Boost / critical-hit unions
@@ -99,6 +105,11 @@ export type {
   DiggingFormationName,
   DiggingFormation,
 } from "features/game/types/desert";
+
+// Marketplace collection union ("collectibles" | "wearables" | "buds" |
+// "pets" | "resources" | "economies"). Upstream keys every trade and
+// every activity-report item by it.
+export type { CollectionName } from "features/game/types/marketplace";
 
 export type { AnimalType, AnimalLevel } from "features/game/types/animals";
 export type { BumpkinItem } from "features/game/types/bumpkin";

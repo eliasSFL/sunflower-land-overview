@@ -26,7 +26,7 @@ import type { Env } from "./types.ts";
 // a type upstream already supports (raffles, ticketLeaderboard,
 // discordAnnouncements, nightlyDump) is a one-entry change here plus a
 // client-side reader.
-type ParamName = "auctionId" | "date" | "collection" | "id";
+type ParamName = "auctionId" | "date" | "collection" | "id" | "farmId";
 
 type TypeSpec = {
   // Query params forwarded upstream, in this order. Anything not
@@ -39,6 +39,14 @@ type TypeSpec = {
   softTtlMs: number;
   // How long a copy is retained for use as a stale fallback.
   hardTtlS: number;
+  // Scoped to one farm rather than describing the world. The router
+  // runs the overview's access check on `farmId` before serving these
+  // (see worker/index.ts) — upstream publishes them to any caller, but
+  // /api/data is unauthenticated, and without the gate it would be a
+  // way around the cohort that /api/farms/{id} enforces. Caching stays
+  // correct either way: `farmId` is a declared param, so it is part of
+  // the cache key and one farm's copy can never be served for another.
+  perFarm?: true;
 };
 
 const DATA_TYPES = {
@@ -66,6 +74,16 @@ const DATA_TYPES = {
     required: ["collection", "id"],
     softTtlMs: 2 * 60_000,
     hardTtlS: 6 * 3600,
+  },
+  // One farm's own marketplace standing — open listings and offers,
+  // weekly FLOWER in/out, lifetime totals, recent trades. Moves as the
+  // player trades, so a shorter soft TTL than the world-level sets.
+  marketplaceProfile: {
+    params: ["farmId"],
+    required: ["farmId"],
+    softTtlMs: 60_000,
+    hardTtlS: 6 * 3600,
+    perFarm: true,
   },
 } as const satisfies Record<string, TypeSpec>;
 
@@ -101,7 +119,28 @@ function validate(
       return /^\d{1,12}$/.test(value)
         ? { ok: true }
         : { ok: false, error: "Invalid id" };
+    case "farmId":
+      return /^\d{1,12}$/.test(value) && Number(value) > 0
+        ? { ok: true }
+        : { ok: false, error: "Invalid farmId" };
   }
+}
+
+/**
+ * The farm a per-farm type is scoped to, for the router's access gate.
+ * Returns undefined for world-level types (nothing to gate) and for a
+ * malformed id (the param validator rejects it a moment later with a
+ * 400, which is the clearer error).
+ */
+export function perFarmId(
+  type: CommunityDataType,
+  params: URLSearchParams,
+): number | undefined {
+  const spec: TypeSpec = DATA_TYPES[type];
+  if (!spec.perFarm) return undefined;
+  const raw = params.get("farmId") ?? "";
+  if (validate("farmId", raw).ok !== true) return undefined;
+  return Number(raw);
 }
 
 export type CommunityDataResult =

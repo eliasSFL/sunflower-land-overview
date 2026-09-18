@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchCommunityData, isCommunityDataType } from "./communityData.ts";
+import {
+  fetchCommunityData,
+  isCommunityDataType,
+  perFarmId,
+} from "./communityData.ts";
 import type { Env } from "./types.ts";
 
 const KEY = "sfl.MTIz.c2lnbmF0dXJl";
@@ -44,6 +48,7 @@ describe("isCommunityDataType", () => {
     expect(isCommunityDataType("auctions")).toBe(true);
     expect(isCommunityDataType("marketplaceActivity")).toBe(true);
     // Real upstream types we deliberately don't expose yet.
+    expect(isCommunityDataType("marketplaceProfile")).toBe(true);
     expect(isCommunityDataType("nightlyDump")).toBe(false);
     expect(isCommunityDataType("ticketLeaderboard")).toBe(false);
     expect(isCommunityDataType("__proto__")).toBe(false);
@@ -215,5 +220,88 @@ describe("fetchCommunityData", () => {
     const keys = [...cache.store.keys()];
     expect(keys).toHaveLength(1);
     expect(keys[0]).not.toContain(KEY);
+  });
+});
+
+// The router calls this to decide whether a request needs the overview's
+// access check before it is served. Getting it wrong in the "undefined"
+// direction would publish one farm's trade history to anyone; getting it
+// wrong the other way would gate the world-level sets behind a farm
+// lookup they don't need.
+describe("perFarmId", () => {
+  it("returns the farm a per-farm type is scoped to", () => {
+    expect(perFarmId("marketplaceProfile", params({ farmId: "123" }))).toBe(
+      123,
+    );
+  });
+
+  it("is undefined for world-level types even when a farmId is passed", () => {
+    // A caller can append whatever they like to the query; a type that
+    // doesn't declare `farmId` never forwards it, so there is nothing to
+    // gate and the free path stays free.
+    expect(perFarmId("auctions", params({ farmId: "123" }))).toBeUndefined();
+    expect(
+      perFarmId("marketplaceActivity", params({ farmId: "123" })),
+    ).toBeUndefined();
+  });
+
+  it("is undefined for a missing or malformed farmId", () => {
+    // The param validator rejects these with a 400 a moment later, which
+    // is the clearer error — the gate just declines to invent an id.
+    const bad: Array<Record<string, string>> = [
+      {},
+      { farmId: "" },
+      { farmId: "0" },
+      { farmId: "abc" },
+    ];
+    for (const q of bad) {
+      expect(perFarmId("marketplaceProfile", params(q))).toBeUndefined();
+    }
+  });
+
+  it("does not treat a farmId with trailing junk as valid", () => {
+    // A lenient parse (`Number.parseInt`) would read "12x" as 12 and
+    // gate the wrong farm.
+    expect(
+      perFarmId("marketplaceProfile", params({ farmId: "12x" })),
+    ).toBeUndefined();
+  });
+});
+
+describe("fetchCommunityData — per-farm types", () => {
+  it("caches one farm's profile separately from another's", async () => {
+    const fetchMock = vi.fn(async () => ok({ data: { id: 1 } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchCommunityData(
+      env,
+      "marketplaceProfile",
+      params({ farmId: "1" }),
+    );
+    await fetchCommunityData(
+      env,
+      "marketplaceProfile",
+      params({ farmId: "2" }),
+    );
+
+    // Two upstream calls and two cache entries: `farmId` is a declared
+    // param, so it is part of the cache key. If it ever stopped being
+    // one, farm 2 would be served farm 1's trade history.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect([...cache.store.keys()]).toHaveLength(2);
+  });
+
+  it("is a 400 without a farmId, before touching upstream", async () => {
+    const fetchMock = vi.fn(async () => ok({ data: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchCommunityData(
+      env,
+      "marketplaceProfile",
+      params(),
+    );
+
+    expect(result).toMatchObject({ ok: false, status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

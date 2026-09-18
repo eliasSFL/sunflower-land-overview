@@ -530,6 +530,9 @@ export type {
   CrustaceanName,
   CrustaceanChum,
   CraftingQueueItem,
+  TradeListing,
+  TradeOffer,
+  CollectionName,
   // Composter worm name + the corresponding farmActivity counter key.
   Worm,
   // Activity counter keys (template-literal union covering every

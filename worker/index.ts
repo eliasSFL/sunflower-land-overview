@@ -16,7 +16,11 @@
 // sweep, GET /push/state for snapshot pulls, POST /push/refresh.
 
 import { fetchAndCheckAccess } from "./access.ts";
-import { fetchCommunityData, isCommunityDataType } from "./communityData.ts";
+import {
+  fetchCommunityData,
+  isCommunityDataType,
+  perFarmId,
+} from "./communityData.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
 
@@ -342,7 +346,7 @@ export default {
       }
     }
 
-    // Community data proxy. Public, farm-independent data sets
+    // Community data proxy. Mostly public, farm-independent data sets
     // (auctions, marketplace activity). Cached in the Worker because
     // upstream throttles this route on our single egress IP — see
     // worker/communityData.ts.
@@ -350,6 +354,23 @@ export default {
       const type = url.searchParams.get("type") ?? "";
       if (!isCommunityDataType(type)) {
         return json({ error: "Unknown data type" }, { status: 400 });
+      }
+      // Farm-scoped sets (marketplaceProfile) run the same access check
+      // as /api/farms/{id} before we serve them. Upstream publishes the
+      // profile to any caller — it is what the game's own marketplace
+      // profile page renders — but this route is unauthenticated, so
+      // without the gate it would be a way around the overview's access
+      // cohort. The world-level sets skip this entirely and stay free.
+      const gatedFarmId = perFarmId(type, url.searchParams);
+      if (gatedFarmId !== undefined) {
+        const gate = await fetchAndCheckAccess(
+          env,
+          gatedFarmId,
+          request.headers.get("cf-connecting-ip") ?? undefined,
+        );
+        if (!gate.ok) {
+          return json({ error: gate.error }, { status: gate.status });
+        }
       }
       const result = await fetchCommunityData(env, type, url.searchParams);
       if (!result.ok) {
