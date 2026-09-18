@@ -44,6 +44,7 @@ export type Category =
   | "Crafting Box"
   | "Crab Traps"
   | "Love Island"
+  | "Bud Box"
   | "Power Skills"
   | "Quests"
   | "Village Projects";
@@ -91,6 +92,11 @@ export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
 // it does to placement-gated ones.
 export const EVENT_GATED_CATEGORIES: readonly Category[] = [
   "Love Island",
+  // "Bud Box" surfaces the Plaza's once-a-day chest. Its extractor emits
+  // a row only for players who own at least one Bud — the box is opened
+  // with a Bud of the day's type, so a Bud-less farm can never use it
+  // and should see no section at all.
+  "Bud Box",
   "Power Skills",
   // "Quests" surfaces the daily Telegram quest cooldown — its extractor
   // emits a row only once the player has started the Telegram bot (i.e.
@@ -123,6 +129,7 @@ export const CATEGORY_ORDER: Category[] = [
   ...AGING_RACK_CATEGORIES,
   "Crafting Box",
   "Love Island",
+  "Bud Box",
   "Power Skills",
   "Quests",
   "Village Projects",

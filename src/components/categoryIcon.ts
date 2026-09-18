@@ -10,7 +10,7 @@ import type { Category } from "../timers/index.ts";
 // it resolves to the lightning chrome icon below, matching the in-game
 // power-skills iconography — so it's excluded from this map.
 const CATEGORY_ICON_NAME: Record<
-  Exclude<Category, "Power Skills" | "Quests" | "Village Projects">,
+  Exclude<Category, "Power Skills" | "Quests" | "Village Projects" | "Bud Box">,
   InventoryItemName
 > = {
   Crops: "Sunflower",
@@ -50,5 +50,8 @@ export function getCategoryIcon(category: Category): string {
   // Village Projects fire a completion push but have no timer item — use
   // the cheer sprite, matching the VillageProjectsPanel header.
   if (category === "Village Projects") return CHROME_ICONS.cheer;
+  // The Bud Box is a Plaza chest, not an inventory item — use the same
+  // gift sprite the game puts above it when it's open to you.
+  if (category === "Bud Box") return CHROME_ICONS.gift;
   return getItemIcon(CATEGORY_ICON_NAME[category]);
 }

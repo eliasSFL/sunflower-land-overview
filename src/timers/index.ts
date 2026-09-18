@@ -11,6 +11,7 @@ import { extractAnimalTimers } from "./animals.ts";
 import { extractAnimalLoveTimers } from "./animalLove.ts";
 import { extractComposterTimers } from "./composters.ts";
 import { extractCookingTimers } from "./cooking.ts";
+import { extractBudBoxTimers } from "./budBox.ts";
 import { extractCrabTrapTimers } from "./crabTraps.ts";
 import { extractCraftingBoxTimers } from "./craftingBox.ts";
 import { extractLavaPitTimers } from "./lavaPits.ts";
@@ -77,6 +78,7 @@ export function extractAllTimers(
     ...extractLavaPitTimers(state, ctx),
     ...extractCrabTrapTimers(state, ctx),
     ...extractLoveIslandTimers(state, ctx),
+    ...extractBudBoxTimers(state, ctx),
     ...extractPowerSkillTimers(state, ctx),
     ...extractQuestTimers(state, ctx),
   ];

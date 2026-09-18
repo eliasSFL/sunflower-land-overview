@@ -67,6 +67,11 @@ export const CHROME_ICONS = {
   // Treasure-chest sprite — the "Open Sunflower Land" row glyph on the
   // Settings home list. Bundled from the submodule (not on the CDN).
   chest: submoduleAsset("icons/chest.png"),
+  // Wrapped-gift sprite — the Bud Box glyph. Upstream uses this same
+  // asset for both the Plaza's "box is available" indicator and the Bud
+  // Box modal's own tab, so the dashboard card matches what the player
+  // is looking for in the Plaza.
+  gift: submoduleAsset("icons/gift.png"),
   // Pixel-art scroll sprite — used as the glyph on the mobile section-
   // nav FAB (the "table of contents" affordance).
   scroll: submoduleAsset("icons/scroll.webp"),

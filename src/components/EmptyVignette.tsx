@@ -135,6 +135,14 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "No village projects",
     subtitle: "No projects in progress.",
   },
+  // Event-gated: the Bud Box section only renders for players who own a
+  // Bud (see EVENT_GATED_CATEGORIES), and its extractor emits exactly
+  // one card when it does — so this vignette won't normally render. It
+  // exists to satisfy the exhaustive Category map.
+  "Bud Box": {
+    headline: "The box stays shut",
+    subtitle: "No Buds to open it with.",
+  },
 };
 
 // Drop-in replacement for the prior single-line empty caption. Renders

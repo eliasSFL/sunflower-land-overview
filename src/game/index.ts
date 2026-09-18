@@ -380,6 +380,13 @@ export {
 // (UTC-day keyed, same comparison the in-game claim uses).
 export { getActiveFloatingIsland } from "features/game/types/floatingIsland";
 export { hasClaimedPetalPrize } from "features/game/events/landExpansion/claimPetalPrize";
+// The Plaza's Bud Box (#7588) — a chest that opens once a UTC day, but
+// only for a player holding a Bud of the day's type. `BUD_ORDER` is the
+// ten-type cycle and `getDailyBudBoxType` picks today's from it; both
+// are what the in-game Plaza indicator and the box's own modal read, so
+// the dashboard names the same type the player will see on the chest.
+export { BUD_ORDER, getDailyBudBoxType } from "features/game/lib/budBox";
+export type { TypeTrait as BudTypeTrait } from "features/game/types/buds";
 // Pets. The overview reads live pet state from `state.pets.common`
 // (common breeds) and `state.pets.nfts` (NFT pets). `getPetLevel` maps
 // total experience → level/progress (the same quadratic the in-game pet
