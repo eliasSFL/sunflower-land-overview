@@ -40,9 +40,12 @@ function dugTiles(count: number): Record<string, { dugAt: number }> {
 }
 
 // The extractor only reads `state.cave`; the cast keeps the fixture small.
-function stateWith(machines: Record<string, unknown> | undefined): GameState {
+function stateWith(
+  machines: Record<string, unknown> | undefined,
+  construction?: { tier: number; startedAt: number; readyAt: number },
+): GameState {
   return {
-    cave: machines && { builtAt: 0, tier: 1, machines },
+    cave: machines && { builtAt: 0, tier: 1, machines, construction },
   } as unknown as GameState;
 }
 
@@ -137,5 +140,49 @@ describe("extractCaveTimers", () => {
       "Cave|2",
       "Cave|10",
     ]);
+  });
+
+  it("counts a tier expansion down to its stored readyAt", () => {
+    const state = stateWith(
+      { "1": {} },
+      { tier: 2, startedAt: NOW - HOUR, readyAt: NOW + 3 * HOUR },
+    );
+
+    const timers = extractCaveTimers(state, ctx);
+    expect(timers.map((t) => t.id)).toEqual(["cave-expansion", "cave-1"]);
+    expect(timers[0]).toMatchObject({
+      category: "Cave",
+      label: "Cave Tier 2",
+      icon: "icon:Cave",
+      readyAt: NOW + 3 * HOUR,
+      subtext: "Expanding · adds Myco Bin 2",
+      pushTitle: "Cave Tier 2 built",
+      aggregationKey: "Cave|expansion",
+    });
+    expect(timers[0].idle).toBeUndefined();
+  });
+
+  it("keeps a built expansion ready until it's completed", () => {
+    const state = stateWith(
+      { "1": {}, "2": {} },
+      { tier: 3, startedAt: NOW - 9 * HOUR, readyAt: NOW - HOUR },
+    );
+
+    const [timer] = extractCaveTimers(state, ctx);
+    expect(timer).toMatchObject({
+      label: "Cave Tier 3",
+      readyAt: NOW - HOUR,
+      subtext: "Complete it to add Myco Bin 3",
+    });
+  });
+
+  it("shows no expansion while the Cave building isn't built", () => {
+    mockBuildingReady.mockReturnValue(false);
+    const state = stateWith(
+      { "1": {} },
+      { tier: 2, startedAt: NOW - HOUR, readyAt: NOW + 3 * HOUR },
+    );
+
+    expect(extractCaveTimers(state, ctx)).toEqual([]);
   });
 });

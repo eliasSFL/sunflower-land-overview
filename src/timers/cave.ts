@@ -28,6 +28,12 @@ import type { Timer, TimerContext } from "./types.ts";
 // side effect is that a patch the player may already replace — every Beetle
 // found, upstream's `canRestartCaveBatch` — still reads as "ready" here,
 // because telling it apart needs the seed.
+//
+// Plus one card while the next Cave tier is under construction
+// (`cave.construction`). Its `readyAt` is stamped at `cave.expanded` and
+// is read as-is. Reaching it doesn't finish anything on its own: the
+// player still has to complete the expansion (`cave.expansionCompleted`)
+// before the tier's Myco Bin appears, so the card sits ready until then.
 
 const MACHINE_NAME = "Myco Bin";
 
@@ -52,7 +58,7 @@ export function extractCaveTimers(
 
   const ids = Object.keys(cave.machines).sort((a, b) => Number(a) - Number(b));
 
-  return ids.map((id): Timer => {
+  const machines = ids.map((id): Timer => {
     const name = `${MACHINE_NAME} ${id}`;
     const batch = cave.machines[id].batch;
     const aggregationKey = `Cave|${id}`;
@@ -86,4 +92,24 @@ export function extractCaveTimers(
       aggregationKey,
     };
   });
+
+  const construction = cave.construction;
+  if (!construction) return machines;
+
+  const { tier, readyAt } = construction;
+  const bin = `${MACHINE_NAME} ${tier}`;
+  const expansion: Timer = {
+    id: "cave-expansion",
+    category: "Cave",
+    label: `Cave Tier ${tier}`,
+    icon: getItemIcon("Cave"),
+    readyAt,
+    subtext:
+      readyAt > now ? `Expanding · adds ${bin}` : `Complete it to add ${bin}`,
+    pushTitle: `Cave Tier ${tier} built`,
+    pushBody: `Complete the expansion to add ${bin}`,
+    aggregationKey: "Cave|expansion",
+  };
+
+  return [expansion, ...machines];
 }
