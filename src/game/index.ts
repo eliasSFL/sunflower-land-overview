@@ -466,9 +466,21 @@ export { isCollectible } from "features/game/events/landExpansion/garbageSold";
 export { NPC_WEARABLES } from "lib/npcs";
 export type { NPCName } from "lib/npcs";
 export { getAnimatedWebpUrl } from "features/world/lib/animations";
+// The Cave (#7721). Only the public half: the batch board is derived from
+// a seed the server strips from community payloads, so the overview can
+// see each Myco-Composter's batch timing and which tiles are dug, never
+// what's buried where. `isCaveBuildingReady` is the gate every cave.*
+// event checks; `isCavePatchCleared` decides a patch is fully dug.
+export { isCaveBuildingReady } from "features/game/lib/cave";
+export {
+  CAVE_PATCH_TILE_COUNT,
+  isCavePatchCleared,
+} from "features/game/types/caveRecipes";
+export { BEETLES } from "features/game/types/beetles";
 
 export type {
   GameState,
+  CaveRecipeName,
   CropName,
   CropPlot,
   PatchFruitName,

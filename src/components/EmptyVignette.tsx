@@ -88,6 +88,12 @@ const COPY: Record<Category, { headline: string; subtitle: string }> = {
     headline: "The pile sits still",
     subtitle: "Nothing composting.",
   },
+  // Placement-gated: shows only once the Cave is built, so this renders
+  // when every Myco-Composter is idle (empty or its patch fully dug).
+  Cave: {
+    headline: "The cave is quiet",
+    subtitle: "Nothing growing in the Myco-Composters.",
+  },
   "Aging Rack": {
     headline: "Empty barrels",
     subtitle: "No fish aging.",

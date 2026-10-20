@@ -28,6 +28,7 @@ const CATEGORY_ICON_NAME: Record<
   Bakery: "Bakery",
   "Fish Market": "Fish Market",
   Composters: "Compost Bin",
+  Cave: "Cave",
   // Each Aging Shed rack uses a representative output item rather than
   // the shared building icon, so the three racks read as distinct at a
   // glance in the section header / MobileNav strip.

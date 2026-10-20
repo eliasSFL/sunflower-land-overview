@@ -12,6 +12,7 @@ import { extractAnimalLoveTimers } from "./animalLove.ts";
 import { extractComposterTimers } from "./composters.ts";
 import { extractCookingTimers } from "./cooking.ts";
 import { extractBudBoxTimers } from "./budBox.ts";
+import { extractCaveTimers } from "./cave.ts";
 import { extractCrabTrapTimers } from "./crabTraps.ts";
 import { extractCraftingBoxTimers } from "./craftingBox.ts";
 import { extractLavaPitTimers } from "./lavaPits.ts";
@@ -71,6 +72,7 @@ export function extractAllTimers(
     ...extractPetTimers(state, ctx),
     ...extractCookingTimers(state, ctx),
     ...extractComposterTimers(state, ctx),
+    ...extractCaveTimers(state, ctx),
     ...extractAgingShedTimers(state, ctx),
     ...extractCraftingBoxTimers(state, ctx),
     ...extractResourceTimers(state, ctx),

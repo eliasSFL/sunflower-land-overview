@@ -38,6 +38,7 @@ export type Category =
   | "Bakery"
   | "Fish Market"
   | "Composters"
+  | "Cave"
   | "Aging Rack"
   | "Fermentation Rack"
   | "Spice Rack"
@@ -78,6 +79,9 @@ export const AGING_RACK_CATEGORIES: readonly Category[] = [
 export const PLACEMENT_GATED_CATEGORIES: readonly Category[] = [
   ...COOKING_BUILDING_CATEGORIES,
   ...AGING_RACK_CATEGORIES,
+  // The Cave: its extractor emits nothing until the Cave building is
+  // built and placed (and the Cave itself is still testnet-only).
+  "Cave",
 ];
 
 // Categories gated on a transient game event rather than a placed
@@ -126,6 +130,7 @@ export const CATEGORY_ORDER: Category[] = [
   "Petting",
   ...COOKING_BUILDING_CATEGORIES,
   "Composters",
+  "Cave",
   ...AGING_RACK_CATEGORIES,
   "Crafting Box",
   "Love Island",

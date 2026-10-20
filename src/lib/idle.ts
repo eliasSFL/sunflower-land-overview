@@ -269,6 +269,20 @@ export function buildIdleEntries(
     });
   }
 
+  // Cave: each Myco-Composter runs one batch. Its idle rows (no batch,
+  // or the patch fully dug) come straight from the extractor, so count
+  // those the same way as composters.
+  const caveIdle = (byCategory.get("Cave") ?? []).reduce(
+    (total, t) => total + (t.idle ? t.count : 0),
+    0,
+  );
+  if (caveIdle > 0) {
+    out.push({
+      category: "Cave",
+      message: `${caveIdle} ${pluralise(caveIdle, "Myco-Composter")} idle`,
+    });
+  }
+
   // Aging Shed: one entry per rack so each shows up as its own row,
   // matching the per-rack categories in the main timer view.
   for (const rack of agingShedRacks(state)) {
