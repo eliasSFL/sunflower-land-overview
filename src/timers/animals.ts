@@ -1,4 +1,5 @@
 import {
+  ANIMAL_BUILDING_KEYS,
   ANIMAL_RESOURCE_DROP,
   getAnimalLevel,
   getAnimalReadyAt,
@@ -76,18 +77,14 @@ function toBoosts(
   }));
 }
 
-function* iterAnimals(state: GameState): Iterable<Animal> {
-  const henHouse = state.henHouse;
-  if (henHouse?.animals) {
-    for (const animal of Object.values(henHouse.animals)) {
-      yield animal;
-    }
-  }
-  const barn = state.barn;
-  if (barn?.animals) {
-    for (const animal of Object.values(barn.animals)) {
-      yield animal;
-    }
+// Every animal on the farm, across every animal building upstream knows
+// about (hen house, barn, pigpen). Optional-chained because a payload can
+// predate a building: the API hydrates a missing `pigpen` as empty, but
+// the overview shouldn't depend on that.
+export function* iterAnimals(state: GameState): Iterable<Animal> {
+  for (const key of ANIMAL_BUILDING_KEYS) {
+    const animals = state[key]?.animals;
+    if (animals) yield* Object.values(animals);
   }
 }
 
@@ -144,7 +141,7 @@ export function extractAnimalTimers(
         subtext: type,
         aggregationKey: animalKey(type, resource),
         // Resource → species lookup (Egg/Feather → Chicken, Milk/
-        // Leather → Cow, Wool/Merino Wool → Sheep). The notification
+        // Leather → Cow, Wool/Merino Wool → Sheep, Truffle → Pig). The notification
         // scheduler renders "6 Egg from 3× Chicken" using this.
         nodeLabel: NODE_LABEL[resource],
       });

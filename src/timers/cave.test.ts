@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // aliases. `isCavePatchCleared` keeps upstream's rule (every tile dug) so
 // the fixtures read naturally; the building gate is controlled per test.
 vi.mock("../game/index.ts", () => ({
-  BEETLES: ["Brown Beetle", "Blue Beetle", "Pink Beetle", "Amber Beetle"],
+  BEETLES: ["Green Beetle", "Blue Beetle", "Pink Beetle", "Amber Beetle"],
   CAVE_PATCH_TILE_COUNT: 25,
   getItemIcon: vi.fn((name: string) => `icon:${name}`),
   isCaveBuildingReady: vi.fn(),
@@ -81,7 +81,7 @@ describe("extractCaveTimers", () => {
       label: "Mushroom patch",
       icon: "icon:Wild Mushroom",
       readyAt: NOW + 11 * HOUR,
-      subtext: "Myco-Composter 1",
+      subtext: "Myco Bin 1",
       pushTitle: "Mushroom patch ready to dig",
     });
     expect(timer.idle).toBeUndefined();
@@ -102,9 +102,9 @@ describe("extractCaveTimers", () => {
     const [timer] = extractCaveTimers(state, ctx);
     expect(timer).toMatchObject({
       label: "Beetle patch",
-      icon: "icon:Brown Beetle",
+      icon: "icon:Green Beetle",
       readyAt: NOW - HOUR,
-      subtext: "Myco-Composter 1 · 12/25 dug",
+      subtext: "Myco Bin 1 · 12/25 dug",
     });
   });
 
@@ -123,8 +123,8 @@ describe("extractCaveTimers", () => {
 
     const timers = extractCaveTimers(state, ctx);
     expect(timers.map((t) => [t.label, t.idle, t.idleText])).toEqual([
-      ["Myco-Composter 1", true, "Empty"],
-      ["Myco-Composter 2", true, "Patch cleared"],
+      ["Myco Bin 1", true, "Empty"],
+      ["Myco Bin 2", true, "Patch cleared"],
     ]);
   });
 

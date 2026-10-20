@@ -1,4 +1,6 @@
 import {
+  ANIMAL_BUILDING_TYPES,
+  makeAnimalBuildingKey,
   MAX_COOKING_SLOTS,
   MAX_FISH_PROCESSING_SLOTS,
   MAX_CROP_MACHINE_QUEUE_SIZE,
@@ -7,6 +9,7 @@ import {
   getMaxFermentationSlots,
   getMaxSpiceRackSlots,
   getAgingSlotCount,
+  type AnimalBuildingType,
   type BuildingName,
   type GameState,
 } from "../game/index.ts";
@@ -135,8 +138,14 @@ function agingShedRacks(state: GameState): AgingRack[] {
 
 function animalBuildingFree(
   state: GameState,
-  buildingKey: "henHouse" | "barn",
+  buildingName: AnimalBuildingType,
 ): number {
+  // buyAnimal refuses without the building itself, and the state slice
+  // isn't proof of owning it: the API hydrates an empty level-1 `pigpen`
+  // onto every farm, so without this every player would see free Pig
+  // slots for a Pigpen they never built.
+  if (!state.buildings?.[buildingName]?.length) return 0;
+  const buildingKey = makeAnimalBuildingKey(buildingName);
   const building = state[buildingKey];
   if (!building) return 0;
   if ((building.level ?? 0) <= 0) return 0;
@@ -269,7 +278,7 @@ export function buildIdleEntries(
     });
   }
 
-  // Cave: each Myco-Composter runs one batch. Its idle rows (no batch,
+  // Cave: each Myco Bin runs one batch. Its idle rows (no batch,
   // or the patch fully dug) come straight from the extractor, so count
   // those the same way as composters.
   const caveIdle = (byCategory.get("Cave") ?? []).reduce(
@@ -279,7 +288,7 @@ export function buildIdleEntries(
   if (caveIdle > 0) {
     out.push({
       category: "Cave",
-      message: `${caveIdle} ${pluralise(caveIdle, "Myco-Composter")} idle`,
+      message: `${caveIdle} ${pluralise(caveIdle, "Myco Bin")} idle`,
     });
   }
 
@@ -319,10 +328,12 @@ export function buildIdleEntries(
     });
   }
 
-  // Animals: hen house + barn free slots.
-  const henFree = animalBuildingFree(state, "henHouse");
-  const barnFree = animalBuildingFree(state, "barn");
-  const animalFree = henFree + barnFree;
+  // Animals: free slots across every animal building (hen house, barn,
+  // pigpen).
+  const animalFree = ANIMAL_BUILDING_TYPES.reduce(
+    (total, name) => total + animalBuildingFree(state, name),
+    0,
+  );
   if (animalFree > 0) {
     out.push({
       category: "Animals",

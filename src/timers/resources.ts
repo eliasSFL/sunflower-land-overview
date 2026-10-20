@@ -65,10 +65,10 @@ type ResourceKind =
 
 // Every animal resource upstream actually drops, mapped back to the
 // species that drops it (Egg/Feather → Chicken, Milk/Leather → Cow,
-// Wool/Merino Wool → Sheep). Derived from `ANIMAL_RESOURCE_DROP` rather
-// than listed by hand: `AnimalResource` is where new chapters register
-// their animal produce (Chapter 16 added Rawhide and Truffle as
-// definitions with no drop table yet), and a hand-written map would
+// Wool/Merino Wool → Sheep, Truffle → Pig). Derived from
+// `ANIMAL_RESOURCE_DROP` rather than listed by hand: `AnimalResource` is
+// where new chapters register their animal produce (Chapter 16 added
+// Rawhide with no drop table yet), and a hand-written map would
 // either go stale or force us to guess a species upstream hasn't
 // decided on. A resource with no drop table has no entry — and no
 // timer either, since `extractAnimalTimers` iterates the same table.

@@ -172,6 +172,19 @@ export {
   getAnimalLevel,
   getResourceDropAmount,
 } from "features/game/lib/animals";
+// Every animal building, as its BuildingName ("Hen House", "Barn",
+// "Pigpen") and as its GameState key ("henHouse", "barn", "pigpen"), in
+// the same order. Upstream derives both from one exhaustive set, so
+// looping over these instead of naming the buildings means a new one
+// (the Pigpen, Chapter 16) can't be missed.
+export {
+  ANIMAL_BUILDING_TYPES,
+  type AnimalBuildingType,
+} from "features/game/types/animals";
+export {
+  ANIMAL_BUILDING_KEYS,
+  makeAnimalBuildingKey,
+} from "features/game/lib/animals";
 // Cooking + processing yield prediction. `getCookingAmount` takes an
 // explicit counter so we can thread per-recipe PRNG sequences across
 // the queue (Fiery Jackpot, Master Chef's Cleaver). Fish Market reads
@@ -188,7 +201,7 @@ export { PROCESSED_RESOURCES } from "features/game/types/processedFood";
 // Per-building queue / capacity caps used by the IdlePanel to compute
 // "X slots free". `hasVipAccess` gates the larger cap for cooking and
 // fish processing; `getBoostedAnimalCapacity` accounts for skill /
-// collectible / wearable bonuses on hen house / barn capacity.
+// collectible / wearable bonuses on animal building capacity.
 export { MAX_COOKING_SLOTS } from "features/game/events/landExpansion/cook";
 export { MAX_FISH_PROCESSING_SLOTS } from "features/game/events/landExpansion/processResource";
 export { MAX_QUEUE_SIZE as MAX_CROP_MACHINE_QUEUE_SIZE } from "features/game/events/landExpansion/supplyCropMachine";
@@ -468,7 +481,7 @@ export type { NPCName } from "lib/npcs";
 export { getAnimatedWebpUrl } from "features/world/lib/animations";
 // The Cave (#7721). Only the public half: the batch board is derived from
 // a seed the server strips from community payloads, so the overview can
-// see each Myco-Composter's batch timing and which tiles are dug, never
+// see each Myco Bin's batch timing and which tiles are dug, never
 // what's buried where. `isCaveBuildingReady` is the gate every cave.*
 // event checks; `isCavePatchCleared` decides a patch is fully dug.
 export { isCaveBuildingReady } from "features/game/lib/cave";

@@ -96,7 +96,7 @@ export type {
   Desert,
   DugHole,
   StreakReward,
-  // The Cave — the recipe a Myco-Composter batch is growing.
+  // The Cave — the recipe a Myco Bin batch is growing.
   CaveRecipeName,
 } from "features/game/types/game";
 

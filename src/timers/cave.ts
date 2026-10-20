@@ -10,7 +10,7 @@ import {
 } from "../game/index.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
-// One card per Myco-Composter in the Cave. Each Cave tier adds one machine,
+// One card per Myco Bin in the Cave. Each Cave tier adds one machine,
 // keyed by its tier ("1".."8"), sitting above its own 5x5 digging patch.
 //
 // A machine is in one of three states:
@@ -29,7 +29,7 @@ import type { Timer, TimerContext } from "./types.ts";
 // found, upstream's `canRestartCaveBatch` — still reads as "ready" here,
 // because telling it apart needs the seed.
 
-const MACHINE_NAME = "Myco-Composter";
+const MACHINE_NAME = "Myco Bin";
 
 // The item each recipe's card shows. Display only: the Beetle recipe takes
 // the commonest Beetle so a rename upstream follows through `BEETLES`.

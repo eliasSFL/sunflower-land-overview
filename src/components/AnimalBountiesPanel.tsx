@@ -9,6 +9,7 @@ import {
   type GameState,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
+import { iterAnimals } from "../timers/animals.ts";
 import { BountyReward } from "./BountyReward.tsx";
 import { NPCIcon } from "./NPCIcon.tsx";
 import { ANIMAL_BOUNTIES_SECTION_ID } from "./sectionId.ts";
@@ -32,13 +33,10 @@ type AnimalRow = {
   completed: boolean;
 };
 
-// Every placed animal lives in one of the two animal buildings; `isValidDeal`
-// matches the wanted type itself, so we don't pre-split by hen house / barn.
+// Every placed animal lives in one of the animal buildings; `isValidDeal`
+// matches the wanted type itself, so we don't pre-split by building.
 function placedAnimals(state: GameState) {
-  return [
-    ...Object.values(state.henHouse?.animals ?? {}),
-    ...Object.values(state.barn?.animals ?? {}),
-  ];
+  return [...iterAnimals(state)];
 }
 
 function collectAnimalBounties(state: GameState): AnimalRow[] {

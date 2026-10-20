@@ -2,10 +2,10 @@ import {
   getAnimalReadyAt,
   getItemIcon,
   getNextLoveAvailableAt,
-  type Animal,
   type AnimalType,
   type GameState,
 } from "../game/index.ts";
+import { iterAnimals } from "./animals.ts";
 import type { Timer, TimerContext } from "./types.ts";
 
 // One Timer per animal that has a pending love opportunity within its
@@ -41,17 +41,6 @@ import type { Timer, TimerContext } from "./types.ts";
 // Aggregation: one card per species — `Petting|<type>` — pooling every
 // animal of that type that's currently sleeping and loveable. The
 // aggregator's earliest-readyAt picks the first animal to open up.
-
-function* iterAnimals(state: GameState): Iterable<Animal> {
-  const henHouse = state.henHouse;
-  if (henHouse?.animals) {
-    for (const animal of Object.values(henHouse.animals)) yield animal;
-  }
-  const barn = state.barn;
-  if (barn?.animals) {
-    for (const animal of Object.values(barn.animals)) yield animal;
-  }
-}
 
 export function extractAnimalLoveTimers(
   state: GameState,
