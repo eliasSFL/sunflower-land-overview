@@ -91,8 +91,7 @@ export function App() {
 
 function AppShell() {
   const { pathname } = useLocation();
-  const { farmId, data, loading, error, accessDenied, lastFetchedAt, load } =
-    useFarmData();
+  const { farmId, data, loading, error, lastFetchedAt, load } = useFarmData();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Freeze the clock while Settings is open: the modal covers the
@@ -261,7 +260,6 @@ function AppShell() {
         {!data ? (
           <FarmIdPanel
             farmId={farmId}
-            accessDenied={accessDenied}
             error={error}
             loading={loading}
             onSubmit={load}

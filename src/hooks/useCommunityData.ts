@@ -91,7 +91,7 @@ export function useMarketplaceActivity(
 
 /**
  * One farm's marketplace profile. Access-gated in the Worker, so a farm
- * outside the overview's cohort resolves to an error state rather than
+ * that fails the check resolves to an error state rather than
  * data — the page treats that the same as "no profile" and hides.
  */
 export function useMarketplaceProfile(

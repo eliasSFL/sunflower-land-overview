@@ -6,10 +6,10 @@ export type AccessFetchResult =
   | { ok: false; status: number; error: string };
 
 /**
- * Fetch a farm from upstream and gate it against the overview's access
- * cohort. The same `hasOverviewAccess` predicate the SPA uses on
- * client-side is re-run here so a hand-crafted request can't reach the
- * D1 / DO write paths.
+ * Fetch a farm from upstream and check it is servable. There is no
+ * overview-side access predicate: the gate is upstream accepting the
+ * request and the body carrying a `farm` object, so an id upstream
+ * won't serve can't reach the D1 / DO write paths.
  *
  * Callers that also need the body (`/api/farms/{id}` proxy) read it off
  * `result.rawBody`; pure gate callers (`/push/subscribe`) ignore it.

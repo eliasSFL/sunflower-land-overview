@@ -16,8 +16,8 @@ import { InnerPanel, Label } from "./ui/index.ts";
 // half that is actually yours — what you have open right now, what the
 // week has cost and paid, and who you keep trading with.
 //
-// Access-gated in the Worker (see worker/index.ts), so a farm outside
-// the overview's cohort resolves to an error state. That reads the same
+// Access-gated in the Worker (see worker/index.ts), so a farm that
+// fails the check resolves to an error state. That reads the same
 // as "no profile" here: the panel hides rather than explaining a
 // permission model the player didn't ask about.
 

@@ -134,12 +134,8 @@ calls [`fetchFarm`](../src/api/fetchFarm.ts):
   straight to the DO so other devices can `GET /push/state` and pick up
   the latest snapshot — without us paying for a second upstream call.
 
-Two error classes are thrown for the UI to distinguish:
-
-- `ApiError` — generic non-2xx, rendered as red text.
-- `AccessDeniedError` — the player's farm isn't in the access cohort
-  yet. The dashboard hides and a friendly "check back later" message
-  shows in its place.
+Non-2xx responses throw `ApiError`, rendered as red text under the
+Farm ID form.
 
 ### Live timer ticking
 
@@ -211,32 +207,26 @@ rotating IDs can't bypass the limit. See [wrangler.jsonc](../wrangler.jsonc).
 
 ### Why path proxying instead of direct upstream calls?
 
-Two reasons:
+**The API key never reaches the browser.** The upstream community API
+requires an `x-api-key` header. If the SPA held one, anyone with
+devtools could read it. Instead the Worker holds the overview's
+single **service key** (`SFL_COMMUNITY_API_KEY`) and attaches it to
+every upstream read — see `serviceKey` in
+[worker/communityApi.ts](../worker/communityApi.ts).
 
-1. **API key never reaches the browser.** The upstream community API
-   requires an `x-api-key` header. If the SPA held one, anyone with
-   devtools could read it. Instead the Worker holds the overview's
-   single **service key** (`SFL_COMMUNITY_API_KEY`) and attaches it to
-   every upstream read — see `serviceKey` in
-   [worker/communityApi.ts](../worker/communityApi.ts).
+This used to work differently: the Worker held the master HMAC
+secret and _minted a per-farm key_ for each request, so a key only
+ever authorised the farm encoded in it. That stopped being viable
+when upstream gated community keys on **VIP + total Bumpkin level
+50**, re-checked on every request against the farm the key encodes
+(`verifyCommunityKey` / `isEligibleForCommunityApiKey` in the API
+repo). A key minted for an ordinary player's farm is now rejected,
+so minting per viewed farm would 401 for nearly everyone.
 
-   This used to work differently: the Worker held the master HMAC
-   secret and _minted a per-farm key_ for each request, so a key only
-   ever authorised the farm encoded in it. That stopped being viable
-   when upstream gated community keys on **VIP + total Bumpkin level
-   50**, re-checked on every request against the farm the key encodes
-   (`verifyCommunityKey` / `isEligibleForCommunityApiKey` in the API
-   repo). A key minted for an ordinary player's farm is now rejected,
-   so minting per viewed farm would 401 for nearly everyone.
-
-   The consequence to keep in mind: the key is a bearer credential
-   tied to one real farm, and it dies if that farm's VIP lapses. When
-   upstream 401s, the Worker reports a 503 and logs loudly rather than
-   passing the 401 down — see the note on `unauthorized` below.
-
-2. **Trust boundary for cohort gating.** Both the SPA _and_ the Worker
-   re-run `hasOverviewAccess(state)`. Even if a player tampered with
-   client code, the Worker re-checks and returns 403.
+The consequence to keep in mind: the key is a bearer credential
+tied to one real farm, and it dies if that farm's VIP lapses. When
+upstream 401s, the Worker reports a 503 and logs loudly rather than
+passing the 401 down — see the note on `unauthorized` below.
 
 ### Cron — the Coordinator sweep
 
@@ -260,7 +250,7 @@ the scheduled tick.
 
 ---
 
-## Part 3 — Auth, cohort gating, and the community key
+## Part 3 — Auth and the community key
 
 When the SPA hits `/api/farms/{id}`, the Worker runs
 [`fetchAndCheckAccess`](../worker/access.ts):
@@ -270,10 +260,10 @@ When the SPA hits `/api/farms/{id}`, the Worker runs
    `x-support-key`) so the BE's per-IP throttle scopes per-player
    instead of treating every overview load as coming from one egress IP.
 3. Call upstream `GET /community/farms/{id}`.
-4. Parse the body. Re-validate the cohort predicate.
-5. If denied, return 403 `{ error: "access_denied" }`. The SPA's
-   `fetchFarm` catches this and throws `AccessDeniedError`.
-6. If approved, stamp `__proxyFetchedAt: Date.now()` on the body and
+4. Parse the body and check it carries a `farm` object (502 if not).
+   Upstream's own status passes through, except a 401 — that means the
+   service key itself was rejected, so it becomes a 503.
+5. Stamp `__proxyFetchedAt: Date.now()` on the body and
    return it to the SPA.
 
 That `__proxyFetchedAt` field is important: when the SPA later forwards

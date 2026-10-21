@@ -43,7 +43,7 @@ type TypeSpec = {
   // runs the overview's access check on `farmId` before serving these
   // (see worker/index.ts) — upstream publishes them to any caller, but
   // /api/data is unauthenticated, and without the gate it would be a
-  // way around the cohort that /api/farms/{id} enforces. Caching stays
+  // way around the check that /api/farms/{id} enforces. Caching stays
   // correct either way: `farmId` is a declared param, so it is part of
   // the cache key and one farm's copy can never be served for another.
   perFarm?: true;

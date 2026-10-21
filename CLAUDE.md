@@ -151,7 +151,7 @@ to ONE farm is different: mark its spec `perFarm: true` in
 [worker/communityData.ts](worker/communityData.ts) and the router runs
 the same `fetchAndCheckAccess` gate `/api/farms/{id}` uses before serving
 it. Upstream publishes `marketplaceProfile` to any caller, but without
-the gate our route would be a way around the overview's access cohort.
+the gate our route would be a way around the `/api/farms/{id}` check.
 
 Caching stays correct because `farmId` is a declared param, so it is part
 of the cache key — one farm's copy can never be served for another. If a

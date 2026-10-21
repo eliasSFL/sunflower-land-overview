@@ -333,7 +333,7 @@ export class FarmPushDO extends Agent<Env, State> {
     }
 
     // The worker entrypoint already fetched the farm payload as part of
-    // its cohort gate (worker/access.ts). Apply that body here so the
+    // its access check (worker/access.ts). Apply that body here so the
     // freshness short-circuit below skips our own redundant `getFarm`
     // call — cuts BE load per first-time subscribe from 2 calls to 1
     // and is the primary fix for the "Upstream unavailable" 429s caused

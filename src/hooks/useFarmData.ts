@@ -4,7 +4,6 @@ import {
   fetchFarm,
   loadCachedFarm,
   ApiError,
-  AccessDeniedError,
   type FarmResponse,
 } from "../api/fetchFarm.ts";
 import { IS_OFFLINE_FARM, OFFLINE_FARM_ID } from "../api/offlineFarm.ts";
@@ -52,7 +51,6 @@ export type FarmData = {
   data: FarmResponse | undefined;
   loading: boolean;
   error: string | undefined;
-  accessDenied: boolean;
   lastFetchedAt: number | undefined;
   load: (id: string) => Promise<void>;
 };
@@ -78,7 +76,6 @@ export function useFarmData(): FarmData {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [accessDenied, setAccessDenied] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<number | undefined>(
     () => initialCache?.fetchedAt,
   );
@@ -129,7 +126,6 @@ export function useFarmData(): FarmData {
     }
     setLoading(true);
     setError(undefined);
-    setAccessDenied(false);
     const p = (async () => {
       try {
         const resp = await fetchFarm(id);
@@ -144,19 +140,7 @@ export function useFarmData(): FarmData {
         savePref(FARM_ID_KEY, actualId);
         setLastFetchedAt(Date.now());
       } catch (e) {
-        if (e instanceof AccessDeniedError) {
-          // Clear any previously-loaded farm so the denial panel surfaces
-          // immediately — without this, a stale `data` from an earlier
-          // successful load keeps the dashboard rendered. Also drop
-          // `lastFetchedAt` (the 30s cooldown would otherwise silently
-          // block re-submitting the previously-successful farm) and
-          // align `farmId` with the denied attempt so the re-mounted
-          // form's pre-fill matches the denial copy.
-          setData(undefined);
-          setLastFetchedAt(undefined);
-          setFarmId(id);
-          setAccessDenied(true);
-        } else if (e instanceof ApiError) {
+        if (e instanceof ApiError) {
           setError(`${e.status} — ${e.message}`);
         } else if (e instanceof Error) {
           setError(e.message);
@@ -184,5 +168,5 @@ export function useFarmData(): FarmData {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { farmId, data, loading, error, accessDenied, lastFetchedAt, load };
+  return { farmId, data, loading, error, lastFetchedAt, load };
 }

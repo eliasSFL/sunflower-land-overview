@@ -359,8 +359,8 @@ export default {
       // as /api/farms/{id} before we serve them. Upstream publishes the
       // profile to any caller — it is what the game's own marketplace
       // profile page renders — but this route is unauthenticated, so
-      // without the gate it would be a way around the overview's access
-      // cohort. The world-level sets skip this entirely and stay free.
+      // without the gate it would be a way around the farm check. The
+      // world-level sets skip this entirely and stay free.
       const gatedFarmId = perFarmId(type, url.searchParams);
       if (gatedFarmId !== undefined) {
         const gate = await fetchAndCheckAccess(
