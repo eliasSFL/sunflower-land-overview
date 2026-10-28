@@ -228,6 +228,13 @@ export default defineConfig(({ mode }) => {
           find: /^features\/community\/lib\/CommunitySDK$/,
           replacement: r("./src/game/stubs/community-sdk-stub.ts"),
         },
+        // English-only `translate` so upstream buff labels (and any other
+        // `translate()` caller) render real text instead of the i18next
+        // Proxy stub. Must precede the bare `lib/*` mapping below.
+        {
+          find: /^lib\/i18n\/translate$/,
+          replacement: r("./src/game/stubs/translate-en.ts"),
+        },
         { find: "react-i18next", replacement: EXTERNAL_STUB },
         { find: "i18next", replacement: EXTERNAL_STUB },
         { find: "lodash", replacement: EXTERNAL_STUB },

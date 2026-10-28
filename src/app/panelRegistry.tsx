@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ActiveBoostsPanel } from "../components/ActiveBoostsPanel.tsx";
 import { AnimalBountiesPanel } from "../components/AnimalBountiesPanel.tsx";
 import { AuctionsPanel } from "../components/AuctionsPanel.tsx";
 import { BountiesPanel } from "../components/BountiesPanel.tsx";
@@ -12,6 +13,7 @@ import { LoveIslandShopPanel } from "../components/LoveIslandShopPanel.tsx";
 import { PetCravingsPanel } from "../components/PetCravingsPanel.tsx";
 import { PetsPanel } from "../components/PetsPanel.tsx";
 import {
+  ACTIVE_BOOSTS_SECTION_ID,
   ANIMAL_BOUNTIES_SECTION_ID,
   AUCTIONS_SECTION_ID,
   BOUNTIES_SECTION_ID,
@@ -165,6 +167,12 @@ export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
       label: "Bumpkin",
       icon: CHROME_ICONS.player,
       render: () => <BumpkinSummaryPanel data={ctx.data} />,
+    },
+    {
+      id: ACTIVE_BOOSTS_SECTION_ID,
+      label: "Active Boosts",
+      icon: CHROME_ICONS.lightning,
+      render: () => <ActiveBoostsPanel state={ctx.data.farm} now={ctx.now} />,
     },
     {
       id: VILLAGE_PROJECTS_SECTION_ID,

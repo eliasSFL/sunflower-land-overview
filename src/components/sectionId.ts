@@ -26,6 +26,7 @@ export const ANIMAL_BOUNTIES_SECTION_ID = "section-animal-bounties";
 export const LOVE_ISLAND_SHOP_SECTION_ID = "section-love-shop";
 export const PETS_SECTION_ID = "section-pets";
 export const PET_CRAVINGS_SECTION_ID = "section-pet-cravings";
+export const ACTIVE_BOOSTS_SECTION_ID = "section-active-boosts";
 export const VILLAGE_PROJECTS_SECTION_ID = "section-village-projects";
 // Community-API panels — not farm state, but standing context that
 // lives alongside it on the Farm page.
