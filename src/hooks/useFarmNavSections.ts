@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { getItemIcon } from "../game/index.ts";
 import type { NavSection } from "../components/NavMenu.tsx";
 import {
-  ACTIVE_BOOSTS_SECTION_ID,
+  INACTIVE_BOOSTS_SECTION_ID,
   AUCTIONS_SECTION_ID,
   BUMPKIN_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
@@ -25,9 +25,9 @@ export function useFarmNavSections(): NavSection[] {
         icon: CHROME_ICONS.player,
       },
       {
-        id: ACTIVE_BOOSTS_SECTION_ID,
-        label: "Active Boosts",
-        icon: CHROME_ICONS.lightning,
+        id: INACTIVE_BOOSTS_SECTION_ID,
+        label: "Inactive Boosts",
+        icon: CHROME_ICONS.sleep,
       },
       {
         id: VILLAGE_PROJECTS_SECTION_ID,

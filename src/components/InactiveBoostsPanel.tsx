@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
 
 import {
-  getActiveCollectibleBoosts,
-  getActiveWearableBoosts,
+  getChestBoostCollectibles,
+  getExpiredBoosters,
   getItemIcon,
-  type ActiveBoost,
+  getUnwornBoostWearables,
   type BuffLabel,
   type BumpkinItem,
   type GameState,
+  type InactiveBoost,
   type InventoryItemName,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { formatRemaining } from "../lib/format.ts";
-import { ACTIVE_BOOSTS_SECTION_ID } from "./sectionId.ts";
+import { INACTIVE_BOOSTS_SECTION_ID } from "./sectionId.ts";
 import { InnerPanel, Label } from "./ui/index.ts";
 import type { LabelType } from "./ui/index.ts";
 
@@ -36,52 +37,41 @@ const LABEL_TYPE: Record<BuffLabel["labelType"], LabelType> = {
   danger: "danger",
 };
 
-// Every boost collectible and wearable currently in effect, with
-// upstream's own buff text. Temporary boosters (totems, hourglasses,
-// shrines) sit at the top, always expanded, with a countdown to expiry.
-// Permanent collectibles and wearables can run to 100+ rows on a
-// developed farm, so each folds into an icon roll-up chip (the
-// TimerSection pattern) until tapped. Which items count as active, and
-// what each says, comes entirely from upstream — see
-// src/game/activeBoosts.ts.
-export function ActiveBoostsPanel({ state, now }: Props) {
-  // Active status only flips when a temporary booster expires, so
-  // re-walk the buff tables once a minute rather than on every 1 Hz
-  // tick; an expiry inside the minute is filtered at render instead.
+// Boosts the player owns but that aren't doing anything right now, with
+// upstream's own buff text: temporary boosters that have expired but are
+// still placed (always expanded, most recently expired first), boost
+// collectibles sitting in the chest, and boost wearables nobody is
+// wearing. The last two can run long on a developed farm, so each folds
+// into an icon roll-up chip (the TimerSection pattern) until tapped.
+// Which items count, and what each says, comes entirely from upstream —
+// see src/game/inactiveBoosts.ts.
+export function InactiveBoostsPanel({ state, now }: Props) {
+  // A booster only flips to expired at its expiry, so re-walk the buff
+  // tables once a minute rather than on every 1 Hz tick.
   const minute = Math.floor(now / 60_000);
-  const { collectibles, wearables } = useMemo(
-    () => ({
-      collectibles: getActiveCollectibleBoosts(state, minute * 60_000),
-      wearables: getActiveWearableBoosts(state),
-    }),
-    [state, minute],
-  );
-  const expiring = collectibles.filter(
-    (boost) => boost.expiresAt !== undefined && boost.expiresAt > now,
-  );
-  const permanent = collectibles.filter(
-    (boost) => boost.expiresAt === undefined,
-  );
+  const { expired, chest, unworn } = useMemo(() => {
+    const at = minute * 60_000;
+    return {
+      expired: getExpiredBoosters(state, at),
+      chest: getChestBoostCollectibles(state, at),
+      unworn: getUnwornBoostWearables(state),
+    };
+  }, [state, minute]);
 
-  const total = expiring.length + permanent.length + wearables.length;
+  const total = expired.length + chest.length + unworn.length;
   if (total === 0) return null;
 
   return (
     <InnerPanel
-      id={ACTIVE_BOOSTS_SECTION_ID}
+      id={INACTIVE_BOOSTS_SECTION_ID}
       className="mb-2 w-full scroll-mt-4 break-inside-auto! box-decoration-clone flex flex-col gap-2"
     >
-      <Label type="default" icon={CHROME_ICONS.lightning}>
-        Active Boosts · {total}
+      <Label type="default" icon={CHROME_ICONS.sleep}>
+        Inactive Boosts · {total}
       </Label>
-      <BoostGroup title="Expiring" boosts={expiring} now={now} />
-      <BoostGroup
-        title="Collectibles"
-        boosts={permanent}
-        now={now}
-        collapsible
-      />
-      <BoostGroup title="Wearables" boosts={wearables} now={now} collapsible />
+      <BoostGroup title="Expired" boosts={expired} now={now} />
+      <BoostGroup title="In chest" boosts={chest} now={now} collapsible />
+      <BoostGroup title="Unworn" boosts={unworn} now={now} collapsible />
     </InnerPanel>
   );
 }
@@ -93,7 +83,7 @@ function BoostGroup({
   collapsible = false,
 }: {
   title: string;
-  boosts: ActiveBoost<InventoryItemName | BumpkinItem>[];
+  boosts: InactiveBoost<InventoryItemName | BumpkinItem>[];
   now: number;
   collapsible?: boolean;
 }) {
@@ -167,10 +157,10 @@ function BoostRow({
   boost,
   now,
 }: {
-  boost: ActiveBoost<InventoryItemName | BumpkinItem>;
+  boost: InactiveBoost<InventoryItemName | BumpkinItem>;
   now: number;
 }) {
-  const { name, labels, expiresAt } = boost;
+  const { name, labels, expiredAt, count } = boost;
   return (
     <li className="flex flex-col gap-1 border-t border-black/10 pt-2 first:border-0 first:pt-0 break-inside-avoid">
       <div className="flex items-center justify-between gap-2">
@@ -184,10 +174,14 @@ function BoostRow({
           />
           <span className="text-sm leading-tight">{name}</span>
         </span>
-        {expiresAt !== undefined ? (
-          <Label type="warning" className="shrink-0 tabular-nums">
-            {formatRemaining(expiresAt - now)} left
+        {expiredAt !== undefined ? (
+          <Label type="danger" className="shrink-0 tabular-nums">
+            Expired {formatRemaining(now - expiredAt)} ago
           </Label>
+        ) : count !== undefined && count > 1 ? (
+          <span className="shrink-0 text-xs tabular-nums opacity-70">
+            ×{count}
+          </span>
         ) : null}
       </div>
       <ul className="flex flex-col gap-1 pl-10">

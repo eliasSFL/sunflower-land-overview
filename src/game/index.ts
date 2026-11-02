@@ -466,14 +466,16 @@ export { getPetImage } from "features/island/pets/lib/petShared";
 // in any of the placeable locations (farm, home, interior, level_one,
 // petHouse). Matches `feedPet`'s gate for common pets.
 export { isCollectibleBuilt } from "features/game/lib/collectibleBuilt";
-// Boost collectibles + wearables currently in effect, with upstream's
-// buff labels — see activeBoosts.ts.
+// Boost collectibles + wearables the player owns but that aren't in
+// effect (expired, in the chest, unworn), with upstream's buff labels —
+// see inactiveBoosts.ts.
 export {
-  getActiveCollectibleBoosts,
-  getActiveWearableBoosts,
-  type ActiveBoost,
+  getExpiredBoosters,
+  getChestBoostCollectibles,
+  getUnwornBoostWearables,
+  type InactiveBoost,
   type BuffLabel,
-} from "./activeBoosts.ts";
+} from "./inactiveBoosts.ts";
 // Discriminator for the `InventoryItemName | BumpkinItem` union — true
 // when the name is a collectible (i.e. lives in `state.inventory`),
 // false when it's a wearable (lives in `state.wardrobe`). Used by the
