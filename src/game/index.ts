@@ -500,6 +500,16 @@ export {
   isCavePatchCleared,
 } from "features/game/types/caveRecipes";
 export { BEETLES } from "features/game/types/beetles";
+// Gloomwick, the Goblin Cave Merchant. The API rolls each visit's stock on
+// every farm load (`cave.merchantVisit`), like Love Island's shop, so the
+// overview only reads it: open/closed, uses left per slot, and the Cave
+// tier that unlocks the next slot all come from these upstream helpers.
+export {
+  getAvailableCaveMerchantOffers,
+  getCaveMerchantOffersLeft,
+  isCaveMerchantOpen,
+} from "features/game/types/caveMerchant";
+export { CAVE_MAX_TIER, getNextCaveTier } from "features/game/types/caveTiers";
 
 export type {
   GameState,

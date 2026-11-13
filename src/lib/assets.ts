@@ -64,6 +64,12 @@ export const CHROME_ICONS = {
   // so the player sees a pending swarm bonus before they harvest.
   bee: submoduleAsset("icons/bee.webp"),
   close: `${CDN}/icons/close.png`,
+  // Goblin Cave Merchant panel chrome, the same sprites upstream's
+  // CaveMerchantModal uses (`SUNNYSIDE.icons.stopwatch` / `arrow_right`,
+  // `SUNNYSIDE.icons.lock` lives under /skills).
+  stopwatch: `${CDN}/icons/stopwatch.png`,
+  arrow_right: `${CDN}/icons/arrow_right.png`,
+  lock: `${CDN}/skills/lock.png`,
   // Treasure-chest sprite — the "Open Sunflower Land" row glyph on the
   // Settings home list. Bundled from the submodule (not on the CDN).
   chest: submoduleAsset("icons/chest.png"),

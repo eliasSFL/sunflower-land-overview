@@ -5,6 +5,8 @@ import { AnimalBountiesPanel } from "../components/AnimalBountiesPanel.tsx";
 import { AuctionsPanel } from "../components/AuctionsPanel.tsx";
 import { BountiesPanel } from "../components/BountiesPanel.tsx";
 import { BumpkinSummaryPanel } from "../components/BumpkinSummaryPanel.tsx";
+import { CAVE_MERCHANT_ICON } from "../components/caveMerchantIcon.ts";
+import { CaveMerchantPanel } from "../components/CaveMerchantPanel.tsx";
 import { getCategoryIcon } from "../components/categoryIcon.ts";
 import { ChoresPanel } from "../components/ChoresPanel.tsx";
 import { DeliveriesPanel } from "../components/DeliveriesPanel.tsx";
@@ -18,6 +20,7 @@ import {
   AUCTIONS_SECTION_ID,
   BOUNTIES_SECTION_ID,
   BUMPKIN_SECTION_ID,
+  CAVE_MERCHANT_SECTION_ID,
   CHORES_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
@@ -151,7 +154,8 @@ export function buildQuestsPanels(ctx: QuestsCtx): PanelDescriptor[] {
 }
 
 // Default source order for /farm: your identity and standing —
-// Bumpkin, Village Projects, Love Island Shop, Pet Cravings, Pets, plus
+// Bumpkin, Village Projects, Love Island Shop, Goblin Cave Merchant, Pet
+// Cravings, Pets, plus
 // the two community-API panels (Auctions, Marketplace).
 //
 // Those last two describe the world rather than this farm, so they sit
@@ -185,6 +189,12 @@ export function buildFarmPanels(ctx: FarmCtx): PanelDescriptor[] {
       label: "Love Island Shop",
       icon: CHROME_ICONS.love_charm,
       render: () => <LoveIslandShopPanel state={ctx.data.farm} />,
+    },
+    {
+      id: CAVE_MERCHANT_SECTION_ID,
+      label: "Goblin Cave Merchant",
+      icon: CAVE_MERCHANT_ICON,
+      render: () => <CaveMerchantPanel state={ctx.data.farm} now={ctx.now} />,
     },
     {
       id: PET_CRAVINGS_SECTION_ID,
