@@ -10,8 +10,8 @@ import {
   type GameState,
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
-import { CAVE_MERCHANT_ICON } from "./caveMerchantIcon.ts";
 import { formatRemaining, formatYield } from "../lib/format.ts";
+import { CAVE_MERCHANT_ICON } from "./caveMerchantIcon.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
 import { CAVE_MERCHANT_SECTION_ID } from "./sectionId.ts";
 import { pixelDarkBorderStyle } from "./ui/borderStyles.ts";
@@ -53,18 +53,16 @@ export function CaveMerchantPanel({ state, now }: Props) {
   const offers = getAvailableCaveMerchantOffers(
     { ...cave, merchant: undefined },
     now,
-  )
-    .map((offer) => ({
-      ...offer,
-      left: getCaveMerchantOffersLeft({
-        merchant: cave.merchant,
-        visit: visit.index,
-        slot: offer.slot,
-        limit: offer.limit,
-      }),
-      have: state.inventory[offer.cost.item]?.toNumber() ?? 0,
-    }))
-    .sort((a, b) => a.slot - b.slot);
+  ).map((offer) => ({
+    ...offer,
+    left: getCaveMerchantOffersLeft({
+      merchant: cave.merchant,
+      visit: visit.index,
+      slot: offer.slot,
+      limit: offer.limit,
+    }),
+    have: state.inventory[offer.cost.item]?.toNumber() ?? 0,
+  }));
   const generous = offers.length > 0 && visit.generous;
 
   return (

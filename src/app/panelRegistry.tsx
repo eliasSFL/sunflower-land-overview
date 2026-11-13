@@ -155,8 +155,8 @@ export function buildQuestsPanels(ctx: QuestsCtx): PanelDescriptor[] {
 
 // Default source order for /farm: your identity and standing —
 // Bumpkin, Village Projects, Love Island Shop, Goblin Cave Merchant, Pet
-// Cravings, Pets, plus
-// the two community-API panels (Auctions, Marketplace).
+// Cravings, Pets, plus the two community-API panels (Auctions,
+// Marketplace).
 //
 // Those last two describe the world rather than this farm, so they sit
 // here rather than on /producing: that page is explicitly "what's
