@@ -132,8 +132,8 @@ doing** rather than timers-vs-info:
   exists as a consequence of a click in the panel above it. "What's it
   worth."
 - **`/farm` — Farm**. Arrangeable flow: Bumpkin, Village Projects, Love
-  Island Shop, Pet Cravings, Pets, Auctions (plus pinned Install). "Your
-  standing."
+  Island Shop, Goblin Cave Merchant, Pet Cravings, Pets, Auctions (plus
+  pinned Install). "Your standing."
 
 The three arrangeable pages (Producing, Quests, Farm) render through the
 generic [PanelGridPage](src/app/PanelGridPage.tsx); Now, Digging and
