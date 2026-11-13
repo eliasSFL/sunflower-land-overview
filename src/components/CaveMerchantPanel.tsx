@@ -11,7 +11,7 @@ import {
 } from "../game/index.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 import { CAVE_MERCHANT_ICON } from "./caveMerchantIcon.ts";
-import { formatCompact, formatRemaining, formatYield } from "../lib/format.ts";
+import { formatRemaining, formatYield } from "../lib/format.ts";
 import { NPCIcon } from "./NPCIcon.tsx";
 import { CAVE_MERCHANT_SECTION_ID } from "./sectionId.ts";
 import { pixelDarkBorderStyle } from "./ui/borderStyles.ts";
@@ -121,18 +121,13 @@ export function CaveMerchantPanel({ state, now }: Props) {
                 className="flex items-center gap-2 border-t border-black/10 pt-2 first:border-0 first:pt-0"
                 style={{ opacity: soldOut ? 0.7 : 1 }}
               >
-                {/* The corner tag hangs off the box's right edge and grows
-                    leftwards, so keep "have/need" short enough to stay
-                    inside the panel at column width: whole units owned
-                    (the line beside it gives the exact shortfall) and
-                    compact thousands. */}
+                {/* The corner tag shows only the amount asked, red when you
+                    have too few — the game's "have/need" doesn't fit a
+                    dashboard column, and the line beside it already says
+                    how many more you need. */}
                 <TradeBox
                   image={getItemIcon(offer.cost.item)}
-                  amount={
-                    short
-                      ? `${formatCompact(Math.floor(offer.have))}/${formatCompact(offer.cost.amount)}`
-                      : formatYield(offer.cost.amount)
-                  }
+                  amount={formatYield(offer.cost.amount)}
                   short={short}
                 />
                 <img
