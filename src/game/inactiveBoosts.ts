@@ -68,7 +68,7 @@ export function getExpiredBoosters(
     if (labels.length === 0) continue;
     const expiredAt = Math.max(
       ...placed.map((collectible) =>
-        getCollectibleExpiry({ name, collectible, game }),
+        getCollectibleExpiry({ name, collectible }),
       ),
     );
     out.push({ name, labels, expiredAt });
