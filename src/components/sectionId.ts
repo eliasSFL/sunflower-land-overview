@@ -28,6 +28,7 @@ export const PETS_SECTION_ID = "section-pets";
 export const PET_CRAVINGS_SECTION_ID = "section-pet-cravings";
 export const INACTIVE_BOOSTS_SECTION_ID = "section-inactive-boosts";
 export const VILLAGE_PROJECTS_SECTION_ID = "section-village-projects";
+export const CAVE_MERCHANT_SECTION_ID = "section-cave-merchant";
 // Community-API panels — not farm state, but standing context that
 // lives alongside it on the Farm page.
 export const AUCTIONS_SECTION_ID = "section-auctions";

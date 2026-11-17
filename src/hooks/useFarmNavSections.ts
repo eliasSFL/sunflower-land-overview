@@ -6,11 +6,13 @@ import {
   INACTIVE_BOOSTS_SECTION_ID,
   AUCTIONS_SECTION_ID,
   BUMPKIN_SECTION_ID,
+  CAVE_MERCHANT_SECTION_ID,
   LOVE_ISLAND_SHOP_SECTION_ID,
   PET_CRAVINGS_SECTION_ID,
   PETS_SECTION_ID,
   VILLAGE_PROJECTS_SECTION_ID,
 } from "../components/sectionId.ts";
+import { CAVE_MERCHANT_ICON } from "../components/caveMerchantIcon.ts";
 import { CHROME_ICONS } from "../lib/assets.ts";
 
 // Candidate sections for the Farm page's mobile section-jump menu — your
@@ -38,6 +40,11 @@ export function useFarmNavSections(): NavSection[] {
         id: LOVE_ISLAND_SHOP_SECTION_ID,
         label: "Love Island Shop",
         icon: CHROME_ICONS.love_charm,
+      },
+      {
+        id: CAVE_MERCHANT_SECTION_ID,
+        label: "Goblin Cave Merchant",
+        icon: CAVE_MERCHANT_ICON,
       },
       {
         id: PET_CRAVINGS_SECTION_ID,
