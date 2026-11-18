@@ -44,10 +44,12 @@ export const MAX_WIDGET_ITEMS = 50;
 // access-gated upstream read instead of serving it forever.
 export const WIDGET_SNAPSHOT_MAX_AGE_MS = 15 * 60_000;
 
-// How long a computed feed is reused per farm. Once a feed is cached,
-// every further request for that farm in the window is served from the
-// colo cache and costs no upstream read. A widget refreshes every 15+
-// minutes, so legitimate use rarely even hits it.
+// How long a computed feed is reused. A request that hits the colo cache
+// — same farm, same request origin, same colo, inside the window — costs
+// no upstream read. The cache is best-effort: a failed lookup or write
+// counts as a miss and falls through to the snapshot or upstream. A
+// widget refreshes every 15+ minutes, so legitimate use rarely even
+// hits it.
 //
 // This is NOT a strict "one upstream read per window": the entry is
 // written only after the fill completes, so requests that overlap a cold
