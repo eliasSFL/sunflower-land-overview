@@ -187,6 +187,7 @@ handler maps URL paths to handlers. The handler list:
 | ------------------- | ------ | ----------------------------------------------------------- |
 | `/api/farms/{id}`   | GET    | Proxy a farm load through the access gate (Part 3).         |
 | `/api/data`         | GET    | Cached read of upstream `/community/data` (Part 3a).        |
+| `/api/widget/{id}`  | GET    | Compact ready / next-up feed for native widgets (Part 3b).  |
 | `/push/vapid`       | GET    | Return the VAPID public key so the SPA can subscribe.       |
 | `/push/subscribe`   | POST   | Register a new push subscription on a farm's DO.            |
 | `/push/unsubscribe` | POST   | Drop a subscription from a farm's DO.                       |
@@ -336,6 +337,63 @@ On the SPA side, `useAuctions` / `useMarketplaceActivity`
 poll on the same 5-minute cadence and keep the last good value across a
 failed refresh. `AuctionsPanel` and `MarketplacePanel` render on
 `/farm` and self-hide until their data arrives.
+
+---
+
+## Part 3b — Widget feed (`/api/widget/{id}`)
+
+A native home-screen widget can't run the timer extractors — they are
+TypeScript calling into the submodule, and porting that math to the
+device is what the "never replicate" rule forbids. So the Worker runs
+the extraction and serves the result:
+[worker/widgetFeed.ts](../worker/widgetFeed.ts).
+
+```jsonc
+{
+  "v": 1,
+  "farmId": 123,
+  "fetchedAt": 1795000000000, // when the farm state was read upstream
+  "total": 12, // item count before the 50-item cap
+  "items": [
+    {
+      "key": "…", // stable per source across fetches
+      "label": "Sunflower",
+      "category": "Crops",
+      "amount": 48,
+      "readyAt": 1795000360000, // <= now means collectable
+      "icon": "https://…", // always absolute when present
+    },
+  ],
+}
+```
+
+The list is the Now page's own roll-up (`collectReady` +
+`upcomingWithin`): collectable-now items first, then upcoming
+soonest-first. Because every item carries an absolute `readyAt`, the
+widget keeps counting down — and flips items to "ready" — on its own
+between fetches. The `x-server-time` response header lets it correct
+for a device clock that is off.
+
+The feed is resolved cheapest source first:
+
+1. **Colo cache** — a feed computed in the last 5 minutes. A request
+   that hits it (same farm, same request origin, same colo) costs no
+   upstream read. The cache is best-effort: a failed lookup or write
+   counts as a miss and falls through to the sources below. It is not a
+   strict one-read-per-window guarantee either: requests that overlap a
+   cold fill each read upstream (they are not coalesced), and such a
+   burst is bounded by the per-IP `/api/widget` rate limit, the same
+   exposure `/api/farms/{id}` has.
+2. **The farm's Durable Object** — if its snapshot is under 15 minutes
+   old (i.e. the coordinator sweep is keeping it fresh), the DO builds
+   the feed from it and no upstream call happens. The DO handler is
+   read-only: it does not count as activity for the TTL vacuum.
+3. **Upstream**, through `fetchAndCheckAccess` — the same gate as
+   `/api/farms/{id}`.
+
+`x-feed-source` (`cache` / `snapshot` / `upstream`) reports which one
+answered. The contract is versioned by `v`; clients must ignore unknown
+fields, since an installed app can lag the Worker by months.
 
 ---
 

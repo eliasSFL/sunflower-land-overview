@@ -9,6 +9,7 @@ import { extractAndAggregate } from "../src/timers/index.ts";
 import { detectCompletedProjects } from "../src/notifications/villageProjects.ts";
 import { clusterReadyAts } from "../src/timers/cluster.ts";
 import { planReadyDigest, type DigestMember } from "./readyDigest.ts";
+import { buildWidgetFeed, WIDGET_SNAPSHOT_MAX_AGE_MS } from "./widgetFeed.ts";
 import type { AggregatedTimer } from "../src/timers/types.ts";
 import type {
   Env,
@@ -295,6 +296,8 @@ export class FarmPushDO extends Agent<Env, State> {
         return this.handleOnSnapshot(request);
       case "/state":
         return this.handleStateRequest(request);
+      case "/widget":
+        return this.handleWidgetRequest(request);
       default:
         return new Response("Not found", { status: 404 });
     }
@@ -665,6 +668,43 @@ export class FarmPushDO extends Agent<Env, State> {
       raw: snap.raw,
       fetchedAt: snap.fetchedAt,
     });
+  }
+
+  // Widget feed fast path (worker/widgetFeed.ts). Builds the feed from
+  // the snapshot the coordinator sweep already keeps fresh, so a widget
+  // on an opted-in farm costs no upstream call. Answers 404 when there
+  // is nothing fresh enough to use — the Worker then does its own
+  // access-gated upstream read.
+  //
+  // Read-only on purpose: no `setState`, and in particular no
+  // `touchActivity`. This route is reachable for any farm id without a
+  // stored subscription, so writing here would let a caller mint DO
+  // state for arbitrary ids, and counting an anonymous poll as activity
+  // would keep a farm whose push subscriptions are all dead in the sweep
+  // forever.
+  private handleWidgetRequest(request: Request): Response {
+    const snap = this.state.snapshot;
+    const now = Date.now();
+    if (!snap || now - snap.fetchedAt > WIDGET_SNAPSHOT_MAX_AGE_MS) {
+      return Response.json({ miss: true }, { status: 404 });
+    }
+    const origin = new URL(request.url).searchParams.get("origin") ?? "";
+    try {
+      return Response.json(
+        buildWidgetFeed(snap.raw.farm, {
+          farmId: snap.raw.id,
+          fetchedAt: snap.fetchedAt,
+          now,
+          origin,
+        }),
+      );
+    } catch (err) {
+      console.error(
+        `farmPushDO(${snap.raw.id}): widget feed failed:`,
+        err instanceof Error ? `${err.message}\n${err.stack}` : err,
+      );
+      return Response.json({ miss: true }, { status: 404 });
+    }
   }
 
   private touchActivity(): void {
