@@ -44,11 +44,19 @@ export const MAX_WIDGET_ITEMS = 50;
 // access-gated upstream read instead of serving it forever.
 export const WIDGET_SNAPSHOT_MAX_AGE_MS = 15 * 60_000;
 
-// How long a computed feed is reused per farm. This is what bounds the
-// upstream cost of an unauthenticated route: however many widgets (or
-// scripts) ask, a farm costs at most one upstream read per window per
-// colo. A widget refreshes every 15+ minutes, so legitimate use rarely
-// even hits it.
+// How long a computed feed is reused per farm. Once a feed is cached,
+// every further request for that farm in the window is served from the
+// colo cache and costs no upstream read. A widget refreshes every 15+
+// minutes, so legitimate use rarely even hits it.
+//
+// This is NOT a strict "one upstream read per window": the entry is
+// written only after the fill completes, so requests that overlap a cold
+// fill each read upstream. They are deliberately not coalesced through
+// an in-memory promise map — in a Worker, a promise awaited from another
+// request's context stops settling if the request that created it is
+// cancelled, which trades a duplicate read for a hung response. What
+// bounds such a burst is the per-IP `/api/widget` rate limit in
+// worker/index.ts, the same exposure `/api/farms/{id}` has.
 const WIDGET_FEED_TTL_S = 5 * 60;
 
 export type WidgetItem = {

@@ -376,9 +376,12 @@ for a device clock that is off.
 
 The feed is resolved cheapest source first:
 
-1. **Colo cache** — a feed computed in the last 5 minutes. This is what
-   bounds the upstream cost of an unauthenticated route: a farm costs at
-   most one upstream read per window per colo, however many widgets ask.
+1. **Colo cache** — a feed computed in the last 5 minutes. Once a farm's
+   feed is cached, further requests in that window cost no upstream
+   read. It is not a strict one-read-per-window guarantee: requests that
+   overlap a cold fill each read upstream (they are not coalesced), and
+   such a burst is bounded by the per-IP `/api/widget` rate limit, the
+   same exposure `/api/farms/{id}` has.
 2. **The farm's Durable Object** — if its snapshot is under 15 minutes
    old (i.e. the coordinator sweep is keeping it fresh), the DO builds
    the feed from it and no upstream call happens. The DO handler is
