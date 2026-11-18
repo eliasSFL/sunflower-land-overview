@@ -23,6 +23,7 @@ import {
 } from "./communityData.ts";
 import { sweep } from "./coordinator.ts";
 import type { Env, SubscribeBody } from "./types.ts";
+import { fetchWidgetFeed } from "./widgetFeed.ts";
 
 export { FarmPushDO } from "./farmPushDO.ts";
 
@@ -301,6 +302,41 @@ async function handleProxyFarm(
   });
 }
 
+/**
+ * GET `/api/widget/{id}` — the compact ready / next-up list a native
+ * home-screen widget renders (see worker/widgetFeed.ts). Same public,
+ * unauthenticated shape as `/api/farms/{id}`, and gated the same way.
+ *
+ * `x-server-time` is stamped per response (the body may come from the
+ * colo cache, so it can't carry "now" itself): a widget compares
+ * `readyAt` against the device clock, and this lets it correct for a
+ * phone whose clock is off.
+ */
+async function handleWidgetFeed(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
+  if (!/^\d+$/.test(id)) {
+    return json({ error: "Invalid farm id" }, { status: 400 });
+  }
+  const result = await fetchWidgetFeed(env, Number(id), {
+    origin: new URL(request.url).origin,
+    clientIp: request.headers.get("cf-connecting-ip") ?? undefined,
+  });
+  if (!result.ok) {
+    return json({ error: result.error }, { status: result.status });
+  }
+  return new Response(result.body, {
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "x-server-time": String(Date.now()),
+      "x-feed-source": result.source,
+    },
+  });
+}
+
 export default {
   async fetch(
     request: Request,
@@ -326,6 +362,8 @@ export default {
     if (url.pathname.startsWith("/push/") || url.pathname.startsWith("/api/")) {
       let routeKey: string;
       if (url.pathname.startsWith("/api/farms/")) routeKey = "/api/farms";
+      else if (url.pathname.startsWith("/api/widget/"))
+        routeKey = "/api/widget";
       else if (url.pathname.startsWith("/push/state/"))
         routeKey = "/push/state";
       else routeKey = url.pathname;
@@ -396,6 +434,12 @@ export default {
     const farmMatch = /^\/api\/farms\/([^/]+)$/.exec(url.pathname);
     if (farmMatch && method === "GET") {
       return handleProxyFarm(request, env, farmMatch[1]);
+    }
+
+    // Widget feed.
+    const widgetMatch = /^\/api\/widget\/([^/]+)$/.exec(url.pathname);
+    if (widgetMatch && method === "GET") {
+      return handleWidgetFeed(request, env, widgetMatch[1]);
     }
 
     // Push routes.
